@@ -65,7 +65,7 @@ export function Marquee() {
             key={idx}
             className="flex items-center space-x-3 mx-12 text-zinc-400 hover:text-white transition-colors duration-200 cursor-default select-none"
           >
-            <span className="text-[#FF4D00]">{platform.icon}</span>
+            <span className="text-[#10B981]">{platform.icon}</span>
             <span className="font-semibold tracking-wider text-sm">{platform.name}</span>
           </div>
         ))}

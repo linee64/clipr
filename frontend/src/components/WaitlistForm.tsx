@@ -162,9 +162,9 @@ export function WaitlistForm() {
             className="p-4 rounded-2xl border border-zinc-800 bg-zinc-950/60 backdrop-blur-md flex flex-row items-center justify-between gap-4 w-full text-left"
           >
             <div className="flex items-start space-x-3 min-w-0 pl-1">
-              <CheckCircle2 className="w-5 h-5 text-[#FF4D00] shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-5 h-5 text-[#10B981] shrink-0 mt-0.5" />
               <div className="min-w-0 leading-tight">
-                <p className="text-[9px] uppercase font-mono tracking-widest text-[#FF4D00] font-bold">Success</p>
+                <p className="text-[9px] uppercase font-mono tracking-widest text-[#10B981] font-bold">Success</p>
                 <p className="text-xs text-zinc-200 mt-1 leading-normal">{message}</p>
               </div>
             </div>
@@ -192,7 +192,7 @@ export function WaitlistForm() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={status === "loading"}
-                    className="w-full px-5 py-3 rounded-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF4D00] focus:ring-1 focus:ring-[#FF4D00] transition-all text-base md:text-sm disabled:opacity-50"
+                    className="w-full px-5 py-3 rounded-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] transition-all text-base md:text-sm disabled:opacity-50"
                     required
                   />
                 </div>
@@ -270,7 +270,7 @@ export function WaitlistForm() {
           <span>{200 + dbCount} founders already joined</span>
         </div>
         <span className="text-zinc-800">•</span>
-        <div className="flex items-center space-x-1.5 text-[#FF4D00] font-semibold">
+        <div className="flex items-center space-x-1.5 text-[#10B981] font-semibold">
           <span>🚀 Launching soon</span>
         </div>
       </div>

@@ -42,7 +42,7 @@ export function HeroDashboardMockup() {
       style={{ perspective: 1000 }}
     >
       {/* Glow shadow underneath */}
-      <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#FF4D00]/30 to-[#0a0f1e]/80 blur-xl opacity-75 group-hover:opacity-100 transition duration-1000" />
+      <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#10B981]/30 to-[#0a0f1e]/80 blur-xl opacity-75 group-hover:opacity-100 transition duration-1000" />
 
       {/* Main card */}
       <div className="relative rounded-2xl bg-zinc-950 border border-zinc-800 p-6 shadow-2xl overflow-hidden">
@@ -54,7 +54,7 @@ export function HeroDashboardMockup() {
             <span className="w-3 h-3 rounded-full bg-green-500/80" />
             <span className="text-zinc-500 text-xs font-mono ml-2">clipr_dashboard.v1</span>
           </div>
-          <div className="flex items-center space-x-2 text-xs bg-[#FF4D00]/10 text-[#FF4D00] px-3 py-1 rounded-full border border-[#FF4D00]/20 font-medium">
+          <div className="flex items-center space-x-2 text-xs bg-[#10B981]/10 text-[#10B981] px-3 py-1 rounded-full border border-[#10B981]/20 font-medium">
             <Sparkles className="w-3.5 h-3.5 mr-1" />
             AI Content Pipeline
           </div>
@@ -72,7 +72,7 @@ export function HeroDashboardMockup() {
               value="I'm building an AI tool for HR automation..."
               className="w-full bg-zinc-900/60 border border-zinc-800 text-zinc-100 px-4 py-3 rounded-xl text-sm focus:outline-none"
             />
-            <div className="absolute right-3 top-2.5 flex items-center space-x-1.5 bg-[#FF4D00] text-white text-xs px-2.5 py-1 rounded-lg">
+            <div className="absolute right-3 top-2.5 flex items-center space-x-1.5 bg-[#10B981] text-white text-xs px-2.5 py-1 rounded-lg">
               <span>Generating</span>
               <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
             </div>
@@ -107,7 +107,7 @@ export function HeroDashboardMockup() {
               </div>
               <div className="flex flex-col items-end justify-between h-full shrink-0">
                 <span className="text-[10px] text-zinc-500 font-medium">{card.time}</span>
-                <span className="text-[10px] text-[#FF4D00] font-semibold mt-2 group-hover:translate-x-0.5 transition-transform flex items-center">
+                <span className="text-[10px] text-[#10B981] font-semibold mt-2 group-hover:translate-x-0.5 transition-transform flex items-center">
                   Review Script →
                 </span>
               </div>
@@ -125,24 +125,24 @@ export function BentoScriptMockup() {
     <div className="relative w-full h-full bg-zinc-950 rounded-xl p-4 border border-zinc-900 overflow-hidden text-left font-sans flex flex-col justify-between">
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] uppercase font-mono tracking-widest text-[#FF4D00]">Script Preview</span>
+          <span className="text-[10px] uppercase font-mono tracking-widest text-[#10B981]">Script Preview</span>
           <span className="text-[10px] text-zinc-500 bg-zinc-900 px-2 py-0.5 rounded">Reels / Shorts</span>
         </div>
         <div className="space-y-2 text-xs">
           <p className="text-zinc-300">
-            <span className="text-[#FF4D00] font-bold">[0:00 - Hook]</span> Stop reading resumes. Here is how AI reads 1,000 profiles in 3 seconds...
+            <span className="text-[#10B981] font-bold">[0:00 - Hook]</span> Stop reading resumes. Here is how AI reads 1,000 profiles in 3 seconds...
           </p>
           <p className="text-zinc-400">
             <span className="text-zinc-500 font-semibold">[0:15 - Body]</span> You feed the API your candidate requirements. It matches score + highlights core skills in milliseconds.
           </p>
           <p className="text-zinc-450">
-            <span className="text-[#FF4D00] font-bold">[0:45 - CTA]</span> Comment &apos;SHRED&apos; below and I&apos;ll DM you private beta access.
+            <span className="text-[#10B981] font-bold">[0:45 - CTA]</span> Comment &apos;SHRED&apos; below and I&apos;ll DM you private beta access.
           </p>
         </div>
       </div>
       <div className="pt-3 border-t border-zinc-900 flex justify-between items-center mt-3 text-[10px] text-zinc-500">
-        <span className="flex items-center"><Flame className="w-3.5 h-3.5 mr-1 text-[#FF4D00]" /> High converting structure</span>
-        <span className="text-zinc-300 bg-[#FF4D00]/20 px-2 py-1 rounded-md text-[10px]">Copy Script</span>
+        <span className="flex items-center"><Flame className="w-3.5 h-3.5 mr-1 text-[#10B981]" /> High converting structure</span>
+        <span className="text-zinc-300 bg-[#10B981]/20 px-2 py-1 rounded-md text-[10px]">Copy Script</span>
       </div>
     </div>
   );
@@ -164,7 +164,7 @@ export function BentoCalendarMockup() {
     <div className="w-full bg-zinc-950 rounded-xl p-4 border border-zinc-900 text-left">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-1.5">
-          <Calendar className="w-4 h-4 text-[#FF4D00]" />
+          <Calendar className="w-4 h-4 text-[#10B981]" />
           <span className="text-xs font-bold text-zinc-300">June 2026</span>
         </div>
         <span className="text-[10px] text-zinc-500">Auto-scheduler Active</span>
@@ -175,14 +175,14 @@ export function BentoCalendarMockup() {
             key={idx}
             className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${
               item.active
-                ? "bg-[#FF4D00]/10 border-[#FF4D00]/40 text-[#FF4D00]"
+                ? "bg-[#10B981]/10 border-[#10B981]/40 text-[#10B981]"
                 : "bg-zinc-900/40 border-zinc-800 text-zinc-500"
             }`}
           >
             <span className="text-[8px] font-mono uppercase">{item.day}</span>
             <span className="text-xs font-bold mt-1 text-zinc-100">{item.date}</span>
             {item.active && (
-              <span className="text-[7px] mt-1 bg-[#FF4D00] text-white px-1 py-0.2 rounded font-sans scale-90">
+              <span className="text-[7px] mt-1 bg-[#10B981] text-white px-1 py-0.2 rounded font-sans scale-90">
                 {item.label}
               </span>
             )}
@@ -196,7 +196,7 @@ export function BentoCalendarMockup() {
 // 4. BENTO REFERENCE CARD MOCKUP
 export function BentoReferencesMockup() {
   const thumbs = [
-    { title: "Hook Idea #1", views: "1.2M views", duration: "0:45", color: "from-[#FF4D00]/30" },
+    { title: "Hook Idea #1", views: "1.2M views", duration: "0:45", color: "from-[#10B981]/30" },
     { title: "Trending Audio #4", views: "840K views", duration: "0:15", color: "from-blue-600/30" },
     { title: "Competitor Analysis", views: "340K views", duration: "0:59", color: "from-zinc-800" },
     { title: "Format Guide", views: "98K views", duration: "1:20", color: "from-emerald-600/30" },
@@ -211,7 +211,7 @@ export function BentoReferencesMockup() {
         >
           <div className={`absolute inset-0 bg-gradient-to-t ${item.color} to-zinc-950/80 z-0`} />
           <div className="absolute inset-0 flex items-center justify-center z-10 opacity-0 group-hover/ref:opacity-100 transition-opacity bg-black/40">
-            <span className="w-8 h-8 rounded-full bg-[#FF4D00] flex items-center justify-center">
+            <span className="w-8 h-8 rounded-full bg-[#10B981] flex items-center justify-center">
               <Play className="w-4 h-4 fill-current text-white ml-0.5" />
             </span>
           </div>
@@ -240,14 +240,14 @@ export function BentoCommentsMockup() {
         &ldquo;HR tech is changing fast. If you&apos;re still screening resumes manually in 2026, you&apos;re missing out...&rdquo;
       </p>
       <div className="bg-zinc-900/60 p-2.5 rounded-lg border border-zinc-850 space-y-1">
-        <span className="text-[9px] font-mono text-[#FF4D00] block uppercase font-bold">Suggested Take (Your Voice)</span>
+        <span className="text-[9px] font-mono text-[#10B981] block uppercase font-bold">Suggested Take (Your Voice)</span>
         <p className="text-[10px] text-zinc-200">
           &ldquo;Honestly, resumes are a terrible metric. We should focus on real-world workflow automation simulations. Here is how we&apos;re fixing it...&rdquo;
         </p>
       </div>
       <div className="flex items-center justify-between text-[9px] text-zinc-500 pt-1">
         <span className="flex items-center"><CheckCircle className="w-3 h-3 text-emerald-500 mr-1" /> Checked with voice model</span>
-        <span className="text-[#FF4D00] font-semibold cursor-pointer">Auto-Reply</span>
+        <span className="text-[#10B981] font-semibold cursor-pointer">Auto-Reply</span>
       </div>
     </div>
   );

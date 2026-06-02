@@ -4,7 +4,7 @@
 
 :root {
   --bg: #080808;
-  --accent: #FF4D00;
+  --accent: #10B981;
   --text: #ffffff;
   --muted: #71717a;
   --border: #222222;
@@ -72,7 +72,7 @@ body {
   background: rgba(17, 17, 17, 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 77, 0, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.15);
 }
 
 .text-gradient {

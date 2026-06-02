@@ -39,7 +39,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased text-white selection:bg-[#FF4D00] selection:text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased text-white selection:bg-[#10B981] selection:text-white`}
       >
         <div className="noise-overlay" />
         {children}

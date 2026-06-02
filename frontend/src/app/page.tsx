@@ -54,9 +54,9 @@ export default function Home() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden selection:bg-[#FF4D00]">
+    <div className="relative min-h-screen overflow-x-hidden selection:bg-[#10B981]">
       {/* Dynamic blurred glow orb in Hero background */}
-      <div className="absolute top-[10%] left-[50%] -translate-x-[50%] w-[350px] md:w-[600px] h-[350px] md:h-[600px] bg-gradient-to-tr from-[#FF4D00] to-blue-900 rounded-full blur-[100px] opacity-[0.15] animate-pulseSlow pointer-events-none z-0" />
+      <div className="absolute top-[10%] left-[50%] -translate-x-[50%] w-[350px] md:w-[600px] h-[350px] md:h-[600px] bg-gradient-to-tr from-[#10B981] to-blue-900 rounded-full blur-[100px] opacity-[0.15] animate-pulseSlow pointer-events-none z-0" />
 
       {/* 1. NAVBAR */}
       <header
@@ -67,11 +67,11 @@ export default function Home() {
       >
         <div className="max-w-6xl mx-auto px-6 md:px-8 flex items-center justify-between">
           <div className="flex items-center space-x-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-            <div className="w-8 h-8 rounded-lg bg-[#FF4D00] flex items-center justify-center shadow-[0_0_15px_rgba(255,77,0,0.5)]">
+            <div className="w-8 h-8 rounded-lg bg-[#10B981] flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.5)]">
               <Scissors className="w-4 h-4 text-white rotate-90" />
             </div>
             <span className="text-xl font-bold tracking-tight text-white flex items-center">
-              Clipr<span className="text-[#FF4D00] font-mono">.</span>
+              Clipr<span className="text-[#10B981] font-mono">.</span>
             </span>
           </div>
 
@@ -116,7 +116,7 @@ export default function Home() {
             className="text-[2.50rem] sm:text-7xl md:text-8xl font-black tracking-tight leading-[0.9] text-white"
           >
             Your content team. <br />
-            <span className="text-gradient font-extrabold text-[#FF4D00]">Minus the team.</span>
+            <span className="text-gradient font-extrabold text-[#10B981]">Minus the team.</span>
           </motion.h1>
 
           {/* Subheadline */}
@@ -136,8 +136,8 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.3 }}
             className="pt-2"
           >
-            <Button variant="primary" size="lg" onClick={scrollToWaitlist}>
-              Get early access
+            <Button variant="primary" size="lg" onClick={() => window.location.href = '/dashboard'}>
+              Launch Dashboard
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
             <p className="text-[10px] text-zinc-500 mt-3 tracking-wide">
@@ -166,7 +166,7 @@ export default function Home() {
           variants={fadeInVariants}
           className="text-center space-y-4 mb-16"
         >
-          <span className="text-xs uppercase font-mono tracking-widest text-[#FF4D00] font-bold">The Struggle</span>
+          <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold">The Struggle</span>
           <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white">
             Content is killing your focus
           </h2>
@@ -180,17 +180,17 @@ export default function Home() {
             {
               title: "3+ hours per video",
               desc: "Researching hooks, scripting word-for-word, and matching formatting eats up your calendar.",
-              icon: <Clock className="w-6 h-6 text-[#FF4D00]" />,
+              icon: <Clock className="w-6 h-6 text-[#10B981]" />,
             },
             {
               title: "3 different tools",
               desc: "Switching back and forth between Notion scripts, Drive media folders, and buffer calendars.",
-              icon: <Link2Off className="w-6 h-6 text-[#FF4D00]" />,
+              icon: <Link2Off className="w-6 h-6 text-[#10B981]" />,
             },
             {
               title: "No consistency",
               desc: "Posting goes from a weekly plan to monthly, or stops entirely when workloads hit capacity.",
-              icon: <CalendarOff className="w-6 h-6 text-[#FF4D00]" />,
+              icon: <CalendarOff className="w-6 h-6 text-[#10B981]" />,
             },
           ].map((item, idx) => (
             <motion.div
@@ -205,7 +205,7 @@ export default function Home() {
                 <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center border border-zinc-800 group-hover:scale-110 transition-transform duration-300">
                   {item.icon}
                 </div>
-                <h3 className="text-xl font-bold text-white group-hover:text-[#FF4D00] transition-colors">{item.title}</h3>
+                <h3 className="text-xl font-bold text-white group-hover:text-[#10B981] transition-colors">{item.title}</h3>
                 <p className="text-sm text-zinc-400 leading-relaxed">{item.desc}</p>
               </div>
             </motion.div>
@@ -223,7 +223,7 @@ export default function Home() {
             variants={fadeInVariants}
             className="text-center space-y-4 mb-20"
           >
-            <span className="text-xs uppercase font-mono tracking-widest text-[#FF4D00] font-bold">The Pipeline</span>
+            <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold">The Pipeline</span>
             <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white">
               From idea to posted.<br className="md:hidden" /> In 20 minutes.
             </h2>
@@ -270,13 +270,13 @@ export default function Home() {
                 className="relative"
               >
                 {/* Step badge positioned absolute on the timeline connector line */}
-                <div className="absolute -left-[50px] md:-left-[82px] top-1.5 w-10 h-10 rounded-full bg-[#080808] border-2 border-zinc-800 hover:border-[#FF4D00] flex items-center justify-center text-white transition-all shadow-[0_0_10px_rgba(0,0,0,0.8)]">
+                <div className="absolute -left-[50px] md:-left-[82px] top-1.5 w-10 h-10 rounded-full bg-[#080808] border-2 border-zinc-800 hover:border-[#10B981] flex items-center justify-center text-white transition-all shadow-[0_0_10px_rgba(0,0,0,0.8)]">
                   <span className="text-xs font-bold text-zinc-300 font-mono group-hover:text-white">{stepItem.step}</span>
                 </div>
 
                 <div className="space-y-2 max-w-xl">
                   <div className="flex items-center space-x-3">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-[#FF4D00] bg-[#FF4D00]/10 border border-[#FF4D00]/25 px-2.5 py-0.5 rounded-full">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-2.5 py-0.5 rounded-full">
                       {stepItem.badge}
                     </span>
                   </div>
@@ -298,7 +298,7 @@ export default function Home() {
           variants={fadeInVariants}
           className="text-center space-y-4 mb-16"
         >
-          <span className="text-xs uppercase font-mono tracking-widest text-[#FF4D00] font-bold">Capabilities</span>
+          <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold">Capabilities</span>
           <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white">
             Everything in one place
           </h2>
@@ -310,7 +310,7 @@ export default function Home() {
           {/* Card 1: AI Script Generator (2 cols wide) */}
           <div className="md:col-span-2 rounded-2xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 transition-all p-6 md:p-8 flex flex-col justify-between space-y-6 overflow-hidden min-h-[350px]">
             <div className="space-y-2">
-              <span className="text-[10px] uppercase font-mono tracking-widest text-[#FF4D00] bg-[#FF4D00]/10 px-2 py-0.5 rounded-full font-bold">Main Engine</span>
+              <span className="text-[10px] uppercase font-mono tracking-widest text-[#10B981] bg-[#10B981]/10 px-2 py-0.5 rounded-full font-bold">Main Engine</span>
               <h3 className="text-2xl font-bold text-white">AI Script Generator</h3>
               <p className="text-sm text-zinc-400 max-w-md">
                 Writes high-conversion scripts tailored to your voice model, optimized hooks, and custom overlays.
@@ -348,7 +348,7 @@ export default function Home() {
           {/* Card 4: References (Small / Row) */}
           <div className="rounded-2xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 transition-all p-6 md:p-8 flex flex-col justify-between space-y-6 min-h-[350px]">
             <div className="space-y-2">
-              <span className="text-[10px] uppercase font-mono tracking-widest text-[#FF4D00] bg-[#FF4D00]/10 px-2 py-0.5 rounded-full font-bold">Curation</span>
+              <span className="text-[10px] uppercase font-mono tracking-widest text-[#10B981] bg-[#10B981]/10 px-2 py-0.5 rounded-full font-bold">Curation</span>
               <h3 className="text-2xl font-bold text-white">Competitor Library</h3>
               <p className="text-sm text-zinc-400">
                 A feed of top references matching your generated hooks so you see format trends immediately.
@@ -360,7 +360,7 @@ export default function Home() {
           {/* Card 5: Auto Posting (Small / Row) */}
           <div className="rounded-2xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 transition-all p-6 md:p-8 flex flex-col justify-between min-h-[350px] text-center">
             <div className="space-y-2 text-left">
-              <span className="text-[10px] uppercase font-mono tracking-widest text-[#FF4D00] bg-[#FF4D00]/10 px-2 py-0.5 rounded-full font-bold">Publishing</span>
+              <span className="text-[10px] uppercase font-mono tracking-widest text-[#10B981] bg-[#10B981]/10 px-2 py-0.5 rounded-full font-bold">Publishing</span>
               <h3 className="text-2xl font-bold text-white">Auto Posting</h3>
               <p className="text-sm text-zinc-400">
                 Direct integration with social platforms. Clipr posts directly to your profile.
@@ -394,7 +394,7 @@ export default function Home() {
             variants={fadeInVariants}
             className="text-center space-y-4 mb-16"
           >
-            <span className="text-xs uppercase font-mono tracking-widest text-[#FF4D00] font-bold">Subscription</span>
+            <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold">Subscription</span>
             <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white">
               Simple pricing
             </h2>
@@ -407,10 +407,10 @@ export default function Home() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="relative rounded-3xl bg-zinc-950 border-2 border-[#FF4D00]/50 p-8 md:p-10 shadow-[0_10px_50px_rgba(255,77,0,0.15)] flex flex-col justify-between"
+              className="relative rounded-3xl bg-zinc-950 border-2 border-[#10B981]/50 p-8 md:p-10 shadow-[0_10px_50px_rgba(16,185,129,0.15)] flex flex-col justify-between"
             >
               {/* Hot badge */}
-              <div className="absolute -top-3.5 left-[50%] -translate-x-[50%] bg-[#FF4D00] text-white text-xs font-mono font-bold uppercase tracking-wider px-4 py-1.5 rounded-full shadow-[0_4px_15px_rgba(255,77,0,0.4)]">
+              <div className="absolute -top-3.5 left-[50%] -translate-x-[50%] bg-[#10B981] text-white text-xs font-mono font-bold uppercase tracking-wider px-4 py-1.5 rounded-full shadow-[0_4px_15px_rgba(16,185,129,0.4)]">
                 Pro Access
               </div>
 
@@ -432,8 +432,8 @@ export default function Home() {
                     "Reference library",
                   ].map((feat, idx) => (
                     <div key={idx} className="flex items-center space-x-3 text-zinc-300 text-sm">
-                      <div className="w-5 h-5 rounded-full bg-[#FF4D00]/10 flex items-center justify-center shrink-0">
-                        <Check className="w-3.5 h-3.5 text-[#FF4D00]" />
+                      <div className="w-5 h-5 rounded-full bg-[#10B981]/10 flex items-center justify-center shrink-0">
+                        <Check className="w-3.5 h-3.5 text-[#10B981]" />
                       </div>
                       <span>{feat}</span>
                     </div>
@@ -442,7 +442,7 @@ export default function Home() {
               </div>
 
               <div className="pt-8 space-y-3">
-                <Button variant="primary" className="w-full py-4 rounded-xl" onClick={scrollToWaitlist}>
+                <Button variant="primary" className="w-full py-4 rounded-xl" onClick={() => window.location.href = '/dashboard'}>
                   Start free 7-day trial
                 </Button>
                 <p className="text-[10px] text-zinc-500 text-center tracking-wide">
@@ -458,7 +458,7 @@ export default function Home() {
       <section id="waitlist-section" className="relative py-28 md:py-36 z-10 max-w-4xl mx-auto px-4 md:px-8 text-center">
         {/* Card wrapper */}
         <div className="relative rounded-3xl bg-zinc-950 border border-zinc-900 p-8 md:p-16 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-tr from-[#FF4D00]/5 to-blue-900/5 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#10B981]/5 to-blue-900/5 pointer-events-none" />
 
           <div className="relative space-y-8 max-w-xl mx-auto z-10">
             <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">
@@ -479,7 +479,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="space-y-2 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start space-x-2">
-              <div className="w-6 h-6 rounded-md bg-[#FF4D00] flex items-center justify-center">
+              <div className="w-6 h-6 rounded-md bg-[#10B981] flex items-center justify-center">
                 <Scissors className="w-3.5 h-3.5 text-white rotate-90" />
               </div>
               <span className="font-bold text-lg text-white">Clipr</span>
