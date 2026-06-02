@@ -4,19 +4,14 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { submitWaitlist } from "@/app/actions";
 import { Button } from "./ui/button";
-import { ArrowRight, Loader2, CheckCircle2, Lock } from "lucide-react";
+import { ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export function WaitlistForm() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [dbCount, setDbCount] = useState(17);
-
-  // Determine if email is valid in real-time
-  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   useEffect(() => {
     async function fetchCount() {
@@ -129,33 +124,15 @@ export function WaitlistForm() {
     }
   };
 
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    const englishRegex = /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':",./<>?\|`~ ]*$/;
-    
-    if (!englishRegex.test(val)) {
-      setPasswordError("English keyboard layout only / Только английская раскладка клавиатуры.");
-    } else if (val.length > 0 && val.length < 6) {
-      setPasswordError("Password must be at least 6 characters.");
-    } else {
-      setPasswordError("");
-    }
-    setPassword(val);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    if (isEmailValid && password && passwordError) return;
 
     setStatus("loading");
     setMessage("");
 
     const formData = new FormData();
     formData.append("email", email);
-    if (password) {
-      formData.append("password", password);
-    }
 
     try {
       const response = await submitWaitlist(formData);
@@ -163,7 +140,6 @@ export function WaitlistForm() {
         setStatus("success");
         setMessage(response.message);
         setEmail("");
-        setPassword("");
         setDbCount((prev) => prev + 1);
       } else {
         setStatus("error");
@@ -209,75 +185,36 @@ export function WaitlistForm() {
             <form onSubmit={handleSubmit} className="space-y-3 w-full">
               <div className="flex flex-col sm:flex-row gap-3 w-full">
                 <div className="flex-1 relative">
-                    <input
-                      type="email"
-                      name="email"
-                      placeholder="Enter your email address"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={status === "loading"}
-                      className="w-full px-5 py-3 rounded-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF4D00] focus:ring-1 focus:ring-[#FF4D00] transition-all text-base md:text-sm disabled:opacity-50"
-                      required
-                    />
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Enter your email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={status === "loading"}
+                    className="w-full px-5 py-3 rounded-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF4D00] focus:ring-1 focus:ring-[#FF4D00] transition-all text-base md:text-sm disabled:opacity-50"
+                    required
+                  />
                 </div>
 
-                {!isEmailValid && (
-                  <Button
-                    type="submit"
-                    disabled={status === "loading" || !email}
-                    className="w-full sm:w-auto shrink-0 py-3 rounded-full"
-                  >
-                    Get early access
-                  </Button>
-                )}
+                <Button
+                  type="submit"
+                  disabled={status === "loading" || !email}
+                  className="w-full sm:w-auto shrink-0 py-3 rounded-full"
+                >
+                  {status === "loading" ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      Get early access
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
               </div>
-
-              <AnimatePresence>
-                {isEmailValid && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                    animate={{ height: "auto", opacity: 1, marginTop: 12 }}
-                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                    className="overflow-hidden space-y-3"
-                  >
-                    <div className="relative">
-                      <input
-                        type="password"
-                        name="password"
-                        placeholder="Create password (min. 6 English characters)"
-                        value={password}
-                        onChange={handlePasswordChange}
-                        disabled={status === "loading"}
-                        className="w-full pl-11 pr-5 py-3 rounded-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF4D00] focus:ring-1 focus:ring-[#FF4D00] transition-all text-base md:text-sm disabled:opacity-50"
-                        required
-                      />
-                      <Lock className="w-4 h-4 text-zinc-500 absolute left-4 top-3.5" />
-                    </div>
-
-                    {passwordError && (
-                      <p className="text-red-500 text-[11px] pl-4">{passwordError}</p>
-                    )}
-
-                    <Button
-                      type="submit"
-                      disabled={status === "loading" || !password || !!passwordError}
-                      className="w-full py-3 rounded-full"
-                    >
-                      {status === "loading" ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Creating account...
-                        </>
-                      ) : (
-                        <>
-                          Register & Get early access
-                          <ArrowRight className="w-4 h-4 ml-2" />
-                        </>
-                      )}
-                    </Button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </form>
 
             <div className="relative flex py-2 items-center">

@@ -10,7 +10,6 @@ export type ActionResponse = {
 
 export async function submitWaitlist(formData: FormData): Promise<ActionResponse> {
   const email = formData.get("email")?.toString().trim();
-  const password = formData.get("password")?.toString().trim();
 
   // Basic email validation
   if (!email) {
@@ -22,47 +21,30 @@ export async function submitWaitlist(formData: FormData): Promise<ActionResponse
     return { success: false, message: "Please enter a valid email address." };
   }
 
-  // Password validation if provided
-  if (password !== undefined) {
-    if (password.length < 6) {
-      return { success: false, message: "Password must be at least 6 characters." };
-    }
-    // English keyboard characters only (letters, numbers, symbols, spaces)
-    const englishRegex = /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':",./<>?\|`~ ]+$/;
-    if (!englishRegex.test(password)) {
-      return { success: false, message: "Password must use English letters and symbols only." };
-    }
-  }
-
   // Simulate network latency
   await new Promise((resolve) => setTimeout(resolve, 800));
 
   if (!isSupabaseConfigured || !supabase) {
-    console.log(`[Demo Mode] Email: ${email}, Password: ${password ? "***" : "None"}`);
+    console.log(`[Demo Mode] Email: ${email}`);
     return {
       success: true,
-      message: password
-        ? "Account created! Please check your inbox to confirm your email. (Demo Mode) ✉️"
-        : "Please check your inbox to confirm your spot! (Demo Mode) ✉️",
+      message: "Please check your inbox to confirm your spot! (Demo Mode) ✉️",
       isDemo: true,
     };
   }
 
   try {
-    // 1. If password is provided, create the user in Supabase Authentication
-    if (password) {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+    // 1. Send passwordless magic link (signInWithOtp) to verify email and register user
+    const { error: signUpError } = await supabase.auth.signInWithOtp({
+      email,
+    });
 
-      if (signUpError) {
-        console.error("Supabase Auth signUp error:", signUpError);
-        return {
-          success: false,
-          message: signUpError.message,
-        };
-      }
+    if (signUpError) {
+      console.error("Supabase Auth signInWithOtp error:", signUpError);
+      return {
+        success: false,
+        message: signUpError.message,
+      };
     }
 
     // 2. Also insert the email into the public waitlist database table
@@ -83,9 +65,7 @@ export async function submitWaitlist(formData: FormData): Promise<ActionResponse
 
     return {
       success: true,
-      message: password
-        ? "Account created! Please check your email to confirm registration. ✉️"
-        : "Please check your inbox! We've sent a verification link to confirm your spot. ✉️",
+      message: "Please check your inbox! We've sent a verification link to confirm your spot. ✉️",
     };
   } catch (err) {
     console.error("Waitlist submission exception:", err);
