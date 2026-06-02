@@ -13,9 +13,27 @@ export function WaitlistForm() {
   const [passwordError, setPasswordError] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [dbCount, setDbCount] = useState(17);
 
   // Determine if email is valid in real-time
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  useEffect(() => {
+    async function fetchCount() {
+      if (!isSupabaseConfigured || !supabase) return;
+      try {
+        const { count, error } = await supabase
+          .from("waitlist")
+          .select("*", { count: "exact", head: true });
+        if (!error && count !== null) {
+          setDbCount(count);
+        }
+      } catch (err) {
+        console.error("Error fetching waitlist count:", err);
+      }
+    }
+    fetchCount();
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
@@ -65,6 +83,7 @@ export function WaitlistForm() {
       if (response.success) {
         setStatus("success");
         setMessage(`Registered via Google: ${userEmail} 🎉`);
+        setDbCount((prev) => prev + 1);
       } else {
         setStatus("error");
         setMessage(response.message);
@@ -145,6 +164,7 @@ export function WaitlistForm() {
         setMessage(response.message);
         setEmail("");
         setPassword("");
+        setDbCount((prev) => prev + 1);
       } else {
         setStatus("error");
         setMessage(response.message);
@@ -306,6 +326,17 @@ export function WaitlistForm() {
           {message}
         </motion.p>
       )}
+
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-mono text-zinc-500 pt-4 border-t border-zinc-900/60 mt-4">
+        <div className="flex items-center space-x-2">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span>{200 + dbCount} founders already joined</span>
+        </div>
+        <span className="text-zinc-800">•</span>
+        <div className="flex items-center space-x-1.5 text-[#FF4D00] font-semibold">
+          <span>🚀 Launching soon</span>
+        </div>
+      </div>
     </div>
   );
 }
