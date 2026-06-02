@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -42,6 +43,7 @@ export default function RootLayout({
       >
         <div className="noise-overlay" />
         {children}
+        <Analytics />
       </body>
     </html>
   );
