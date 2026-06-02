@@ -54,7 +54,7 @@ export default function Home() {
   };
 
   return (
-    <div className="relative min-h-screen selection:bg-[#FF4D00]">
+    <div className="relative min-h-screen overflow-x-hidden selection:bg-[#FF4D00]">
       {/* Dynamic blurred glow orb in Hero background */}
       <div className="absolute top-[10%] left-[50%] -translate-x-[50%] w-[350px] md:w-[600px] h-[350px] md:h-[600px] bg-gradient-to-tr from-[#FF4D00] to-blue-900 rounded-full blur-[100px] opacity-[0.15] animate-pulseSlow pointer-events-none z-0" />
 
@@ -65,7 +65,7 @@ export default function Home() {
             : "bg-transparent py-6"
           }`}
       >
-        <div className="max-w-6xl mx-auto px-4 md:px-8 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 md:px-8 flex items-center justify-between">
           <div className="flex items-center space-x-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
             <div className="w-8 h-8 rounded-lg bg-[#FF4D00] flex items-center justify-center shadow-[0_0_15px_rgba(255,77,0,0.5)]">
               <Scissors className="w-4 h-4 text-white rotate-90" />
@@ -83,7 +83,7 @@ export default function Home() {
           </nav>
 
           <div>
-            <Button variant="primary" size="sm" onClick={scrollToWaitlist}>
+            <Button variant="glass" size="sm" onClick={scrollToWaitlist} className="border border-zinc-800 text-zinc-200">
               Join waitlist
             </Button>
           </div>
@@ -109,12 +109,11 @@ export default function Home() {
             <span className="text-zinc-300 font-semibold">Join 200+ founders</span>
           </motion.div>
 
-          {/* Headline */}
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1 }}
-            className="text-5xl md:text-8xl font-black tracking-tight leading-[0.9] text-white"
+            className="text-[2.50rem] sm:text-7xl md:text-8xl font-black tracking-tight leading-[0.9] text-white"
           >
             Your content team. <br />
             <span className="text-gradient font-extrabold text-[#FF4D00]">Minus the team.</span>
@@ -231,7 +230,7 @@ export default function Home() {
           </motion.div>
 
           {/* Timeline Wrapper */}
-          <div className="relative border-l-2 border-zinc-900 ml-4 md:ml-12 pl-8 md:pl-16 space-y-16">
+          <div className="relative border-l-2 border-zinc-900 ml-8 md:ml-12 pl-8 md:pl-16 space-y-16">
             {[
               {
                 step: "01",

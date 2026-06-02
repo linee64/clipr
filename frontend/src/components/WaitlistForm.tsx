@@ -209,16 +209,16 @@ export function WaitlistForm() {
             <form onSubmit={handleSubmit} className="space-y-3 w-full">
               <div className="flex flex-col sm:flex-row gap-3 w-full">
                 <div className="flex-1 relative">
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Enter your email address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={status === "loading"}
-                    className="w-full px-5 py-3 rounded-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF4D00] focus:ring-1 focus:ring-[#FF4D00] transition-all text-sm disabled:opacity-50"
-                    required
-                  />
+                    <input
+                      type="email"
+                      name="email"
+                      placeholder="Enter your email address"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={status === "loading"}
+                      className="w-full px-5 py-3 rounded-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF4D00] focus:ring-1 focus:ring-[#FF4D00] transition-all text-base md:text-sm disabled:opacity-50"
+                      required
+                    />
                 </div>
 
                 {!isEmailValid && (
@@ -248,7 +248,7 @@ export function WaitlistForm() {
                         value={password}
                         onChange={handlePasswordChange}
                         disabled={status === "loading"}
-                        className="w-full pl-11 pr-5 py-3 rounded-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF4D00] focus:ring-1 focus:ring-[#FF4D00] transition-all text-sm disabled:opacity-50"
+                        className="w-full pl-11 pr-5 py-3 rounded-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF4D00] focus:ring-1 focus:ring-[#FF4D00] transition-all text-base md:text-sm disabled:opacity-50"
                         required
                       />
                       <Lock className="w-4 h-4 text-zinc-500 absolute left-4 top-3.5" />
