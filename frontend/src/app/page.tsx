@@ -136,8 +136,8 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.3 }}
             className="pt-2"
           >
-            <Button variant="primary" size="lg" onClick={() => window.location.href = '/dashboard'}>
-              Launch Dashboard
+            <Button variant="primary" size="lg" onClick={scrollToWaitlist}>
+              Get started
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
             <p className="text-[10px] text-zinc-500 mt-3 tracking-wide">
@@ -442,8 +442,8 @@ export default function Home() {
               </div>
 
               <div className="pt-8 space-y-3">
-                <Button variant="primary" className="w-full py-4 rounded-xl" onClick={() => window.location.href = '/dashboard'}>
-                  Start free 7-day trial
+                <Button variant="primary" className="w-full py-4 rounded-xl" onClick={scrollToWaitlist}>
+                  Get started
                 </Button>
                 <p className="text-[10px] text-zinc-500 text-center tracking-wide">
                   Then $29/mo · Cancel anytime

@@ -212,23 +212,25 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#1C1C1C] text-[#EFEFEF] flex flex-col md:flex-row font-sans overflow-x-hidden antialiased text-[14px] leading-[1.6]">
+    <div className="relative min-h-screen bg-[#070B0D] text-[#EFEFEF] flex flex-col md:flex-row font-sans overflow-x-hidden antialiased text-[14px] leading-[1.6]">
       
       {/* ----------------------------------------------------
-          LEFT SIDEBAR (220px, bg #242424, border-r #333333)
+          LEFT SIDEBAR (220px, bg #0D1517, border-r #152226)
          ---------------------------------------------------- */}
-      <aside className="hidden md:flex flex-col w-[220px] shrink-0 border-r border-[#333333] bg-[#242424] min-h-screen p-5 justify-between relative z-10">
+      <aside className="hidden md:flex flex-col w-[220px] shrink-0 border-r border-[#152226] bg-[#0B1012] min-h-screen p-5 justify-between relative z-10">
         <div className="space-y-8">
           
           {/* Logo */}
           <div 
             onClick={() => window.location.href = '/'}
-            className="flex items-center space-x-2.5 cursor-pointer hover:opacity-70 transition-opacity"
+            className="flex items-center space-x-2 cursor-pointer hover:opacity-85 transition-opacity"
           >
-            <span className="text-base font-semibold tracking-tight text-[#EFEFEF] flex items-center leading-none">
-              Clipr
+            <div className="w-6 h-6 rounded-[6px] bg-[#10B981] flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+              <Scissors className="w-3.5 h-3.5 text-[#070B0D] rotate-90" />
+            </div>
+            <span className="text-lg font-bold tracking-tight text-[#EFEFEF] flex items-center leading-none">
+              Clipr<span className="text-[#10B981] font-mono">.</span>
             </span>
-            <Scissors className="w-3.5 h-3.5 text-[#10B981]" />
           </div>
 
           {/* Navigation Links */}
@@ -251,18 +253,18 @@ export default function Dashboard() {
                       setActiveTab(link.name as "Create" | "Calendar" | "My Content");
                     }
                   }}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-md text-[14px] font-normal transition-all duration-150 ${
+                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-[10px] text-[14px] font-normal transition-all duration-200 border ${
                     isActive
-                      ? "bg-white/5 text-[#EFEFEF]"
-                      : "text-[#888888] hover:text-[#EFEFEF] hover:bg-white/5"
+                      ? "glowing-active-nav text-[#EFEFEF] border-transparent"
+                      : "border-transparent text-[#6B7C85] hover:text-[#EFEFEF] hover:bg-[#11191B]"
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <span className="text-[#888888]">{link.icon}</span>
+                    <span className={isActive ? "text-[#10B981]" : "text-[#6B7C85]"}>{link.icon}</span>
                     <span>{link.name}</span>
                   </div>
                   {isActive && (
-                    <span className="w-1 h-1 rounded-full bg-[#10B981]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
                   )}
                 </button>
               );
@@ -271,14 +273,14 @@ export default function Dashboard() {
         </div>
 
         {/* User Card */}
-        <div className="pt-4 border-t border-[#333333] space-y-1">
+        <div className="pt-4 border-t border-[#152226] space-y-1">
           <div className="flex items-center space-x-2.5">
-            <div className="w-7 h-7 rounded-full bg-[#333333] flex items-center justify-center text-xs font-semibold text-[#EFEFEF]">
+            <div className="w-7 h-7 rounded-full bg-[#152226] flex items-center justify-center text-xs font-semibold text-[#EFEFEF]">
               A
             </div>
             <div>
               <span className="text-sm font-semibold text-[#EFEFEF] block leading-tight">Aidar</span>
-              <span className="text-xs text-[#888888] block mt-0.5">
+              <span className="text-xs text-[#6B7C85] block mt-0.5">
                 Pro · 7 days left
               </span>
             </div>
@@ -287,12 +289,12 @@ export default function Dashboard() {
       </aside>
 
       {/* ----------------------------------------------------
-          CENTER WORKSPACE (bg #1C1C1C)
+          CENTER WORKSPACE (bg #070B0D)
          ---------------------------------------------------- */}
-      <main className="flex-1 flex flex-col min-h-screen relative z-10 bg-[#1C1C1C]">
+      <main className="flex-1 flex flex-col min-h-screen relative z-10 bg-[#070B0D]">
         
         {/* TOP NAVBAR */}
-        <header className="h-12 border-b border-[#333333] bg-[#1C1C1C] px-6 flex items-center justify-between sticky top-0 z-20">
+        <header className="h-12 border-b border-[#152226] bg-[#070B0D] px-6 flex items-center justify-between sticky top-0 z-20">
           {/* Tabs */}
           <div className="flex items-center h-full space-x-6">
             {(["Create", "Calendar", "My Content"] as const).map((tab) => {
@@ -306,12 +308,12 @@ export default function Dashboard() {
                     else setSidebarActive(tab as "My Content" | "Calendar");
                   }}
                   className={`h-full text-xs font-medium relative px-1 transition-colors duration-150 ${
-                    isActive ? "text-[#EFEFEF]" : "text-[#888888] hover:text-[#EFEFEF]"
+                    isActive ? "text-[#EFEFEF]" : "text-[#6B7C85] hover:text-[#EFEFEF]"
                   }`}
                 >
                   <span>{tab}</span>
                   {isActive && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[1px] bg-[#10B981]" />
+                    <span className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
                   )}
                 </button>
               );
@@ -320,17 +322,23 @@ export default function Dashboard() {
 
           {/* Right Header */}
           <div className="flex items-center space-x-4">
-            <button className="text-[#888888] hover:text-[#EFEFEF] transition-colors">
+            <button className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors">
               <Search className="w-3.5 h-3.5" />
             </button>
-            <button className="text-[#888888] hover:text-[#EFEFEF] transition-colors relative">
+            <button className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors relative">
               <Bell className="w-3.5 h-3.5" />
               <span className="absolute top-0 right-0 w-1 h-1 bg-[#10B981] rounded-full" />
             </button>
 
-            <div className="flex items-center space-x-2 text-xs text-[#888888] hover:text-[#EFEFEF] cursor-pointer transition-colors">
-              <span>Connect accounts</span>
-              <div className="flex items-center space-x-1 pl-1.5 border-l border-[#333333]">
+            <div className="flex items-center space-x-2 text-xs text-[#6B7C85] hover:text-[#EFEFEF] cursor-pointer transition-colors">
+              <span className="flex items-center gap-1">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                </span>
+                Connect accounts
+              </span>
+              <div className="flex items-center space-x-1 pl-1.5 border-l border-[#152226]">
                 <Scissors className="w-2.5 h-2.5" />
                 {getPlatformIcon("LinkedIn", 10)}
               </div>
@@ -356,21 +364,24 @@ export default function Dashboard() {
                 className="space-y-6"
               >
                 {/* Input Workspace Card */}
-                <div className="rounded-xl border border-[#333333] bg-[#242424] p-6 shadow-none">
-                  <div className="space-y-4">
+                <div className="glowing-textarea-card rounded-[14px] p-6 relative overflow-hidden">
+                  {/* Radial glow background inside the card */}
+                  <div className="absolute inset-0 glow-bg-radial pointer-events-none z-0" />
+                  
+                  <div className="relative z-10 space-y-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] uppercase font-mono tracking-wide text-[#888888] font-medium block">
+                      <label className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85] font-semibold block">
                         WHAT&apos;S YOUR NEXT VIDEO ABOUT?
                       </label>
                       <textarea
                         value={inputVal}
                         onChange={(e) => setInputVal(e.target.value)}
-                        className="w-full bg-transparent text-[#EFEFEF] border-0 outline-none p-0 text-base font-normal resize-none min-h-[100px] placeholder:text-[#888888]"
+                        className="w-full bg-transparent text-[#EFEFEF] border-0 outline-none p-0 text-base font-normal resize-none min-h-[100px] placeholder:text-[#6B7C85] focus:ring-0"
                         placeholder="Explain why something matters in your industry..."
                       />
                     </div>
 
-                    <div className="flex justify-between items-center pt-4 border-t border-[#333333]">
+                    <div className="flex justify-between items-center pt-4 border-t border-[#152226]">
                       <div className="flex items-center space-x-3">
                         {/* Platform Pills */}
                         <div className="flex items-center space-x-1.5">
@@ -380,10 +391,10 @@ export default function Dashboard() {
                               <button
                                 key={plat}
                                 onClick={() => setSelectedPlatform(plat)}
-                                className={`px-3 py-1 rounded-full text-xs font-normal border transition-all duration-150 ${
+                                className={`px-3.5 py-1.5 rounded-full text-xs font-normal border transition-all duration-200 ${
                                   isSel
-                                    ? "border-[#10B981] text-[#10B981] bg-transparent"
-                                    : "bg-transparent border-[#333333] text-[#888888] hover:text-[#EFEFEF]"
+                                    ? "border-[#10B981] text-[#10B981] bg-[#10B981]/5 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                                    : "bg-transparent border-[#152226] text-[#6B7C85] hover:text-[#EFEFEF] hover:border-[#1E343A]"
                                 }`}
                               >
                                 {plat}
@@ -392,7 +403,7 @@ export default function Dashboard() {
                           })}
                         </div>
 
-                        <div className="w-[1px] h-3 bg-[#333333]" />
+                        <div className="w-[1px] h-3 bg-[#152226]" />
 
                         {/* Format Pills */}
                         <div className="flex items-center space-x-1.5">
@@ -402,10 +413,10 @@ export default function Dashboard() {
                               <button
                                 key={form}
                                 onClick={() => setSelectedFormat(form)}
-                                className={`px-3 py-1 rounded-full text-xs font-normal border transition-all duration-150 ${
+                                className={`px-3.5 py-1.5 rounded-full text-xs font-normal border transition-all duration-200 ${
                                   isSel
-                                    ? "border-[#10B981] text-[#10B981] bg-transparent"
-                                    : "bg-transparent border-[#333333] text-[#888888] hover:text-[#EFEFEF]"
+                                    ? "border-[#10B981] text-[#10B981] bg-[#10B981]/5 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                                    : "bg-transparent border-[#152226] text-[#6B7C85] hover:text-[#EFEFEF] hover:border-[#1E343A]"
                                 }`}
                               >
                                 {form}
@@ -416,18 +427,19 @@ export default function Dashboard() {
                       </div>
 
                       {/* Mic icon */}
-                      <button className="text-[#888888] hover:text-[#EFEFEF] transition-colors p-1">
-                        <Mic className="w-4 h-4" />
+                      <button className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors p-1.5 hover:bg-[#152226] rounded-md">
+                        <Mic className="w-4 h-4 text-[#10B981]" />
                       </button>
                     </div>
 
-                    {/* Generate button (bg-[#10B981] mint green, rounded-[10px], font-weight 500) */}
+                    {/* Generate button (glowing mint green, font-weight 600) */}
                     <button
-                      className="w-full bg-[#10B981] hover:bg-[#0D9E6E] text-white transition-all text-sm font-medium rounded-[10px] py-3 mt-4"
+                      className="w-full neon-btn text-[#070B0D] transition-all text-sm font-semibold rounded-[10px] py-3 mt-4 flex items-center justify-center space-x-2"
                       onClick={triggerGenerateIdeas}
                       disabled={isGenerating}
                     >
-                      {isGenerating ? "Generating ideas..." : "Generate ideas"}
+                      <span>{isGenerating ? "Generating ideas..." : "Generate ideas"}</span>
+                      {!isGenerating && <span className="text-base">→</span>}
                     </button>
                   </div>
                 </div>
@@ -437,11 +449,11 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <h2 className="text-base font-semibold text-[#EFEFEF]">Ideas for you</h2>
-                      <span className="text-xs text-[#888888] ml-2">Based on your profile</span>
+                      <span className="text-xs text-[#6B7C85] ml-2">Based on your profile</span>
                     </div>
                     <button 
                       onClick={triggerGenerateIdeas}
-                      className="text-[#888888] hover:text-[#EFEFEF] transition-colors p-1"
+                      className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors p-1"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
                     </button>
@@ -450,53 +462,53 @@ export default function Dashboard() {
                   {isGenerating ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {[1, 2, 3, 4].map((n) => (
-                        <div key={n} className="h-[185px] rounded-xl border border-[#333333] bg-[#242424] animate-pulse" />
+                        <div key={n} className="h-[185px] rounded-xl border border-[#152226] bg-[#0D1416] animate-pulse" />
                       ))}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {IDEA_CARDS.map((idea, idx) => (
                         <motion.div
                           key={idea.id}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ duration: 0.15, delay: idx * 0.04 }}
-                          className="group rounded-xl border border-[#333333] bg-[#242424] hover:bg-[#2A2A2A] p-5 flex flex-col justify-between h-[185px] transition-all duration-150"
+                          className="group rounded-xl border border-[#152226] bg-[#0D1416] hover:border-[#1E343A] hover:bg-[#10191B] p-5 flex flex-col justify-between h-[185px] transition-all duration-150 relative overflow-hidden"
                         >
-                          <div className="space-y-2">
+                          <div className="space-y-2 relative z-10">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-1.5">
                                 {idea.tags.map((t, i) => (
                                   <span 
                                     key={i} 
-                                    className="text-[11px] text-[#888888] border border-[#333333] px-2 py-0.5 rounded-full flex items-center space-x-1"
+                                    className="text-[11px] text-[#6B7C85] border border-[#152226] px-2 py-0.5 rounded-full flex items-center space-x-1 bg-[#070B0D]"
                                   >
                                     {getPlatformIcon(t, 10)}
                                     <span>{t}</span>
                                   </span>
                                 ))}
                               </div>
-                              <div className="flex items-center space-x-1 text-[#888888]">
-                                <Flame className="w-3.5 h-3.5" />
+                              <div className="flex items-center space-x-1 text-[#6B7C85]">
+                                <Flame className="w-3.5 h-3.5 text-[#10B981] animate-pulse" />
                                 <span className="text-[11px] font-mono">{idea.estimate}</span>
                               </div>
                             </div>
 
-                            <h3 className="text-base font-semibold text-[#EFEFEF] mt-2 leading-snug">
+                            <h3 className="text-base font-semibold text-[#EFEFEF] mt-2 leading-snug group-hover:text-white">
                               {idea.title}
                             </h3>
-                            <p className="text-xs text-[#888888] line-clamp-2 leading-relaxed font-normal">
+                            <p className="text-xs text-[#6B7C85] line-clamp-2 leading-relaxed font-normal">
                               {idea.hook}
                             </p>
                           </div>
 
-                          <div className="pt-3 border-t border-[#333333] flex items-center justify-between">
-                            <span className="text-[9px] uppercase tracking-wide text-[#888888] font-mono">
+                          <div className="pt-3 border-t border-[#152226] flex items-center justify-between relative z-10">
+                            <span className="text-[9px] uppercase tracking-wide text-[#6B7C85] font-mono">
                               potential analysis
                             </span>
                             <button
                               onClick={() => setSelectedIdea(idea)}
-                              className="text-xs font-semibold text-[#10B981] hover:text-[#0D9E6E] hover:opacity-85 transition-colors"
+                              className="text-xs font-semibold text-[#10B981] hover:text-[#12cf90] hover:opacity-90 transition-colors"
                             >
                               Write script →
                             </button>
@@ -525,17 +537,17 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <h2 className="text-base font-semibold text-[#EFEFEF]">Content Calendar</h2>
-                    <p className="text-xs text-[#888888]">June 2026</p>
+                    <p className="text-xs text-[#6B7C85]">June 2026</p>
                   </div>
-                  <button className="bg-[#10B981] hover:bg-[#0D9E6E] text-white transition-all text-xs font-medium rounded-lg px-4 py-2">
+                  <button className="bg-[#10B981] hover:bg-[#0D9E6E] text-[#070B0D] transition-all text-xs font-semibold rounded-lg px-4 py-2 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
                     + Schedule post
                   </button>
                 </div>
 
                 <div className="flex flex-col lg:flex-row gap-6">
                   {/* Calendar Grid */}
-                  <div className="flex-1 bg-[#242424] rounded-xl border border-[#333333] p-4 shadow-none">
-                    <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-mono text-[#888888] font-semibold uppercase tracking-wider pb-2 border-b border-[#333333] mb-2">
+                  <div className="flex-1 bg-[#0D1416] rounded-xl border border-[#152226] p-4 shadow-none">
+                    <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-mono text-[#6B7C85] font-semibold uppercase tracking-wider pb-2 border-b border-[#152226] mb-2">
                       <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
                     </div>
 
@@ -554,11 +566,11 @@ export default function Dashboard() {
                             }}
                             className={`min-h-[80px] rounded-lg p-2 flex flex-col justify-between border cursor-pointer transition-all duration-150 ${
                               isSelected
-                                ? "bg-white/5 border-[#10B981]"
-                                : "bg-[#1C1C1C] border-[#333333] hover:bg-white/5"
+                                ? "bg-[#10B981]/5 border-[#10B981] shadow-[0_0_10px_rgba(16,185,129,0.1)]"
+                                : "bg-[#070B0D] border-[#152226] hover:bg-[#11191B]"
                             }`}
                           >
-                            <span className="text-[10px] font-mono font-semibold text-[#888888] self-start">
+                            <span className="text-[10px] font-mono font-semibold text-[#6B7C85] self-start">
                               {day}
                             </span>
 
@@ -566,7 +578,7 @@ export default function Dashboard() {
                               {posts.map((post, pIdx) => (
                                 <div
                                   key={pIdx}
-                                  className="text-[9px] truncate px-1 py-0.5 rounded bg-[#1C1C1C] text-[#EFEFEF] border border-[#333333] flex items-center space-x-1"
+                                  className="text-[9px] truncate px-1 py-0.5 rounded bg-[#070B0D] text-[#EFEFEF] border border-[#152226] flex items-center space-x-1"
                                 >
                                   {getPlatformIcon(post.platform, 8)}
                                   <span className="truncate">{post.title}</span>
@@ -581,13 +593,13 @@ export default function Dashboard() {
 
                   {/* Date detail side-panel */}
                   {showCalendarPanel && selectedDate !== null && (
-                    <div className="w-full lg:w-[280px] bg-[#242424] rounded-xl border border-[#333333] p-5 space-y-4 shrink-0 flex flex-col justify-between">
+                    <div className="w-full lg:w-[280px] bg-[#0D1416] rounded-xl border border-[#152226] p-5 space-y-4 shrink-0 flex flex-col justify-between">
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between border-b border-[#333333] pb-3">
-                          <span className="text-xs font-semibold text-[#888888]">June {selectedDate}, 2026</span>
+                        <div className="flex items-center justify-between border-b border-[#152226] pb-3">
+                          <span className="text-xs font-semibold text-[#6B7C85]">June {selectedDate}, 2026</span>
                           <button 
                             onClick={() => setShowCalendarPanel(false)}
-                            className="p-1 text-[#888888] hover:text-[#EFEFEF] transition-colors"
+                            className="p-1 text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -596,22 +608,22 @@ export default function Dashboard() {
                         {MOCK_CALENDAR_POSTS[selectedDate] ? (
                           <div className="space-y-3">
                             {MOCK_CALENDAR_POSTS[selectedDate].map((post, idx) => (
-                              <div key={idx} className="rounded-lg bg-[#1C1C1C] border border-[#333333] p-3.5 space-y-2">
+                              <div key={idx} className="rounded-lg bg-[#070B0D] border border-[#152226] p-3.5 space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[9px] text-[#888888] border border-[#333333] px-2 py-0.5 rounded-full flex items-center space-x-1">
+                                  <span className="text-[9px] text-[#6B7C85] border border-[#152226] px-2 py-0.5 rounded-full flex items-center space-x-1 bg-[#0D1416]">
                                     {getPlatformIcon(post.platform, 10)}
                                     <span>{post.platform}</span>
                                   </span>
-                                  <span className="text-[9px] text-[#888888] font-mono">{post.time}</span>
+                                  <span className="text-[9px] text-[#6B7C85] font-mono">{post.time}</span>
                                 </div>
                                 <h4 className="text-xs font-semibold text-[#EFEFEF] leading-relaxed">
                                   {post.title}
                                 </h4>
-                                <div className="flex justify-between items-center pt-2 border-t border-[#333333]">
-                                  <span className="text-[9px] uppercase tracking-wider font-semibold border border-[#333333] px-1.5 py-0.5 rounded text-[#888888]">
+                                <div className="flex justify-between items-center pt-2 border-t border-[#152226]">
+                                  <span className="text-[9px] uppercase tracking-wider font-semibold border border-[#152226] px-1.5 py-0.5 rounded text-[#6B7C85] bg-[#0D1416]">
                                     {post.status}
                                   </span>
-                                  <button className="text-[10px] text-[#10B981] hover:text-[#0D9E6E] transition-colors">
+                                  <button className="text-[10px] text-[#10B981] hover:text-[#12cf90] transition-colors">
                                     Edit script →
                                   </button>
                                 </div>
@@ -620,8 +632,8 @@ export default function Dashboard() {
                           </div>
                         ) : (
                           <div className="py-8 text-center space-y-3">
-                            <CalendarRange className="w-6 h-6 text-[#888888] mx-auto" />
-                            <p className="text-xs text-[#888888]">No scheduled posts for this date.</p>
+                            <CalendarRange className="w-6 h-6 text-[#6B7C85] mx-auto" />
+                            <p className="text-xs text-[#6B7C85]">No scheduled posts for this date.</p>
                           </div>
                         )}
                       </div>
@@ -631,22 +643,22 @@ export default function Dashboard() {
 
                 {/* Upcoming List */}
                 <div className="space-y-4">
-                  <h3 className="text-xs uppercase font-mono tracking-widest text-[#888888]">Upcoming posts</h3>
+                  <h3 className="text-xs uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Upcoming posts</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {UPCOMING_POSTS_LIST.map((post) => (
-                      <div key={post.id} className="rounded-xl bg-[#242424] hover:bg-[#2A2A2A] border border-[#333333] p-4 flex space-x-3 items-center transition-all duration-150">
-                        <div className="w-10 h-12 rounded bg-[#1C1C1C] border border-[#333333] shrink-0 flex items-center justify-center">
-                          <Play className="w-3.5 h-3.5 text-[#888888]" />
+                      <div key={post.id} className="rounded-xl bg-[#0D1416] hover:bg-[#10191B] border border-[#152226] p-4 flex space-x-3 items-center transition-all duration-150">
+                        <div className="w-10 h-12 rounded bg-[#070B0D] border border-[#152226] shrink-0 flex items-center justify-center">
+                          <Play className="w-3.5 h-3.5 text-[#6B7C85]" />
                         </div>
                         <div className="space-y-1 flex-1 min-w-0">
                           <div className="flex items-center space-x-1.5">
                             {getPlatformIcon(post.platform, 10)}
-                            <span className="text-[9px] text-[#888888] font-semibold">{post.platform}</span>
+                            <span className="text-[9px] text-[#6B7C85] font-semibold">{post.platform}</span>
                           </div>
                           <h4 className="text-xs font-semibold text-[#EFEFEF] truncate">{post.title}</h4>
                           <div className="flex justify-between items-center">
-                            <span className="text-[9px] text-[#888888] font-mono">{post.time}</span>
-                            <span className="text-[8px] uppercase tracking-wider bg-[#1C1C1C] text-[#888888] border border-[#333333] px-1 rounded">
+                            <span className="text-[9px] text-[#6B7C85] font-mono">{post.time}</span>
+                            <span className="text-[8px] uppercase tracking-wider bg-[#070B0D] text-[#6B7C85] border border-[#152226] px-1 rounded">
                               {post.status}
                             </span>
                           </div>
@@ -671,23 +683,23 @@ export default function Dashboard() {
                 className="space-y-6"
               >
                 {/* Filter bar */}
-                <div className="flex items-center justify-between border-b border-[#333333] pb-4">
+                <div className="flex items-center justify-between border-b border-[#152226] pb-4">
                   <div className="flex items-center space-x-2">
                     {(["All", "Drafts", "Scheduled", "Published"] as const).map((filter) => (
                       <button
                         key={filter}
                         onClick={() => setContentFilter(filter)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 ${
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-155 ${
                           contentFilter === filter
-                            ? "bg-white/5 text-[#10B981]"
-                            : "text-[#888888] hover:text-[#EFEFEF]"
+                            ? "bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/25"
+                            : "text-[#6B7C85] hover:text-[#EFEFEF]"
                         }`}
                       >
                         {filter}
                       </button>
                     ))}
                   </div>
-                  <span className="text-xs text-[#888888] font-mono">
+                  <span className="text-xs text-[#6B7C85] font-mono">
                     Total: {MOCK_CONTENT_ITEMS.length} items
                   </span>
                 </div>
@@ -697,25 +709,25 @@ export default function Dashboard() {
                   {MOCK_CONTENT_ITEMS.filter((item) => contentFilter === "All" || item.status === contentFilter.toUpperCase() || item.status === contentFilter).map((item) => (
                     <div 
                       key={item.id}
-                      className="rounded-xl bg-[#242424] hover:bg-[#2A2A2A] border border-[#333333] overflow-hidden flex flex-col justify-between h-[210px] shadow-none transition-all duration-150"
+                      className="rounded-xl bg-[#0D1416] hover:bg-[#10191B] border border-[#152226] overflow-hidden flex flex-col justify-between h-[210px] shadow-none transition-all duration-150"
                     >
                       {/* Video thumbnail placeholder */}
-                      <div className="h-[110px] bg-[#1a1a1a] border-b border-[#333333] relative flex items-center justify-center overflow-hidden">
+                      <div className="h-[110px] bg-[#070B0D] border-b border-[#152226] relative flex items-center justify-center overflow-hidden">
                         <div className="absolute top-2 left-2">
-                          <span className="text-[9px] text-[#888888] border border-[#333333] bg-[#242424] px-1.5 py-0.5 rounded flex items-center space-x-1">
+                          <span className="text-[9px] text-[#6B7C85] border border-[#152226] bg-[#0D1416] px-1.5 py-0.5 rounded flex items-center space-x-1">
                             {getPlatformIcon(item.platform, 8)}
                             <span className="text-[#EFEFEF]">{item.platform}</span>
                           </span>
                         </div>
 
                         <div className="absolute top-2 right-2">
-                          <span className="text-[8px] uppercase tracking-wider font-semibold px-1 rounded text-[#888888]">
+                          <span className="text-[8px] uppercase tracking-wider font-semibold px-1 rounded text-[#6B7C85] bg-[#0D1416] border border-[#152226]">
                             {item.status}
                           </span>
                         </div>
 
-                        <div className="w-7 h-7 rounded-full bg-[#1C1C1C]/80 border border-[#333333] flex items-center justify-center text-[#888888] hover:text-[#EFEFEF] transition-colors">
-                          <Play className="w-3.5 h-3.5 fill-[#888888]" />
+                        <div className="w-7 h-7 rounded-full bg-[#0D1416]/80 border border-[#152226] flex items-center justify-center text-[#6B7C85] hover:text-[#EFEFEF] transition-colors">
+                          <Play className="w-3.5 h-3.5 fill-[#6B7C85]" />
                         </div>
                       </div>
 
@@ -725,9 +737,9 @@ export default function Dashboard() {
                           {item.title}
                         </h4>
                         
-                        <div className="flex justify-between items-center pt-2 border-t border-[#333333]">
-                          <span className="text-[10px] text-[#888888] font-mono">{item.date}</span>
-                          <button className="p-1 rounded text-[#888888] hover:text-[#EFEFEF] transition-colors">
+                        <div className="flex justify-between items-center pt-2 border-t border-[#152226]">
+                          <span className="text-[10px] text-[#6B7C85] font-mono">{item.date}</span>
+                          <button className="p-1 rounded text-[#6B7C85] hover:text-[#EFEFEF] transition-colors">
                             <MoreVertical className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -745,13 +757,13 @@ export default function Dashboard() {
       </main>
 
       {/* ----------------------------------------------------
-          RIGHT SIDEBAR: TRENDS (280px, bg #242424, border-l #333333)
+          RIGHT SIDEBAR: TRENDS (280px, bg #0B1012, border-l #152226)
          ---------------------------------------------------- */}
-      <aside className="hidden lg:flex flex-col w-[280px] shrink-0 border-l border-[#333333] bg-[#242424] min-h-screen p-5 justify-between relative z-10 space-y-6">
+      <aside className="hidden lg:flex flex-col w-[280px] shrink-0 border-l border-[#152226] bg-[#0B1012] min-h-screen p-5 justify-between relative z-10 space-y-6">
         
         {/* Trend feeds */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-[#333333] pb-3">
+          <div className="flex items-center justify-between border-b border-[#152226] pb-3">
             <div className="flex items-center space-x-1.5">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
@@ -759,49 +771,64 @@ export default function Dashboard() {
               </span>
               <h3 className="text-xs font-semibold text-[#EFEFEF]">Trending now</h3>
             </div>
-            <span className="text-[9px] text-[#888888] uppercase font-mono tracking-wider">LIVE</span>
+            <span className="text-[9px] text-[#6B7C85] uppercase font-mono tracking-wider">LIVE</span>
           </div>
 
-          <div className="divide-y divide-[#333333]">
-            {TRENDS_DATA.map((trend) => (
-              <div 
-                key={trend.id}
-                className="py-4 space-y-1.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-mono text-[#888888] tracking-widest font-semibold">
-                    {trend.source}
-                  </span>
-                  <span className="text-[9px] text-[#888888] font-mono">{trend.time}</span>
-                </div>
+          <div className="divide-y divide-[#152226]">
+            {TRENDS_DATA.map((trend) => {
+              let sourceColor = "text-[#6B7C85]";
+              if (trend.source === "REDDIT") sourceColor = "text-[#FF4500]";
+              else if (trend.source.includes("GOOGLE")) sourceColor = "text-[#4285F4]";
+              else if (trend.source === "NEWS") sourceColor = "text-[#EF4444]";
 
-                <h4 className="text-xs font-semibold text-[#EFEFEF] leading-normal line-clamp-2">
-                  {trend.title}
-                </h4>
-
-                <button 
-                  onClick={() => {
-                    setInputVal(`Write a direct, short-form ${selectedPlatform === "LinkedIn" ? "LinkedIn post" : "TikTok script"} addressing the sudden trend: "${trend.title}". Keep it punchy!`);
-                    setActiveTab("Create");
-                  }}
-                  className="text-[10px] font-semibold text-[#10B981] hover:text-[#0D9E6E] transition-colors"
+              return (
+                <div 
+                  key={trend.id}
+                  className="py-4 space-y-1.5"
                 >
-                  Write my take →
-                </button>
-              </div>
-            ))}
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[9px] font-mono tracking-widest font-bold ${sourceColor}`}>
+                      {trend.source}
+                    </span>
+                    <span className="text-[9px] text-[#6B7C85] font-mono">{trend.time}</span>
+                  </div>
+
+                  <h4 className="text-xs font-semibold text-[#EFEFEF] leading-normal line-clamp-2">
+                    {trend.title}
+                  </h4>
+
+                  <button 
+                    onClick={() => {
+                      setInputVal(`Write a direct, short-form ${selectedPlatform === "LinkedIn" ? "LinkedIn post" : "TikTok script"} addressing the sudden trend: "${trend.title}". Keep it punchy!`);
+                      setActiveTab("Create");
+                    }}
+                    className="text-[10px] font-semibold text-[#10B981] hover:text-[#12cf90] transition-colors flex items-center space-x-1"
+                  >
+                    <span>Write my take</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
 
+        {/* Sparkle Decoration Graphic */}
+        <div className="absolute bottom-36 right-6 w-8 h-8 opacity-25 text-[#10B981] select-none pointer-events-none">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+            <path d="M12 0L14.6 9.4L24 12L14.6 14.6L12 24L9.4 14.6L0 12L9.4 9.4L12 0Z" />
+          </svg>
+        </div>
+
         {/* Voice Customizer */}
-        <div className="border-t border-[#333333] pt-4 space-y-3">
+        <div className="border-t border-[#152226] pt-4 space-y-3 relative z-10 bg-[#0B1012]">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] uppercase font-mono tracking-wide text-[#888888] font-semibold">
+            <span className="text-[9px] uppercase font-mono tracking-wide text-[#6B7C85] font-semibold">
               YOUR VOICE SETTINGS
             </span>
             <button 
               onClick={() => setIsEditingVoice(!isEditingVoice)}
-              className="text-[#888888] hover:text-[#EFEFEF] transition-colors p-1"
+              className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors p-1"
             >
               <Edit2 className="w-3 h-3 text-[#10B981]" />
             </button>
@@ -810,25 +837,25 @@ export default function Dashboard() {
           {isEditingVoice ? (
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-[9px] text-[#888888] font-mono block">Tone</label>
+                <label className="text-[9px] text-[#6B7C85] font-mono block">Tone</label>
                 <input
                   type="text"
                   value={voiceTone}
                   onChange={(e) => setVoiceTone(e.target.value)}
-                  className="w-full bg-[#1C1C1C] border border-[#333333] rounded px-2 py-1.5 text-xs text-[#EFEFEF] outline-none"
+                  className="w-full bg-[#070B0D] border border-[#152226] rounded px-2 py-1.5 text-xs text-[#EFEFEF] outline-none focus:border-[#10B981]/50"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[9px] text-[#888888] font-mono block">Preview</label>
+                <label className="text-[9px] text-[#6B7C85] font-mono block">Preview</label>
                 <textarea
                   value={voicePreview}
                   onChange={(e) => setVoicePreview(e.target.value)}
-                  className="w-full bg-[#1C1C1C] border border-[#333333] rounded p-2 text-xs text-[#EFEFEF] outline-none resize-none h-16"
+                  className="w-full bg-[#070B0D] border border-[#152226] rounded p-2 text-xs text-[#EFEFEF] outline-none resize-none h-16 focus:border-[#10B981]/50"
                 />
               </div>
               <button 
                 onClick={() => setIsEditingVoice(false)}
-                className="w-full py-1.5 text-[10px] font-bold bg-[#10B981] hover:bg-[#0D9E6E] text-white rounded transition-colors"
+                className="w-full py-1.5 text-[10px] font-bold bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] rounded transition-colors"
               >
                 Save settings
               </button>
@@ -836,19 +863,18 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-1">
               <div className="flex items-center space-x-1.5">
-                <span className="text-[10px] text-[#888888]">Tone:</span>
+                <span className="text-[10px] text-[#6B7C85]">Tone:</span>
                 <span className="text-[10px] text-[#EFEFEF] font-semibold">{voiceTone}</span>
               </div>
-              <p className="text-[10px] text-[#888888] leading-relaxed italic">
+              <p className="text-[10px] text-[#6B7C85] leading-relaxed italic">
                 &ldquo;{voicePreview}&rdquo;
               </p>
             </div>
           )}
         </div>
-
       </aside>
 
-      {/* ----------------------------------------------------
+       {/* ----------------------------------------------------
           SCRIPT MODAL OVERLAY (Centered simple dialog, bg #242424)
          ---------------------------------------------------- */}
       <AnimatePresence>
@@ -864,20 +890,20 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.15 }}
-              className="bg-[#242424] border border-[#333333] rounded-xl w-full max-w-4xl shadow-none overflow-hidden flex flex-col max-h-[85vh]"
+              className="bg-[#0D1416] border border-[#152226] rounded-xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] relative"
             >
               {/* Top Bar */}
-              <div className="border-b border-[#333333] bg-[#242424] px-6 py-4 flex items-center justify-between">
+              <div className="border-b border-[#152226] bg-[#0D1416] px-6 py-4 flex items-center justify-between">
                 <button
                   onClick={() => setSelectedIdea(null)}
-                  className="flex items-center space-x-2 text-[#888888] hover:text-[#EFEFEF] transition-colors"
+                  className="flex items-center space-x-2 text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span className="text-xs">Back</span>
                 </button>
                 <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-mono text-[#888888] uppercase">Script Engine</span>
-                  <span className="w-1.5 h-1.5 bg-[#10B981] rounded-full" />
+                  <span className="text-[10px] font-mono text-[#6B7C85] uppercase font-semibold">Script Engine</span>
+                  <span className="w-1.5 h-1.5 bg-[#10B981] rounded-full shadow-[0_0_8px_#10B981] animate-pulse" />
                 </div>
               </div>
 
@@ -887,24 +913,24 @@ export default function Dashboard() {
                 {/* Left side: Script builder */}
                 <div className="flex-1 space-y-6">
                   <div className="space-y-1">
-                    <span className="text-[9px] uppercase font-mono tracking-widest text-[#10B981]">
+                    <span className="text-[9px] uppercase font-mono tracking-widest text-[#10B981] font-semibold">
                       Topic
                     </span>
-                    <h2 className="text-lg font-semibold text-[#EFEFEF] leading-tight">
+                    <h2 className="text-lg font-bold text-[#EFEFEF] leading-tight">
                       {selectedIdea.title}
                     </h2>
                   </div>
 
                   {/* Tab Selector */}
-                  <div className="flex bg-[#1C1C1C] p-1 rounded-lg border border-[#333333] w-fit">
+                  <div className="flex bg-[#070B0D] p-1 rounded-lg border border-[#152226] w-fit">
                     {(["Aggressive Hook", "Storytelling", "Educational"] as const).map((variant) => (
                       <button
                         key={variant}
                         onClick={() => setActiveScriptTab(variant)}
                         className={`px-3 py-1 rounded text-[10px] font-semibold transition-all duration-150 ${
                           activeScriptTab === variant
-                            ? "bg-[#242424] text-[#10B981]"
-                            : "text-[#888888] hover:text-[#EFEFEF]"
+                            ? "bg-[#0D1416] text-[#10B981] shadow-[0_2px_8px_rgba(0,0,0,0.2)] border border-[#152226]"
+                            : "text-[#6B7C85] hover:text-[#EFEFEF] border border-transparent"
                         }`}
                       >
                         {variant}
@@ -913,7 +939,7 @@ export default function Dashboard() {
                   </div>
 
                   {/* Script Details Card */}
-                  <div className="rounded-xl border border-[#333333] bg-[#1C1C1C] p-5 space-y-5">
+                  <div className="rounded-xl border border-[#152226] bg-[#070B0D] p-5 space-y-5">
                     {/* Hook Section */}
                     <div className="space-y-1.5">
                       <span className="text-[9px] font-mono uppercase text-[#10B981] font-semibold">
@@ -925,13 +951,13 @@ export default function Dashboard() {
                     </div>
 
                     {/* Problem Section */}
-                    <div className="space-y-1.5 border-t border-[#333333] pt-3">
-                      <span className="text-[9px] font-mono uppercase text-[#888888] font-semibold">
+                    <div className="space-y-1.5 border-t border-[#152226] pt-3">
+                      <span className="text-[9px] font-mono uppercase text-[#6B7C85] font-semibold">
                         Problem (3-15 sec)
                       </span>
                       <ul className="space-y-2">
                         {SCRIPT_VARIANTS[activeScriptTab].problem.map((pt, i) => (
-                          <li key={i} className="text-xs text-[#888888] flex items-start space-x-2">
+                          <li key={i} className="text-xs text-[#6B7C85] flex items-start space-x-2">
                             <span className="text-[#10B981] mt-1 shrink-0">•</span>
                             <span>{pt}</span>
                           </li>
@@ -940,14 +966,14 @@ export default function Dashboard() {
                     </div>
 
                     {/* Solution Section */}
-                    <div className="space-y-1.5 border-t border-[#333333] pt-3">
-                      <span className="text-[9px] font-mono uppercase text-[#888888] font-semibold">
+                    <div className="space-y-1.5 border-t border-[#152226] pt-3">
+                      <span className="text-[9px] font-mono uppercase text-[#6B7C85] font-semibold">
                         Solution (15-45 sec)
                       </span>
                       <ul className="space-y-2">
                         {SCRIPT_VARIANTS[activeScriptTab].solution.map((pt, i) => (
-                          <li key={i} className="text-xs text-[#888888] flex items-start space-x-2">
-                            <span className="text-[#888888] mt-1 shrink-0">•</span>
+                          <li key={i} className="text-xs text-[#EFEFEF] flex items-start space-x-2">
+                            <span className="text-[#6B7C85] mt-1 shrink-0">•</span>
                             <span>{pt}</span>
                           </li>
                         ))}
@@ -955,7 +981,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* CTA Section */}
-                    <div className="space-y-1.5 border-t border-[#333333] pt-3">
+                    <div className="space-y-1.5 border-t border-[#152226] pt-3">
                       <span className="text-[9px] font-mono uppercase text-[#10B981] font-semibold">
                         CTA (45-60 sec)
                       </span>
@@ -968,25 +994,25 @@ export default function Dashboard() {
 
                 {/* Right side: Niche references */}
                 <div className="w-full lg:w-[280px] space-y-4 shrink-0">
-                  <h3 className="text-xs font-mono uppercase tracking-wide text-[#888888] font-semibold border-b border-[#333333] pb-2">
+                  <h3 className="text-xs font-mono uppercase tracking-wide text-[#6B7C85] font-semibold border-b border-[#152226] pb-2">
                     References from your niche
                   </h3>
 
                   <div className="space-y-3">
                     {REFERENCE_CARDS.map((ref, idx) => (
-                      <div key={idx} className="rounded-xl bg-[#1C1C1C] border border-[#333333] p-4 space-y-2">
+                      <div key={idx} className="rounded-xl bg-[#070B0D] border border-[#152226] p-4 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[9px] font-mono font-semibold text-[#888888] flex items-center space-x-1">
-                            <Play className="w-2.5 h-2.5 text-[#888888]" />
+                          <span className="text-[9px] font-mono font-semibold text-[#6B7C85] flex items-center space-x-1">
+                            <Play className="w-2.5 h-2.5 text-[#6B7C85]" />
                             <span>{ref.views}</span>
                           </span>
-                          <span className="text-[9px] text-[#888888] font-semibold font-mono">{ref.platform}</span>
+                          <span className="text-[9px] text-[#6B7C85] font-semibold font-mono">{ref.platform}</span>
                         </div>
                         <h4 className="text-xs font-semibold text-[#EFEFEF] tracking-tight line-clamp-2">
                           {ref.title}
                         </h4>
-                        <div className="flex justify-between items-center pt-1 border-t border-[#333333]">
-                          <span className="text-[9px] text-[#888888] font-mono">{ref.hashtags}</span>
+                        <div className="flex justify-between items-center pt-1 border-t border-[#152226]">
+                          <span className="text-[9px] text-[#6B7C85] font-mono">{ref.hashtags}</span>
                           <span className="text-[9px] text-[#10B981] hover:underline cursor-pointer">
                             View →
                           </span>
@@ -999,20 +1025,20 @@ export default function Dashboard() {
               </div>
 
               {/* Bottom Action Bar */}
-              <div className="border-t border-[#333333] bg-[#242424] px-6 py-4 flex justify-between items-center">
-                <p className="text-[10px] text-[#888888] font-mono">
+              <div className="border-t border-[#152226] bg-[#0D1416] px-6 py-4 flex justify-between items-center">
+                <p className="text-[10px] text-[#6B7C85] font-mono">
                   Style matched with: <span className="text-[#EFEFEF] font-semibold">{voiceTone}</span>
                 </p>
 
                 <div className="flex items-center space-x-3">
                   <button 
-                    className="border border-[#333333] bg-[#1C1C1C] text-[#888888] hover:text-[#EFEFEF] hover:opacity-70 text-xs px-4 py-2 rounded-lg transition-all duration-150"
+                    className="border border-[#152226] bg-[#070B0D] text-[#6B7C85] hover:text-[#EFEFEF] hover:opacity-90 text-xs px-4 py-2 rounded-lg transition-all duration-150"
                     onClick={() => setSelectedIdea(null)}
                   >
                     Save to drafts
                   </button>
                   <button 
-                    className="bg-[#10B981] hover:bg-[#0D9E6E] text-white text-xs px-4 py-2 rounded-lg font-medium transition-all duration-150"
+                    className="bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] text-xs px-4 py-2 rounded-lg font-semibold transition-all duration-150"
                     onClick={() => {
                       setSelectedIdea(null);
                       setActiveTab("Calendar");
@@ -1022,7 +1048,6 @@ export default function Dashboard() {
                   </button>
                 </div>
               </div>
-
             </motion.div>
           </motion.div>
         )}
