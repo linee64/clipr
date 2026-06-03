@@ -42,12 +42,14 @@ Make the ideas diverse — mix different content formats (tips, stories, lists, 
 Each idea should feel distinct and approach the topic from a different angle.
 Do not add markdown formatting or wrappers (like \`\`\`json) around the JSON output. Return only the raw JSON array.`;
 
-    const userPrompt = `Generate 4 content ideas based on:
-User Prompt: ${prompt}
-Product/Topic: ${product}
-Target Audience: ${audience}
-Tone: ${tone}
-Platform: ${platform}`;
+    const userPrompt = `You must generate exactly 4 content ideas based directly on the User Prompt:
+"${prompt}"
+
+Please prioritize what the user wrote above. Use the following profile info only as supplementary context:
+Product/Topic Profile: ${product}
+Target Audience Profile: ${audience}
+Tone Profile: ${tone}
+Platform Profile: ${platform}`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
@@ -93,7 +95,13 @@ Platform: ${platform}`;
       return NextResponse.json({ error: "No response text from Gemini" }, { status: 500 });
     }
 
-    const ideas = JSON.parse(textContent.trim());
+    let cleanedText = textContent.trim();
+    // Strip markdown code block fences if they exist
+    if (cleanedText.startsWith("```")) {
+      cleanedText = cleanedText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+    }
+
+    const ideas = JSON.parse(cleanedText);
     return NextResponse.json(ideas);
   } catch (error) {
     console.error("Error generating ideas:", error);

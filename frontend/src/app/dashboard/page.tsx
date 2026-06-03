@@ -12,13 +12,13 @@ import {
   Settings,
   Search,
   Bell,
-  RefreshCw,
   Play,
   CalendarRange,
   Edit2,
   MoreVertical,
   X,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft
 } from "lucide-react";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 
@@ -32,8 +32,16 @@ interface IdeaCard {
   hook: string;
   tags: string[];
   estimate: string;
-  variants?: Record<string, ScriptVariant>;
+  script?: ScriptVariant;
 }
+
+const SCRIPT_LOADING_MESSAGES = [
+  "Анализируем вашу нишу...",
+  "Ищем вирусные паттерны...",
+  "Пишем хук для вашей аудитории...",
+  "Финальные штрихи...",
+  "Почти готово...",
+];
 
 interface ScriptVariant {
   hook: string;
@@ -51,49 +59,19 @@ const generateDynamicIdeas = (product: string, platform: string): IdeaCard[] => 
       hook: `Большинство создателей думают, что продвигать ${keywords} просто. Вот почему они ошибаются.`,
       tags: ["Советы", platform],
       estimate: "Высокий потенциал",
-      variants: {
-        "Aggressive Hook": {
-          hook: `Большинство думают, что рассказывать про ${keywords} легко. Вот почему они ошибаются.`,
-          problem: [
-            "Вы начинаете объяснять сложные термины с первых секунд",
-            "Аудитория скучает и сразу скроллит дальше",
-            "Вы теряете до 80% удержания на первой секунде ролика"
-          ],
-          solution: [
-            "Начните с сильного визуального хука или вопроса",
-            "Объясняйте тему простыми словами как 5-летнему ребенку",
-            "Сделайте призыв к действию в середине видео"
-          ],
-          cta: "Подпишись, чтобы не совершать эти ошибки!"
-        },
-        "Storytelling": {
-          hook: `Как я пытался объяснить другу, что такое ${keywords}, и чуть не сошел с ума.`,
-          problem: [
-            "Я говорил о фичах, архитектуре и сложном коде",
-            "Его глаза стекленели с каждой секундой объяснения",
-            "Он просто не понимал реальной ценности и сути продукта"
-          ],
-          solution: [
-            "Я перестал умничать и показал один простой кейс использования",
-            "Рассказал, как это экономит 3 часа рутины каждый день",
-            "И он сразу сказал: 'Вау, я хочу это купить!'"
-          ],
-          cta: "Напиши в комментариях, бывало ли у тебя такое"
-        },
-        "Educational": {
-          hook: `Формула создания вирусного UGC-ролика про ${keywords}.`,
-          problem: [
-            "Обычный контент в этой нише собирает по 100 просмотров",
-            "Стандартные шаблоны больше не работают на удержание",
-            "Алгоритмы режут охваты за скучную подачу информации"
-          ],
-          solution: [
-            "Используйте формат 'проблема-решение-результат'",
-            "Добавляйте динамичные субтитры каждые 1.5 секунды",
-            "Интегрируйте нативную демонстрацию вашего решения"
-          ],
-          cta: "Сохраняй этот ролик, пригодится для контент-плана!"
-        }
+      script: {
+        hook: `Большинство думают, что рассказывать про ${keywords} легко. Вот почему они ошибаются.`,
+        problem: [
+          "Вы начинаете объяснять сложные термины с первых секунд",
+          "Аудитория скучает и сразу скроллит дальше",
+          "Вы теряете до 80% удержания на первой секунде ролика"
+        ],
+        solution: [
+          "Начните с сильного визуального хука или вопроса",
+          "Объясняйте тему простыми словами как 5-летнему ребенку",
+          "Сделайте призыв к действию в середине видео"
+        ],
+        cta: "Подпишись, чтобы не совершать эти ошибки!"
       }
     },
     {
@@ -102,49 +80,19 @@ const generateDynamicIdeas = (product: string, platform: string): IdeaCard[] => 
       hook: `Моя самая большая ошибка при работе с ${keywords}. Не повторяйте её.`,
       tags: ["История", platform],
       estimate: "Трендовый формат",
-      variants: {
-        "Aggressive Hook": {
-          hook: `Моя самая большая ошибка при работе с ${keywords}. Не повторяйте её.`,
-          problem: [
-            "Я потратил 3 месяца на идеальную подготовку",
-            "Забыл спросить реальных пользователей, что им нужно",
-            "В итоге запустился в пустую тишину без единой продажи"
-          ],
-          solution: [
-            "Делайте CustDev и говорите с клиентами до запуска",
-            "Создайте MVP за 3 дня и сразу тестируйте спрос",
-            "Корректируйте подачу на основе реальной обратной связи"
-          ],
-          cta: "Подпишись, делюсь опытом фаундера без прикрас"
-        },
-        "Storytelling": {
-          hook: `11 вечера. Я смотрю на аналитику по ${keywords} и понимаю, что всё летит к чертям.`,
-          problem: [
-            "Бюджет заканчивается, а конверсий практически ноль",
-            "Команда деморализована, гипотезы не работают одна за другой",
-            "Я чувствую себя худшим фаундером на свете"
-          ],
-          solution: [
-            "Мы изменили позиционирование всего за одну ночь",
-            "Сделали упор на простоту использования вместо фич",
-            "Через день получили первые 10 платящих клиентов"
-          ],
-          cta: "Поделись в комментариях своим самым тяжелым факапом"
-        },
-        "Educational": {
-          hook: `3 правила выживания для любого проекта по теме ${keywords}.`,
-          problem: [
-            "Рынок переполнен конкурентами и шумным контентом",
-            "Удержать внимание клиента становится дороже с каждым днем",
-            "Клиенты уходят к тем, кто говорит проще и понятнее"
-          ],
-          solution: [
-            "Определите свое ключевое отличие (УТП) за 5 секунд",
-            "Стройте личный бренд вокруг экспертизы продукта",
-            "Постоянно улучшайте пользовательский опыт (UX)"
-          ],
-          cta: "Отправь этот ролик другу, который делает свой стартап!"
-        }
+      script: {
+        hook: `Моя самая большая ошибка при работе с ${keywords}. Не повторяйте её.`,
+        problem: [
+          "Я потратил 3 месяца на идеальную подготовку",
+          "Забыл спросить реальных пользователей, что им нужно",
+          "В итоге запустился в пустую тишину без единой продажи"
+        ],
+        solution: [
+          "Делайте CustDev и говорите с клиентами до запуска",
+          "Создайте MVP за 3 дня и сразу тестируйте спрос",
+          "Корректируйте подачу на основе реальной обратной связи"
+        ],
+        cta: "Подпишись, делюсь опытом фаундера без прикрас"
       }
     },
     {
@@ -153,49 +101,19 @@ const generateDynamicIdeas = (product: string, platform: string): IdeaCard[] => 
       hook: `Если бы я начинал работать с ${keywords} с нуля, я бы сделал это.`,
       tags: ["Списки", platform],
       estimate: "Вирусный хук",
-      variants: {
-        "Aggressive Hook": {
-          hook: `Если бы я начинал работать с ${keywords} с нуля, я бы сделал это.`,
-          problem: [
-            "Новички тратят тысячи долларов на платные курсы",
-            "Изучают устаревшие теории вместо реальной практики",
-            "Бросают начатое из-за отсутствия быстрого результата"
-          ],
-          solution: [
-            "Начните с бесплатных гайдов и open-source инструментов",
-            "Найдите наставника или поддерживающее комьюнити",
-            "Каждый день делайте одно маленькое практическое действие"
-          ],
-          cta: "Забирай чек-лист в описании моего профиля"
-        },
-        "Storytelling": {
-          hook: `Как простой чек-лист сэкономил мне 15 часов работы над ${keywords}.`,
-          problem: [
-            "Я выполнял десятки задач хаотично и без плана",
-            "Постоянно забывал важные шаги при настройке",
-            "Переделывал одну и ту же работу по три раза"
-          ],
-          solution: [
-            "Я сел и выписал пошаговую инструкцию на одном листе",
-            "Делегировал рутину по этому чек-листу ассистенту",
-            "Освободил кучу времени на стратегические задачи"
-          ],
-          cta: "Напиши 'ЧЕК' в директ, и я скину тебе этот шаблон"
-        },
-        "Educational": {
-          hook: `Пошаговый план внедрения ${keywords} для начинающих.`,
-          problem: [
-            "Сложно понять, с чего начать из-за обилия информации",
-            "Кажется, что это требует огромных бюджетов и штата",
-            "Страх сделать ошибку парализует любые действия"
-          ],
-          solution: [
-            "Шаг 1: Сформулируйте цель в одном предложении",
-            "Шаг 2: Настройте базовую инфраструктуру за 1 час",
-            "Шаг 3: Запустите первый тестовый поток обратной связи"
-          ],
-          cta: "Подписывайся, каждый день разбираем рабочие кейсы!"
-        }
+      script: {
+        hook: `Если бы я начинал работать с ${keywords} с нуля, я бы сделал это.`,
+        problem: [
+          "Новички тратят тысячи долларов на платные курсы",
+          "Изучают устаревшие теории вместо реальной практики",
+          "Бросают начатое из-за отсутствия быстрого результата"
+        ],
+        solution: [
+          "Начните с бесплатных гайдов и open-source инструментов",
+          "Найдите наставника или поддерживающее комьюнити",
+          "Каждый день делайте одно маленькое практическое действие"
+        ],
+        cta: "Забирай чек-лист в описании моего профиля"
       }
     },
     {
@@ -204,49 +122,19 @@ const generateDynamicIdeas = (product: string, platform: string): IdeaCard[] => 
       hook: `Непопулярное мнение: будущее контента и ${keywords} за этим решением.`,
       tags: ["Мнение", platform],
       estimate: "Горячая тема",
-      variants: {
-        "Aggressive Hook": {
-          hook: `Непопулярное мнение: будущее контента и ${keywords} за этим решением.`,
-          problem: [
-            "Большинство продолжают использовать старые шаблоны",
-            "Рынок меняется слишком быстро, а вы стоите на месте",
-            "Скоро ваши методы перестанут приносить клиентов вообще"
-          ],
-          solution: [
-            "Внедряйте новые ИИ-инструменты в ежедневную рутину",
-            "Делайте фокус на искренность и живое общение",
-            "Адаптируйте контент под короткие форматы немедленно"
-          ],
-          cta: "Напиши в комментариях, согласен ты или нет"
-        },
-        "Storytelling": {
-          hook: `Почему я перестал слушать 'экспертов' по ${keywords} и начал делать по-своему.`,
-          problem: [
-            "Они советовали тонны скучных и дорогих механик",
-            "Я слил кучу денег на рекламу без ощутимого результата",
-            "Мой бренд терял индивидуальность в копировании чужих схем"
-          ],
-          solution: [
-            "Я доверился своей интуиции и упростил подачу в 10 раз",
-            "Начал говорить с аудиторией без цензуры и пафоса",
-            "Органика выросла втрое за первые две недели"
-          ],
-          cta: "Подпишись, если тоже устал от шаблонного контента"
-        },
-        "Educational": {
-          hook: `Главный тренд в сфере ${keywords}, который глупо игнорировать.`,
-          problem: [
-            "Внимание людей сжимается до 3 секунд",
-            "Ваш длинный текст или видео никто не досматривает до конца",
-            "Сложные продукты закрываются из-за плохого объяснения"
-          ],
-          solution: [
-            "Упаковывайте смыслы в ультра-короткие яркие ролики",
-            "Используйте интерактивные элементы для вовлечения",
-            "Говорите на языке ценностей вашего клиента"
-          ],
-          cta: "Жми лайк, если статья была полезной!"
-        }
+      script: {
+        hook: `Непопулярное мнение: будущее контента и ${keywords} за этим решением.`,
+        problem: [
+          "Большинство продолжают использовать старые шаблоны",
+          "Рынок меняется слишком быстро, а вы стоите на месте",
+          "Скоро ваши методы перестанут приносить клиентов вообще"
+        ],
+        solution: [
+          "Внедряйте новые ИИ-инструменты в ежедневную рутину",
+          "Делайте фокус на искренность и живое общение",
+          "Адаптируйте контент под короткие форматы немедленно"
+        ],
+        cta: "Напиши в комментариях, согласен ты или нет"
       }
     }
   ];
@@ -284,50 +172,22 @@ const IDEA_CARDS: IdeaCard[] = [
   }
 ];
 
-const SCRIPT_VARIANTS: Record<string, ScriptVariant> = {
-  "Aggressive Hook": {
-    hook: "Most founders think onboarding takes a week. Here's why they're wrong.",
-    problem: [
-      "You hand them a PDF docs link and say 'read this'",
-      "They spend their first 3 days isolated and confused",
-      "They start regretting their choice before writing code"
-    ],
-    solution: [
-      "Automate credentials setup on Day -5",
-      "Ship a quick 'win' task on Day 1 for raw confidence",
-      "Assign an onboarding buddy that isn't their manager"
-    ],
-    cta: "Follow for more founder lessons"
-  },
-  "Storytelling": {
-    hook: "I once hired a senior dev who quit on day four because of one stupid mistake I made.",
-    problem: [
-      "I was too busy putting out fires to welcome him properly",
-      "He felt like an outsider left alone in a dark room",
-      "No clear ownership, no connection, zero context"
-    ],
-    solution: [
-      "I redesigned our entry flow from the ground up",
-      "Now we start with a virtual coffee on hour one",
-      "Every new hire gets a personal video message explaining our mission"
-    ],
-    cta: "Drop a comment if you've ever had a terrible first week"
-  },
-  "Educational": {
-    hook: "The onboarding formula that top-tier YC startups use to ship code on Day 1.",
-    problem: [
-      "Standard onboarding takes 2 to 3 weeks of dead meetings",
-      "It wastes senior developer time explaining basic setups",
-      "Delayed feedback loops stunt developer velocity forever"
-    ],
-    solution: [
-      "Use one-command developer environment bootstrap tools",
-      "Build a interactive, self-paced documentation sandbox",
-      "Create clear milestones for the first 30, 60, and 90 days"
-    ],
-    cta: "Subscribe to my newsletter for the full blueprint"
-  }
+const DEFAULT_SCRIPT: ScriptVariant = {
+  hook: "Most founders think onboarding takes a week. Here's why they're wrong.",
+  problem: [
+    "You hand them a PDF docs link and say 'read this'",
+    "They spend their first 3 days isolated and confused",
+    "They start regretting their choice before writing code"
+  ],
+  solution: [
+    "Automate credentials setup on Day -5",
+    "Ship a quick 'win' task on Day 1 for raw confidence",
+    "Assign an onboarding buddy that isn't their manager"
+  ],
+  cta: "Follow for more founder lessons"
 };
+
+const getIdeaScript = (idea: IdeaCard): ScriptVariant => idea.script ?? DEFAULT_SCRIPT;
 
 const REFERENCE_CARDS = [
   { views: "2.3M views", title: "Why onboarding buddy programs fail", hashtags: "#startups #founder", platform: "LinkedIn" },
@@ -387,7 +247,11 @@ export default function Dashboard() {
   const [revisionCount, setRevisionCount] = useState<number>(0);
   const [revisionComment, setRevisionComment] = useState<string>("");
   const [isRevisingScript, setIsRevisingScript] = useState<boolean>(false);
-  const [activeScriptTab, setActiveScriptTab] = useState<"Aggressive Hook" | "Storytelling" | "Educational">("Aggressive Hook");
+  const [scriptVersions, setScriptVersions] = useState<ScriptVariant[]>([]);
+  const [activeVersionIndex, setActiveVersionIndex] = useState(0);
+  const [loaderExiting, setLoaderExiting] = useState(false);
+  const [scriptReveal, setScriptReveal] = useState(false);
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<number | null>(10);
   const [showCalendarPanel, setShowCalendarPanel] = useState(true);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
@@ -402,7 +266,8 @@ export default function Dashboard() {
   const [voiceTone, setVoiceTone] = useState("Casual founder");
   const [voicePreview, setVoicePreview] = useState("Direct, no fluff, fast-paced, talking directly to operators.");
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(true);
-  const [hasGeneratedIdeas, setHasGeneratedIdeas] = useState(false);
+  const [heroExitState, setHeroExitState] = useState<'visible' | 'exiting' | 'hidden'>('visible');
+  const [modalIdea, setModalIdea] = useState<IdeaCard | null>(null);
   const [isPlatformOpen, setIsPlatformOpen] = useState(false);
   const [isFormatOpen, setIsFormatOpen] = useState(false);
   const [selectedPostType, setSelectedPostType] = useState<"Video" | "Text post">("Video");
@@ -454,6 +319,15 @@ export default function Dashboard() {
     setIsLoadingOnboarding(false);
   }, []);
 
+  useEffect(() => {
+    if (!isGeneratingScript) return;
+    setLoadingMessageIndex(0);
+    const interval = setInterval(() => {
+      setLoadingMessageIndex(prev => (prev + 1) % SCRIPT_LOADING_MESSAGES.length);
+    }, 1800);
+    return () => clearInterval(interval);
+  }, [isGeneratingScript]);
+
   const handleOnboardingComplete = (data: {
     product: string;
     audience: string;
@@ -485,17 +359,21 @@ export default function Dashboard() {
   const handleSelectIdea = async (idea: IdeaCard) => {
     setSelectedIdeaId(idea.id);
     setSelectedIdea(idea);
-    setActiveScriptTab("Aggressive Hook");
     setRevisionCount(0);
     setRevisionComment("");
+    setLoaderExiting(false);
+    setScriptReveal(false);
+    setActiveVersionIndex(0);
 
-    // Check if script is already generated by AI (we can identify by a flag or check if custom variants exist and it's not the initial loaded static dynamic list)
-    if (idea.variants && Object.keys(idea.variants).length > 0 && !idea.id.startsWith("dynamic-") && !idea.id.startsWith("idea-")) {
+    if (idea.script) {
+      setScriptVersions([idea.script]);
+      setScriptReveal(true);
       return;
     }
 
     setIsGeneratingScript(true);
     setScriptError(null);
+    setScriptVersions([]);
 
     try {
       const savedDna = localStorage.getItem("clipr_dna");
@@ -526,21 +404,31 @@ export default function Dashboard() {
 
       const data = await response.json();
 
-      // Update our stateful ideas list with the AI generated script variants
+      const script = data as ScriptVariant;
+
       setIdeas(prev => prev.map(item => {
         if (item.id === idea.id) {
-          return { ...item, variants: data };
+          return { ...item, script };
         }
         return item;
       }));
 
-      // Also update selected idea state so it renders immediately
-      setSelectedIdea(prev => prev ? { ...prev, variants: data } : null);
+      setSelectedIdea(prev => prev ? { ...prev, script } : null);
+      setScriptVersions([script]);
+      setActiveVersionIndex(0);
     } catch (err) {
       console.error("Gemini script generation failed:", err);
       setScriptError("AI Script generation failed. Showing default template as fallback.");
+      const fallback = getIdeaScript(idea);
+      setScriptVersions([fallback]);
+      setActiveVersionIndex(0);
     } finally {
       setIsGeneratingScript(false);
+      setLoaderExiting(true);
+      setTimeout(() => {
+        setLoaderExiting(false);
+        setScriptReveal(true);
+      }, 300);
     }
   };
 
@@ -553,40 +441,29 @@ export default function Dashboard() {
     setRevisionComment("");
 
     setTimeout(() => {
-      // Simulate revision by updating the active script variant
-      const currentScript = (selectedIdea.variants && selectedIdea.variants[activeScriptTab])
-        ? selectedIdea.variants[activeScriptTab]
-        : SCRIPT_VARIANTS[activeScriptTab];
+      const currentScript = scriptVersions[activeVersionIndex] ?? getIdeaScript(selectedIdea);
 
-      // Mutate the active script based on user comments to show reaction
-      const updatedScript = {
+      const updatedScript: ScriptVariant = {
         ...currentScript,
-        hook: `✨ [Версия ${revisionCount + 1}] ` + currentScript.hook,
+        hook: `✨ [Версия ${revisionCount + 2}] ` + currentScript.hook,
         problem: currentScript.problem.map((p, idx) => idx === 0 ? `${p} (Изменено: ${comment.substring(0, 30)})` : p),
         solution: currentScript.solution.map((s, idx) => idx === 1 ? `${s} (Скорректировано)` : s),
         cta: currentScript.cta
       };
 
+      const newVersions = [...scriptVersions, updatedScript].slice(0, 4);
+
       setIdeas(prev => prev.map(item => {
         if (item.id === selectedIdea.id) {
-          const newVariants = {
-            ...(item.variants || SCRIPT_VARIANTS),
-            [activeScriptTab]: updatedScript
-          };
-          return { ...item, variants: newVariants };
+          return { ...item, script: updatedScript };
         }
         return item;
       }));
 
-      setSelectedIdea(prev => {
-        if (!prev) return null;
-        const newVariants = {
-          ...(prev.variants || SCRIPT_VARIANTS),
-          [activeScriptTab]: updatedScript
-        };
-        return { ...prev, variants: newVariants };
-      });
-
+      setSelectedIdea(prev => prev ? { ...prev, script: updatedScript } : null);
+      setScriptVersions(newVersions);
+      setActiveVersionIndex(newVersions.length - 1);
+      setScriptReveal(true);
       setRevisionCount(prev => prev + 1);
       setIsRevisingScript(false);
     }, 1000);
@@ -598,7 +475,17 @@ export default function Dashboard() {
     setSelectedIdea(null);
     setRevisionCount(0);
     setRevisionComment("");
+    setScriptVersions([]);
+    setActiveVersionIndex(0);
+    setLoaderExiting(false);
+    setScriptReveal(false);
     setIdeasError(null);
+    setHeroExitState("exiting");
+
+    // Exit animation duration is ~400ms, after which we hide the hero section and show the cards
+    setTimeout(() => {
+      setHeroExitState("hidden");
+    }, 400);
 
     try {
       const savedDna = localStorage.getItem("clipr_dna");
@@ -626,7 +513,6 @@ export default function Dashboard() {
       const aiIdeas: IdeaCard[] = await response.json();
       setIdeas(aiIdeas);
       setIsGenerating(false);
-      setHasGeneratedIdeas(true);
     } catch (err) {
       console.error("AI ideas generation failed, using dynamic fallback:", err);
       setIdeasError("AI не смог сгенерировать идеи. Показываем шаблонные варианты.");
@@ -643,7 +529,6 @@ export default function Dashboard() {
         setIdeas(IDEA_CARDS);
       }
       setIsGenerating(false);
-      setHasGeneratedIdeas(true);
     }
   };
 
@@ -885,18 +770,24 @@ export default function Dashboard() {
                   className="flex flex-col h-full gap-4 min-h-0 overflow-hidden"
                 >
                   {/* Modern Startup-themed Header & Input Workspace Card */}
-                  {!hasGeneratedIdeas && (
-                    <>
-                      <div className="flex flex-col items-center text-center space-y-1.5 pb-2 pt-8 select-none">
+                  {heroExitState !== 'hidden' && (
+                    <div 
+                      className={`transition-all duration-[400ms] ease-out flex flex-col items-center w-full shrink-0 ${
+                        heroExitState === 'exiting' 
+                          ? 'opacity-0 scale-95 pointer-events-none' 
+                          : 'opacity-100 scale-100'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center text-center space-y-1.5 pb-2 pt-24 select-none">
                         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#EFEFEF]">
-                          What&apos;s your next viral hook<span className="text-[#10B981]">?</span>
+                          What&apos;s your next viral hook<span className="text-[#00E5A0]">?</span>
                         </h1>
                         <p className="text-[10px] text-[#6B7C85] tracking-[0.5em] uppercase font-mono font-bold">
                           Clipr AI Content Engine
                         </p>
                       </div>
 
-                      <div className="glowing-textarea-card rounded-[14px] p-4 relative w-full mx-auto shrink-0 mt-4">
+                      <div className="glowing-textarea-card rounded-[14px] p-4 relative max-w-3xl w-full mx-auto shrink-0 mt-8">
                         <div className="absolute inset-0 glow-bg-radial pointer-events-none z-0 rounded-[14px]" />
                         <div className="relative z-10 space-y-3">
                           <div className="space-y-1.5">
@@ -998,114 +889,82 @@ export default function Dashboard() {
 
                             {/* Generate button */}
                             <button
-                              className="bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] hover:scale-[1.02] active:scale-[0.98] transition-all text-xs font-bold rounded-full px-4 py-1.5 flex items-center justify-center space-x-1.5 shadow-md"
+                              className="bg-[#00E5A0] hover:bg-[#12cf90] text-[#070B0D] hover:scale-[1.02] active:scale-[0.98] transition-all text-xs font-bold rounded-full px-4 py-1.5 flex items-center justify-center space-x-1.5 shadow-md"
                               onClick={triggerGenerateIdeas}
                               disabled={isGenerating}
                             >
-                              <span>{isGenerating ? "Creating..." : "Start create"}</span>
+                              <span>{isGenerating ? "Creating..." : "Create"}</span>
                               {!isGenerating && <span className="text-xs font-bold">→</span>}
                             </button>
                           </div>
                         </div>
                       </div>
-                    </>
+                    </div>
                   )}
 
-                  {/* Ideas Feed (2x2 Grid) — hidden once an idea is selected */}
-                  {(hasGeneratedIdeas || isGenerating) && !selectedIdeaId && (
-                    <div className="w-full shrink-0 flex flex-col gap-3">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center flex-wrap gap-2">
-                          <h2 className="text-sm font-medium text-[#EFEFEF]">Ideas for you</h2>
-                          <span className="text-xs text-[#888888]">Based on your profile</span>
-                          {ideasError && (
-                            <span className="text-[10px] text-amber-400 bg-amber-950/20 border border-amber-500/20 px-2 py-0.5 rounded-full">
-                              {ideasError}
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={triggerGenerateIdeas}
-                          className="text-[#888888] cursor-pointer hover:text-[#EFEFEF] transition-colors p-1"
-                        >
-                          <RefreshCw className="w-3 h-3" />
-                        </button>
-                      </div>
-
-                      {isGenerating ? (
-                        <div className="grid grid-cols-2 gap-[12px] w-full shrink-0">
-                          {[1, 2, 3, 4].map((n) => (
-                            <div key={n} className="rounded-xl border border-[#333333] bg-[#242424] animate-pulse min-h-[160px]" />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-[12px] w-full shrink-0">
-                          {ideas.map((idea, idx) => {
-                            const isSelected = selectedIdeaId === idea.id;
-                            return (
-                              <motion.div
-                                key={idea.id}
-                                initial={{ opacity: 0, y: 5 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.15, delay: idx * 0.03 }}
-                                onClick={() => handleSelectIdea(idea)}
-                                className={`group rounded-xl border p-5 flex flex-col justify-between min-h-[160px] h-auto transition-all duration-150 relative cursor-pointer select-none ${
-                                  isSelected
-                                    ? "bg-[#242424] border-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                                    : "border-[#333333] bg-[#242424] hover:border-[#10B981]/50"
-                                }`}
-                              >
-                                <div className="space-y-1 relative z-10">
-                                  {/* TOP ROW */}
-                                  <div className="flex justify-between items-center">
-                                    <div className="flex items-center space-x-1.5">
-                                      {/* Format Type Pill */}
-                                      <span className="text-xs text-[#888888] border border-[#333333] rounded-full px-2.5 py-0.5 bg-transparent flex items-center space-x-1">
-                                        <span>{idea.tags[0] || "Советы"}</span>
-                                      </span>
-                                      {/* Platform Pill */}
-                                      <span className="text-xs text-[#888888] border border-[#333333] rounded-full px-2.5 py-0.5 bg-transparent flex items-center space-x-1">
-                                        {getPlatformIcon(idea.tags[1] || "TikTok", 10)}
-                                        <span>{idea.tags[1] || "TikTok"}</span>
-                                      </span>
-                                    </div>
-                                    <span className="text-xs text-[#888888]">
-                                      {idea.estimate || "High potential"}
-                                    </span>
-                                  </div>
-
-                                  {/* TITLE */}
-                                  <h3 className="text-base font-semibold text-[#EFEFEF] mt-3 line-clamp-2 leading-snug group-hover:text-white whitespace-normal">
-                                    {idea.title}
-                                  </h3>
-
-                                  {/* HOOK PREVIEW */}
-                                  <p className="text-sm text-[#888888] mt-2 leading-relaxed line-clamp-2">
-                                    {idea.hook}
-                                  </p>
-                                </div>
-
-                                {/* BOTTOM */}
-                                <div className="mt-4 pt-4 border-t border-[#333333] flex justify-between items-center relative z-10">
-                                  <span className="text-xs tracking-widest text-[#888888] font-mono">
-                                    POTENTIAL ANALYSIS
-                                  </span>
-                                  <span
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleSelectIdea(idea);
-                                    }}
-                                    className="text-sm text-[#10B981] font-semibold cursor-pointer hover:opacity-70 flex items-center space-x-1"
-                                  >
-                                    <span>Write script</span>
-                                    <span>→</span>
-                                  </span>
-                                </div>
-                              </motion.div>
-                            );
-                          })}
+                  {/* Ideas Feed (Vertical list) — hidden once an idea is selected */}
+                  {heroExitState === 'hidden' && !selectedIdeaId && (
+                    <div className="w-full flex-1 flex flex-col items-center justify-start min-h-0 overflow-y-auto px-4 py-6 scrollbar-thin">
+                      {ideasError && (
+                        <div className="text-[11px] mb-3 text-amber-400 bg-amber-950/20 border border-amber-500/20 px-3 py-1.5 rounded-lg max-w-[680px] w-full text-center">
+                          {ideasError}
                         </div>
                       )}
+                      <div className="w-full max-w-[680px] flex flex-col gap-[16px]">
+                        {isGenerating ? (
+                          // Render 4 skeleton cards
+                          [1, 2, 3, 4].map((n) => (
+                            <div
+                              key={n}
+                              className="w-full rounded-[20px] p-[24px_28px] border bg-[var(--card-bg)] backdrop-blur-[16px] animate-pulse"
+                              style={{
+                                border: '1px solid var(--card-border)',
+                                boxShadow: '0 0 24px rgba(0, 229, 160, 0.08), inset 0 1px 0 rgba(255,255,255,0.06)',
+                                minHeight: '140px'
+                              }}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="h-4 w-12 bg-white/5 rounded" />
+                                <div className="h-3 w-28 bg-[rgba(0,229,160,0.15)] rounded" />
+                              </div>
+                              <div className="h-6 w-2/3 bg-white/10 rounded mt-4" />
+                              <div className="h-4 w-5/6 bg-white/5 rounded mt-3" />
+                            </div>
+                          ))
+                        ) : (
+                          // Render actual 4 cards
+                          ideas.slice(0, 4).map((idea, idx) => (
+                            <div
+                              key={idea.id}
+                              onClick={() => setModalIdea(idea)}
+                              className="w-full rounded-[20px] p-[24px_28px] border bg-[var(--card-bg)] backdrop-blur-[16px] cursor-pointer hover:border-[rgba(0,229,160,0.5)] transition-all duration-300 group opacity-0 translate-y-[24px] animate-card-slide-up"
+                              style={{
+                                border: '1px solid var(--card-border)',
+                                boxShadow: '0 0 24px rgba(0, 229, 160, 0.08), inset 0 1px 0 rgba(255,255,255,0.06)',
+                                animationDelay: `${idx * 80}ms`
+                              }}
+                            >
+                              {/* Card Header Row */}
+                              <div className="flex justify-between items-start">
+                                <div>{/* Removed tags */}</div>
+                                <span className="text-[12px] uppercase font-semibold tracking-wider text-[rgba(0,229,160,0.6)]">
+                                  {idea.estimate || "High potential"}
+                                </span>
+                              </div>
+
+                              {/* Card Title */}
+                              <h3 className="text-[20px] font-bold text-white mt-2 leading-snug">
+                                {idea.title}
+                              </h3>
+
+                              {/* Card Description */}
+                              <p className="text-[15px] text-[var(--text-secondary)] mt-2 leading-[1.6] line-clamp-2">
+                                {idea.hook}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -1114,134 +973,158 @@ export default function Dashboard() {
                         <div className="flex-1 grid grid-cols-3 gap-4 min-h-0 overflow-hidden mt-1">
                           
                           {/* Scenario Generator: Left 2 cols */}
-                          <div className="col-span-2 bg-[#0D1416] border border-[#152226] rounded-xl p-4 flex flex-col justify-between min-h-0 overflow-hidden">
-                            <div className="flex items-center justify-between border-b border-[#152226] pb-2 shrink-0">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-[10px] font-mono text-[#10B981] uppercase font-semibold">Script Generation: {selectedIdea.title}</span>
-                                {isGeneratingScript && <span className="w-1.5 h-1.5 bg-[#10B981] rounded-full shadow-[0_0_8px_#10B981] animate-pulse" />}
-                              </div>
-                              <div className="flex bg-[#070B0D] p-0.5 rounded-lg border border-[#152226]">
-                                {(["Aggressive Hook", "Storytelling", "Educational"] as const).map((variant) => (
-                                  <button
-                                    key={variant}
-                                    onClick={() => setActiveScriptTab(variant)}
-                                    className={`px-2 py-1 rounded text-[9px] font-semibold transition-all duration-150 ${activeScriptTab === variant
-                                      ? "bg-[#0D1416] text-[#10B981] shadow-sm border border-[#152226]"
-                                      : "text-[#6B7C85] hover:text-[#EFEFEF]"
-                                      }`}
+                          <div className="col-span-2 bg-[var(--bg-primary)] border border-[#152226] rounded-xl flex flex-col min-h-0 overflow-hidden font-sans">
+                            <div className="px-4 pt-4 pb-3 border-b border-[#152226] shrink-0">
+                              <h2 className="text-[15px] font-semibold text-white leading-snug line-clamp-2">
+                                {selectedIdea.title}
+                              </h2>
+                            </div>
+
+                            <div className="flex-1 relative overflow-y-auto py-4 px-4 scrollbar-thin min-h-[200px]">
+                              {(isGeneratingScript || loaderExiting) && (
+                                <div className={`script-gen-loader rounded-lg ${loaderExiting ? "script-gen-loader--exit" : ""}`}>
+                                  <div className="w-8 h-8 rounded-[6px] bg-[#00E5A0] flex items-center justify-center shadow-[0_0_12px_rgba(0,229,160,0.3)] mb-4">
+                                    <Scissors className="w-4 h-4 text-[#0d0d0d] rotate-90" />
+                                  </div>
+                                  <div className="script-gen-orb" />
+                                  <p
+                                    key={loadingMessageIndex}
+                                    className="script-gen-message"
                                   >
-                                    {variant}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Script Lines area */}
-                            <div className="flex-1 overflow-y-auto py-3 space-y-3 pr-1 scrollbar-thin">
-                              {isGeneratingScript ? (
-                                <div className="space-y-4 animate-pulse">
-                                  <div className="h-3 w-1/4 bg-[#10B981]/25 rounded" />
-                                  <div className="h-6 w-3/4 bg-[#EFEFEF]/10 rounded" />
-                                  <div className="h-3 w-1/3 bg-[#6B7C85]/25 rounded" />
-                                  <div className="h-6 w-5/6 bg-[#6B7C85]/10 rounded" />
+                                    {SCRIPT_LOADING_MESSAGES[loadingMessageIndex]}
+                                  </p>
+                                  <p className="script-gen-subtext">Clipr AI · Script Engine</p>
                                 </div>
-                              ) : (
-                                (() => {
-                                  const currentScript = (selectedIdea.variants && selectedIdea.variants[activeScriptTab])
-                                    ? selectedIdea.variants[activeScriptTab]
-                                    : SCRIPT_VARIANTS[activeScriptTab];
-
-                                  return (
-                                    <div className="space-y-3.5">
-                                      {scriptError && (
-                                        <div className="bg-red-950/20 border border-red-500/30 text-red-400 text-[11px] px-2.5 py-1.5 rounded-lg">
-                                          {scriptError}
-                                        </div>
-                                      )}
-
-                                      {/* Hook */}
-                                      <div className="space-y-1">
-                                        <span className="text-[9px] font-mono uppercase text-[#10B981] font-semibold">
-                                          Hook (0-3 sec)
-                                        </span>
-                                        <p className="text-xs font-semibold text-[#EFEFEF]">
-                                          &ldquo;{currentScript.hook}&rdquo;
-                                        </p>
-                                      </div>
-
-                                      {/* Problem */}
-                                      <div className="space-y-1 border-t border-[#152226]/50 pt-2">
-                                        <span className="text-[9px] font-mono uppercase text-[#6B7C85] font-semibold">
-                                          Problem (3-15 sec)
-                                        </span>
-                                        <ul className="space-y-1">
-                                          {currentScript.problem.map((pt, i) => (
-                                            <li key={i} className="text-[11px] text-[#6B7C85] flex items-start space-x-1.5">
-                                              <span className="text-[#10B981] shrink-0">•</span>
-                                              <span>{pt}</span>
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      </div>
-
-                                      {/* Solution */}
-                                      <div className="space-y-1 border-t border-[#152226]/50 pt-2">
-                                        <span className="text-[9px] font-mono uppercase text-[#6B7C85] font-semibold">
-                                          Solution (15-45 sec)
-                                        </span>
-                                        <ul className="space-y-1">
-                                          {currentScript.solution.map((pt, i) => (
-                                            <li key={i} className="text-[11px] text-[#EFEFEF] flex items-start space-x-1.5">
-                                              <span className="text-[#6B7C85] shrink-0">•</span>
-                                              <span>{pt}</span>
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      </div>
-
-                                      {/* CTA */}
-                                      <div className="space-y-1 border-t border-[#152226]/50 pt-2">
-                                        <span className="text-[9px] font-mono uppercase text-[#10B981] font-semibold">
-                                          CTA (45-60 sec)
-                                        </span>
-                                        <p className="text-[11px] font-semibold text-[#10B981] italic">
-                                          &ldquo;{currentScript.cta}&rdquo;
-                                        </p>
-                                      </div>
-                                    </div>
-                                  );
-                                })()
                               )}
+
+                              {!isGeneratingScript && !loaderExiting && (() => {
+                                const currentScript = scriptVersions[activeVersionIndex] ?? getIdeaScript(selectedIdea);
+                                const revealClass = scriptReveal ? "script-section-reveal" : "opacity-0";
+
+                                return (
+                                  <div className="space-y-5">
+                                    {scriptError && (
+                                      <div className="bg-red-950/20 border border-red-500/30 text-red-400 text-[13px] px-3 py-2 rounded-lg">
+                                        {scriptError}
+                                      </div>
+                                    )}
+
+                                    <div className={`space-y-2 ${revealClass}`} style={scriptReveal ? { animationDelay: "0ms" } : undefined}>
+                                      <div className="flex items-baseline gap-2">
+                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-[#00E5A0]">Hook</span>
+                                        <span className="text-[11px] text-[var(--text-secondary)]">(0–3 SEC)</span>
+                                      </div>
+                                      <p className="text-[15px] font-semibold text-white leading-[1.6]">
+                                        &ldquo;{currentScript.hook}&rdquo;
+                                      </p>
+                                    </div>
+
+                                    <div className={`space-y-2 border-t border-white/[0.06] pt-4 ${revealClass}`} style={scriptReveal ? { animationDelay: "120ms" } : undefined}>
+                                      <div className="flex items-baseline gap-2">
+                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Problem</span>
+                                        <span className="text-[11px] text-[var(--text-muted)]">(3–15 SEC)</span>
+                                      </div>
+                                      <ul className="space-y-2">
+                                        {currentScript.problem.map((pt, i) => (
+                                          <li key={i} className="text-[15px] text-[var(--text-secondary)] leading-[1.6] flex items-start gap-2">
+                                            <span className="text-[#00E5A0] shrink-0 mt-1">•</span>
+                                            <span>{pt}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+
+                                    <div className={`space-y-2 border-t border-white/[0.06] pt-4 ${revealClass}`} style={scriptReveal ? { animationDelay: "240ms" } : undefined}>
+                                      <div className="flex items-baseline gap-2">
+                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Solution</span>
+                                        <span className="text-[11px] text-[var(--text-muted)]">(15–45 SEC)</span>
+                                      </div>
+                                      <ul className="space-y-2">
+                                        {currentScript.solution.map((pt, i) => (
+                                          <li key={i} className="text-[15px] text-white leading-[1.6] flex items-start gap-2">
+                                            <span className="text-[var(--text-secondary)] shrink-0 mt-1">•</span>
+                                            <span>{pt}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+
+                                    <div className={`space-y-2 border-t border-white/[0.06] pt-4 ${revealClass}`} style={scriptReveal ? { animationDelay: "360ms" } : undefined}>
+                                      <div className="flex items-baseline gap-2">
+                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-[#00E5A0]">CTA</span>
+                                        <span className="text-[11px] text-[var(--text-muted)]">(45–60 SEC)</span>
+                                      </div>
+                                      <p className="text-[15px] font-semibold text-[#00E5A0] leading-[1.6]">
+                                        &ldquo;{currentScript.cta}&rdquo;
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
                             </div>
 
-                            {/* Revision Input at the bottom */}
-                            <div className="border-t border-[#152226] pt-3 shrink-0">
-                              <form onSubmit={handleRevisionSubmit} className="flex gap-2 items-center">
+                            <form onSubmit={handleRevisionSubmit} className="script-revision-bar shrink-0">
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <div className="flex flex-col min-w-[72px]">
+                                    <span className="text-[11px] uppercase tracking-wider text-[#94A3B8] font-semibold">Версия</span>
+                                    <span className="text-[15px] font-bold text-white">
+                                      {activeVersionIndex + 1} / 4
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveVersionIndex(i => Math.max(0, i - 1))}
+                                    disabled={activeVersionIndex <= 0 || isGeneratingScript || loaderExiting}
+                                    className="script-version-btn"
+                                    aria-label="Предыдущая версия"
+                                  >
+                                    <ChevronLeft className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveVersionIndex(i => Math.min(scriptVersions.length - 1, i + 1))}
+                                    disabled={activeVersionIndex >= scriptVersions.length - 1 || isGeneratingScript || loaderExiting}
+                                    className="script-version-btn"
+                                    aria-label="Следующая версия"
+                                  >
+                                    <ChevronRight className="w-4 h-4" />
+                                  </button>
+                                </div>
+
                                 <input
                                   type="text"
                                   value={revisionComment}
                                   onChange={(e) => setRevisionComment(e.target.value)}
-                                  placeholder={
-                                    revisionCount >= 3
-                                      ? "Максимум 3 правки использовано"
-                                      : `Внесите комментарий по изменению сценария (Правка ${revisionCount + 1}/3)...`
-                                  }
-                                  disabled={revisionCount >= 3 || isRevisingScript || isGeneratingScript}
-                                  className="flex-1 bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2 text-xs text-[#EFEFEF] focus:outline-none focus:border-[#10B981]/50 placeholder:text-[#6B7C85] disabled:opacity-50 disabled:cursor-not-allowed"
+                                  placeholder={revisionCount >= 3 ? "Лимит правок исчерпан" : "Что улучшить в сценарии?"}
+                                  disabled={revisionCount >= 3 || isRevisingScript || isGeneratingScript || loaderExiting}
+                                  className="script-revision-input flex-1 min-w-0"
                                 />
-                                <button
-                                  type="submit"
-                                  disabled={revisionCount >= 3 || isRevisingScript || isGeneratingScript || !revisionComment.trim()}
-                                  className="bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] text-xs font-bold px-4 py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                                >
-                                  {isRevisingScript ? "Правка..." : "Принять"}
-                                </button>
-                              </form>
-                              <div className="flex justify-between items-center mt-2 text-[10px] text-[#6B7C85] font-mono">
-                                <span>Версия: {revisionCount + 1} / 4</span>
-                                <span>Правки: {revisionCount} из 3 использовано</span>
+
+                                <div className="flex items-center gap-3 shrink-0 justify-between sm:justify-end">
+                                  <span
+                                    className={`text-[12px] ${revisionCount >= 3 ? "text-[#FF4D4D]" : "text-[#94A3B8]"}`}
+                                    title={revisionCount >= 3 ? "Лимит правок исчерпан" : undefined}
+                                  >
+                                    Правки: {revisionCount} / 3
+                                  </span>
+                                  <button
+                                    type="submit"
+                                    disabled={revisionCount >= 3 || isRevisingScript || isGeneratingScript || loaderExiting || !revisionComment.trim()}
+                                    className="script-apply-btn"
+                                  >
+                                    {isRevisingScript ? (
+                                      <>
+                                        <span className="script-spinner" />
+                                        Обновляю...
+                                      </>
+                                    ) : (
+                                      "Применить"
+                                    )}
+                                  </button>
+                                </div>
                               </div>
-                            </div>
+                            </form>
                           </div>
 
                           {/* References Display Panel: Right 1 col */}
@@ -1669,7 +1552,79 @@ export default function Dashboard() {
         </div>
       </aside>
 
+      {/* Modal Expansion */}
+      <AnimatePresence>
+        {modalIdea && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setModalIdea(null)}
+              className="absolute inset-0 bg-black/70 backdrop-blur-[8px]"
+              transition={{ duration: 0.35 }}
+            />
 
+            {/* Modal Body */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="relative w-full max-w-[560px] rounded-[20px] p-[32px] border shadow-2xl z-10 overflow-hidden"
+              style={{
+                background: 'rgba(20, 20, 20, 0.95)',
+                backdropFilter: 'blur(16px)',
+                border: '1px solid rgba(0, 229, 160, 0.4)',
+                boxShadow: '0 0 32px rgba(0, 229, 160, 0.12), inset 0 1px 0 rgba(255,255,255,0.06)'
+              }}
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setModalIdea(null)}
+                className="absolute top-6 right-6 text-white hover:opacity-80 transition-opacity"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' }}
+              >
+                ✕
+              </button>
+
+              {/* Title */}
+              <h2 className="text-[22px] font-bold text-white pr-8 leading-snug">
+                {modalIdea.title}
+              </h2>
+
+              {/* Full Description */}
+              <p className="text-[15px] text-[var(--text-secondary)] mt-4 leading-[1.6]">
+                {modalIdea.hook}
+              </p>
+
+              {/* Divider */}
+              <div 
+                className="my-6" 
+                style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}
+              />
+
+              {/* Bottom Row */}
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-mono tracking-widest text-[var(--text-muted)] font-semibold">
+                  POTENTIAL ANALYSIS
+                </span>
+                <button
+                  onClick={() => {
+                    handleSelectIdea(modalIdea);
+                    setModalIdea(null);
+                  }}
+                  className="text-[#00E5A0] font-semibold text-[15px] flex items-center gap-1 hover:opacity-85 transition-opacity"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  Write script <span className="ml-1">→</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

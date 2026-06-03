@@ -4,11 +4,35 @@
 
 :root {
   --bg: #070B0D;
-  --accent: #10B981;
-  --text: #EFEFEF;
-  --muted: #6B7C85;
+  --accent: #00E5A0;
+  --accent-glow: rgba(0, 229, 160, 0.15);
+  --accent-dim: rgba(0, 229, 160, 0.15);
+  --accent-border: rgba(0, 229, 160, 0.35);
+  --bg-primary: #0d0d0d;
+  --card-bg: rgba(255, 255, 255, 0.04);
+  --card-border: rgba(0, 229, 160, 0.3);
+  --modal-bg: rgba(18, 18, 18, 0.96);
+  --text-primary: #FFFFFF;
+  --text-secondary: #94A3B8;
+  --text-muted: rgba(148, 163, 184, 0.5);
   --border: #152226;
   --card: #0D1416;
+  --radius-input: 12px;
+}
+
+@keyframes cardSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-card-slide-up {
+  animation: cardSlideUp 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 * {
@@ -137,5 +161,179 @@ body {
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: #10B981;
+}
+
+/* Script generation panel */
+@keyframes scriptOrbPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+@keyframes scriptMessageFade {
+  0% { opacity: 0; transform: translateY(6px); }
+  12% { opacity: 1; transform: translateY(0); }
+  88% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes scriptLoaderExit {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes scriptSectionReveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scriptSpinner {
+  to { transform: rotate(360deg); }
+}
+
+.script-gen-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  z-index: 10;
+}
+
+.script-gen-loader--exit {
+  animation: scriptLoaderExit 300ms ease-out forwards;
+  pointer-events: none;
+}
+
+.script-gen-orb {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  animation: scriptOrbPulse 2s ease-in-out infinite;
+}
+
+.script-gen-message {
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 500;
+  margin-top: 24px;
+  text-align: center;
+  animation: scriptMessageFade 1.8s ease-in-out;
+}
+
+.script-gen-subtext {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.script-section-reveal {
+  animation: scriptSectionReveal 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.script-revision-bar {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(0, 229, 160, 0.12);
+  z-index: 5;
+}
+
+.script-revision-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-input);
+  padding: 12px 16px;
+  color: var(--text-primary);
+  font-size: 15px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.script-revision-input:focus {
+  border-color: rgba(0, 229, 160, 0.4);
+  box-shadow: 0 0 0 3px rgba(0, 229, 160, 0.08);
+}
+
+.script-revision-input::placeholder {
+  color: var(--text-muted);
+}
+
+.script-revision-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.script-version-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.script-version-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.script-version-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.script-apply-btn {
+  background: var(--accent);
+  color: #000;
+  font-weight: 700;
+  border-radius: var(--radius-input);
+  padding: 12px 24px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: filter 0.2s, transform 0.2s;
+  white-space: nowrap;
+}
+
+.script-apply-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: scale(1.02);
+}
+
+.script-apply-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.script-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: scriptSpinner 0.7s linear infinite;
 }
 
