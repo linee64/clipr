@@ -40,3 +40,29 @@ class ScriptResponse(BaseModel):
     aggressive: ScriptVariant
     storytelling: ScriptVariant
     educational: ScriptVariant
+
+
+class VideoClip(BaseModel):
+    clip_id: str
+    order: int
+    trim_start: float
+    trim_end: float
+
+
+class RenderRequest(BaseModel):
+    job_id: str
+    clips: list[VideoClip]
+    audio_file_id: str
+    audio_volume: float = 0.3
+    add_subtitles: bool = False
+    platform: str
+    script_summary: str
+
+
+class RenderStatus(BaseModel):
+    job_id: str
+    status: str
+    progress: int
+    output_url: str = ""
+    description: str = ""
+    error: str = ""

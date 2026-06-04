@@ -17,10 +17,10 @@ import {
   Edit2,
   MoreVertical,
   X,
-  ChevronRight,
-  ChevronLeft
+  ChevronRight
 } from "lucide-react";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
+import { CreateFlow } from "@/components/create/CreateFlow";
 
 // ----------------------------------------------------
 // MOCK DATA & CONFIG
@@ -34,16 +34,6 @@ interface IdeaCard {
   estimate: string;
   script?: ScriptVariant;
 }
-
-const SCRIPT_LOADING_MESSAGES = [
-  "generating...",
-  "thinking...",
-  "structuring hook...",
-  "writing problem & solution...",
-  "finalizing script...",
-];
-const SCRIPT_LOADING_MIN_MS = 3500;
-const SCRIPT_LOADING_MESSAGE_MS = 850;
 
 interface ScriptVariant {
   hook: string;
@@ -174,29 +164,6 @@ const IDEA_CARDS: IdeaCard[] = [
   }
 ];
 
-const DEFAULT_SCRIPT: ScriptVariant = {
-  hook: "Most founders think onboarding takes a week. Here's why they're wrong.",
-  problem: [
-    "You hand them a PDF docs link and say 'read this'",
-    "They spend their first 3 days isolated and confused",
-    "They start regretting their choice before writing code"
-  ],
-  solution: [
-    "Automate credentials setup on Day -5",
-    "Ship a quick 'win' task on Day 1 for raw confidence",
-    "Assign an onboarding buddy that isn't their manager"
-  ],
-  cta: "Follow for more founder lessons"
-};
-
-const getIdeaScript = (idea: IdeaCard): ScriptVariant => idea.script ?? DEFAULT_SCRIPT;
-
-const REFERENCE_CARDS = [
-  { views: "2.3M views", title: "Why onboarding buddy programs fail", hashtags: "#startups #founder", platform: "LinkedIn" },
-  { views: "890K views", title: "How we ship code on Day 1", hashtags: "#software #onboarding", platform: "TikTok" },
-  { views: "1.2M views", title: "HR automation mistakes founders make", hashtags: "#saas #business", platform: "Reels" }
-];
-
 const MOCK_CALENDAR_POSTS: Record<number, { platform: "TikTok" | "LinkedIn" | "Instagram"; title: string; time: string; status: "Scheduled" | "Published" }[]> = {
   3: [{ platform: "LinkedIn", title: "The cost of bad hiring in SaaS", time: "10:30 AM", status: "Published" }],
   5: [{ platform: "TikTok", title: "Day in the life of a solo founder", time: "04:15 PM", status: "Published" }],
@@ -246,19 +213,10 @@ export default function Dashboard() {
   // Modal and details
   const [selectedIdea, setSelectedIdea] = useState<IdeaCard | null>(null);
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null);
-  const [revisionCount, setRevisionCount] = useState<number>(0);
-  const [revisionComment, setRevisionComment] = useState<string>("");
-  const [isRevisingScript, setIsRevisingScript] = useState<boolean>(false);
-  const [scriptVersions, setScriptVersions] = useState<ScriptVariant[]>([]);
-  const [activeVersionIndex, setActiveVersionIndex] = useState(0);
-  const [loaderExiting, setLoaderExiting] = useState(false);
-  const [scriptReveal, setScriptReveal] = useState(false);
-  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<number | null>(10);
   const [showCalendarPanel, setShowCalendarPanel] = useState(true);
-  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
-  const [scriptError, setScriptError] = useState<string | null>(null);
   const [ideasError, setIdeasError] = useState<string | null>(null);
+  const [pendingPostBanner, setPendingPostBanner] = useState(false);
 
   // Filters
   const [contentFilter, setContentFilter] = useState<"All" | "Drafts" | "Scheduled" | "Published">("All");
@@ -276,8 +234,6 @@ export default function Dashboard() {
 
   // Auto-expanding textarea ref
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const scriptGenStartRef = useRef<number>(0);
-
   const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputVal(e.target.value);
     const ta = textareaRef.current;
@@ -323,13 +279,8 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (!isGeneratingScript) return;
-    setLoadingMessageIndex(0);
-    const interval = setInterval(() => {
-      setLoadingMessageIndex(prev => (prev + 1) % SCRIPT_LOADING_MESSAGES.length);
-    }, SCRIPT_LOADING_MESSAGE_MS);
-    return () => clearInterval(interval);
-  }, [isGeneratingScript]);
+    setPendingPostBanner(!!sessionStorage.getItem("clipr_pending_post"));
+  }, [activeTab]);
 
   const handleOnboardingComplete = (data: {
     product: string;
@@ -359,135 +310,37 @@ export default function Dashboard() {
     setHasCompletedOnboarding(false);
   };
 
-  const handleSelectIdea = async (idea: IdeaCard) => {
+  const handleSelectIdea = (idea: IdeaCard) => {
     setSelectedIdeaId(idea.id);
     setSelectedIdea(idea);
-    setRevisionCount(0);
-    setRevisionComment("");
-    setLoaderExiting(false);
-    setScriptReveal(false);
-    setActiveVersionIndex(0);
-
-    if (idea.script) {
-      setScriptVersions([idea.script]);
-      setScriptReveal(true);
-      return;
-    }
-
-    setIsGeneratingScript(true);
-    scriptGenStartRef.current = Date.now();
-    setScriptError(null);
-    setScriptVersions([]);
-
-    try {
-      const savedDna = localStorage.getItem("clipr_dna");
-      let dna = { product: "", audience: "", tone: "casual", samplePost: "", platform: "TikTok" };
-      if (savedDna) {
-        try {
-          dna = JSON.parse(savedDna);
-        } catch {}
-      }
-
-      const response = await fetch("/api/generate-script", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          product: dna.product || "Clipr platform",
-          audience: dna.audience || "content creators",
-          tone: dna.tone || "casual",
-          samplePost: dna.samplePost || "",
-          platform: idea.tags[1] || dna.platform || "TikTok",
-          ideaTitle: idea.title,
-          ideaHook: idea.hook
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate script from Gemini API");
-      }
-
-      const data = await response.json();
-
-      const script = data as ScriptVariant;
-
-      setIdeas(prev => prev.map(item => {
-        if (item.id === idea.id) {
-          return { ...item, script };
-        }
-        return item;
-      }));
-
-      setSelectedIdea(prev => prev ? { ...prev, script } : null);
-      setScriptVersions([script]);
-      setActiveVersionIndex(0);
-    } catch (err) {
-      console.error("Gemini script generation failed:", err);
-      setScriptError("AI Script generation failed. Showing default template as fallback.");
-      const fallback = getIdeaScript(idea);
-      setScriptVersions([fallback]);
-      setActiveVersionIndex(0);
-    } finally {
-      const elapsed = Date.now() - scriptGenStartRef.current;
-      const remaining = Math.max(0, SCRIPT_LOADING_MIN_MS - elapsed);
-
-      setTimeout(() => {
-        setIsGeneratingScript(false);
-        setLoaderExiting(true);
-        setTimeout(() => {
-          setLoaderExiting(false);
-          setScriptReveal(true);
-        }, 300);
-      }, remaining);
-    }
   };
 
-  const handleRevisionSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (revisionCount >= 3 || !revisionComment.trim() || !selectedIdea) return;
+  const handleExitCreateFlow = () => {
+    setSelectedIdeaId(null);
+    setSelectedIdea(null);
+  };
 
-    setIsRevisingScript(true);
-    const comment = revisionComment;
-    setRevisionComment("");
-
-    setTimeout(() => {
-      const currentScript = scriptVersions[activeVersionIndex] ?? getIdeaScript(selectedIdea);
-
-      const updatedScript: ScriptVariant = {
-        ...currentScript,
-        hook: `✨ [Версия ${revisionCount + 2}] ` + currentScript.hook,
-        problem: currentScript.problem.map((p, idx) => idx === 0 ? `${p} (Изменено: ${comment.substring(0, 30)})` : p),
-        solution: currentScript.solution.map((s, idx) => idx === 1 ? `${s} (Скорректировано)` : s),
-        cta: currentScript.cta
-      };
-
-      const newVersions = [...scriptVersions, updatedScript].slice(0, 4);
-
-      setIdeas(prev => prev.map(item => {
-        if (item.id === selectedIdea.id) {
-          return { ...item, script: updatedScript };
-        }
-        return item;
-      }));
-
-      setSelectedIdea(prev => prev ? { ...prev, script: updatedScript } : null);
-      setScriptVersions(newVersions);
-      setActiveVersionIndex(newVersions.length - 1);
-      setScriptReveal(true);
-      setRevisionCount(prev => prev + 1);
-      setIsRevisingScript(false);
-    }, 1000);
+  const handleScheduleFromRender = (payload: {
+    title: string;
+    description: string;
+    outputUrl: string;
+    platform: string;
+  }) => {
+    sessionStorage.setItem(
+      "clipr_pending_post",
+      JSON.stringify(payload)
+    );
+    setPendingPostBanner(true);
+    setSelectedIdeaId(null);
+    setSelectedIdea(null);
+    setActiveTab("Calendar");
+    setSidebarActive("Calendar");
   };
 
   const triggerGenerateIdeas = async () => {
     setIsGenerating(true);
     setSelectedIdeaId(null);
     setSelectedIdea(null);
-    setRevisionCount(0);
-    setRevisionComment("");
-    setScriptVersions([]);
-    setActiveVersionIndex(0);
-    setLoaderExiting(false);
-    setScriptReveal(false);
     setIdeasError(null);
     setHeroExitState("exiting");
 
@@ -977,224 +830,20 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                      {/* Scenario Generation Panel & References (Visible after selecting an idea) */}
                       {selectedIdeaId && selectedIdea && (
-                        <div className="flex-1 grid grid-cols-3 gap-4 min-h-0 overflow-hidden mt-1">
-                          
-                          {/* Scenario Generator: Left 2 cols */}
-                          <div className="col-span-2 bg-[var(--bg-primary)] border border-[#152226] rounded-xl flex flex-col min-h-0 overflow-hidden font-sans">
-                            <div className="px-4 pt-4 pb-3 border-b border-[#152226] shrink-0">
-                              <h2 className="text-[15px] font-semibold text-white leading-snug line-clamp-2">
-                                {selectedIdea.title}
-                              </h2>
-                            </div>
-
-                            <div className="flex-1 relative overflow-y-auto py-4 px-4 scrollbar-thin min-h-[200px]">
-                              {(isGeneratingScript || loaderExiting) && (
-                                <div className={`script-gen-loader rounded-lg ${loaderExiting ? "script-gen-loader--exit" : ""}`}>
-                                  <div className="script-gen-terminal">
-                                    <span className="script-gen-prompt">clipr</span>
-                                    <span className="script-gen-prompt-sep">::</span>
-                                    <span className="script-gen-prompt-cmd">script</span>
-                                  </div>
-                                  <div className="script-gen-line" key={loadingMessageIndex}>
-                                    <span className="script-gen-chevron">&gt;</span>
-                                    <span className="script-gen-message">
-                                      {SCRIPT_LOADING_MESSAGES[loadingMessageIndex]}
-                                    </span>
-                                    <span className="script-gen-cursor" aria-hidden="true" />
-                                  </div>
-                                  <div className="script-gen-dots" aria-hidden="true">
-                                    <span /><span /><span />
-                                  </div>
-                                </div>
-                              )}
-
-                              {!isGeneratingScript && !loaderExiting && (() => {
-                                const currentScript = scriptVersions[activeVersionIndex] ?? getIdeaScript(selectedIdea);
-                                const revealClass = scriptReveal ? "script-section-reveal" : "opacity-0";
-
-                                return (
-                                  <div className="space-y-5">
-                                    {scriptError && (
-                                      <div className="bg-red-950/20 border border-red-500/30 text-red-400 text-[13px] px-3 py-2 rounded-lg">
-                                        {scriptError}
-                                      </div>
-                                    )}
-
-                                    <div className={`space-y-2 ${revealClass}`} style={scriptReveal ? { animationDelay: "0ms" } : undefined}>
-                                      <div className="flex items-baseline gap-2">
-                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-[#00E5A0]">Hook</span>
-                                        <span className="text-[11px] text-[var(--text-secondary)]">(0–3 SEC)</span>
-                                      </div>
-                                      <p className="text-[15px] font-semibold text-white leading-[1.6]">
-                                        &ldquo;{currentScript.hook}&rdquo;
-                                      </p>
-                                    </div>
-
-                                    <div className={`space-y-2 border-t border-white/[0.06] pt-4 ${revealClass}`} style={scriptReveal ? { animationDelay: "120ms" } : undefined}>
-                                      <div className="flex items-baseline gap-2">
-                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Problem</span>
-                                        <span className="text-[11px] text-[var(--text-muted)]">(3–15 SEC)</span>
-                                      </div>
-                                      <ul className="space-y-2">
-                                        {currentScript.problem.map((pt, i) => (
-                                          <li key={i} className="text-[15px] text-[var(--text-secondary)] leading-[1.6] flex items-start gap-2">
-                                            <span className="text-[#00E5A0] shrink-0 mt-1">•</span>
-                                            <span>{pt}</span>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-
-                                    <div className={`space-y-2 border-t border-white/[0.06] pt-4 ${revealClass}`} style={scriptReveal ? { animationDelay: "240ms" } : undefined}>
-                                      <div className="flex items-baseline gap-2">
-                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">Solution</span>
-                                        <span className="text-[11px] text-[var(--text-muted)]">(15–45 SEC)</span>
-                                      </div>
-                                      <ul className="space-y-2">
-                                        {currentScript.solution.map((pt, i) => (
-                                          <li key={i} className="text-[15px] text-white leading-[1.6] flex items-start gap-2">
-                                            <span className="text-[var(--text-secondary)] shrink-0 mt-1">•</span>
-                                            <span>{pt}</span>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-
-                                    <div className={`space-y-2 border-t border-white/[0.06] pt-4 ${revealClass}`} style={scriptReveal ? { animationDelay: "360ms" } : undefined}>
-                                      <div className="flex items-baseline gap-2">
-                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-[#00E5A0]">CTA</span>
-                                        <span className="text-[11px] text-[var(--text-muted)]">(45–60 SEC)</span>
-                                      </div>
-                                      <p className="text-[15px] font-semibold text-[#00E5A0] leading-[1.6]">
-                                        &ldquo;{currentScript.cta}&rdquo;
-                                      </p>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-
-                            <form onSubmit={handleRevisionSubmit} className="script-revision-bar shrink-0">
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <div className="flex flex-col min-w-[72px]">
-                                    <span className="text-[11px] uppercase tracking-wider text-[#94A3B8] font-semibold">Версия</span>
-                                    <span className="text-[15px] font-bold text-white">
-                                      {activeVersionIndex + 1} / 4
-                                    </span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => setActiveVersionIndex(i => Math.max(0, i - 1))}
-                                    disabled={activeVersionIndex <= 0 || isGeneratingScript || loaderExiting}
-                                    className="script-version-btn"
-                                    aria-label="Предыдущая версия"
-                                  >
-                                    <ChevronLeft className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setActiveVersionIndex(i => Math.min(scriptVersions.length - 1, i + 1))}
-                                    disabled={activeVersionIndex >= scriptVersions.length - 1 || isGeneratingScript || loaderExiting}
-                                    className="script-version-btn"
-                                    aria-label="Следующая версия"
-                                  >
-                                    <ChevronRight className="w-4 h-4" />
-                                  </button>
-                                </div>
-
-                                <input
-                                  type="text"
-                                  value={revisionComment}
-                                  onChange={(e) => setRevisionComment(e.target.value)}
-                                  placeholder={revisionCount >= 3 ? "Лимит правок исчерпан" : "Что улучшить в сценарии?"}
-                                  disabled={revisionCount >= 3 || isRevisingScript || isGeneratingScript || loaderExiting}
-                                  className="script-revision-input flex-1 min-w-0"
-                                />
-
-                                <div className="flex items-center gap-3 shrink-0 justify-between sm:justify-end">
-                                  <span
-                                    className={`text-[12px] ${revisionCount >= 3 ? "text-[#FF4D4D]" : "text-[#94A3B8]"}`}
-                                    title={revisionCount >= 3 ? "Лимит правок исчерпан" : undefined}
-                                  >
-                                    Правки: {revisionCount} / 3
-                                  </span>
-                                  <button
-                                    type="submit"
-                                    disabled={revisionCount >= 3 || isRevisingScript || isGeneratingScript || loaderExiting || !revisionComment.trim()}
-                                    className="script-apply-btn"
-                                  >
-                                    {isRevisingScript ? (
-                                      <>
-                                        <span className="script-spinner" />
-                                        Обновляю...
-                                      </>
-                                    ) : (
-                                      "Применить"
-                                    )}
-                                  </button>
-                                </div>
-                              </div>
-                            </form>
-                          </div>
-
-                          {/* References Display Panel: Right 1 col */}
-                          <div className="col-span-1 bg-[#0D1416] border border-[#152226] rounded-xl p-4 flex flex-col justify-between min-h-0 overflow-hidden">
-                            <div className="border-b border-[#152226] pb-2 shrink-0">
-                              <h3 className="text-xs font-mono uppercase tracking-wide text-[#6B7C85] font-semibold">
-                                Niche References (Static)
-                              </h3>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto space-y-3 py-3 pr-1 scrollbar-thin">
-                              {REFERENCE_CARDS.map((ref, idx) => (
-                                <div key={idx} className="rounded-xl bg-[#070B0D] border border-[#152226] p-3 space-y-1.5 hover:border-[#1E343A] transition-all">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[9px] font-mono font-semibold text-[#6B7C85] flex items-center space-x-1">
-                                      <Play className="w-2.5 h-2.5 text-[#6B7C85]" />
-                                      <span>{ref.views}</span>
-                                    </span>
-                                    <span className="text-[9px] text-[#6B7C85] font-semibold font-mono">{ref.platform}</span>
-                                  </div>
-                                  <h4 className="text-[11px] font-semibold text-[#EFEFEF] tracking-tight line-clamp-2">
-                                    {ref.title}
-                                  </h4>
-                                  <div className="flex justify-between items-center pt-1 border-t border-[#152226]/50">
-                                    <span className="text-[9px] text-[#6B7C85] font-mono">{ref.hashtags}</span>
-                                    <span className="text-[9px] text-[#10B981] hover:underline cursor-pointer">
-                                      View →
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* Calendar/Draft actions */}
-                            <div className="border-t border-[#152226] pt-3 flex gap-2 shrink-0">
-                              <button
-                                onClick={() => {
-                                  setSelectedIdeaId(null);
-                                  setSelectedIdea(null);
-                                }}
-                                className="flex-1 border border-[#152226] bg-[#070B0D] text-[#6B7C85] hover:text-[#EFEFEF] text-[11px] py-1.5 rounded-lg transition-all"
-                              >
-                                Clear
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setSelectedIdeaId(null);
-                                  setSelectedIdea(null);
-                                  setActiveTab("Calendar");
-                                }}
-                                className="flex-1 bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] text-[11px] font-bold py-1.5 rounded-lg transition-all"
-                              >
-                                Save script
-                              </button>
-                            </div>
-                          </div>
-
+                        <div className="flex-1 min-h-0 overflow-hidden -mx-6 -mb-4 flex flex-col">
+                          <CreateFlow
+                            idea={{
+                              id: selectedIdea.id,
+                              title: selectedIdea.title,
+                              hook: selectedIdea.hook,
+                              tags: selectedIdea.tags,
+                              estimate: selectedIdea.estimate,
+                            }}
+                            defaultPlatform={selectedPlatform}
+                            onBack={handleExitCreateFlow}
+                            onSchedulePost={handleScheduleFromRender}
+                          />
                         </div>
                       )}
                 </motion.div>
@@ -1212,6 +861,11 @@ export default function Dashboard() {
                   transition={{ duration: 0.15 }}
                   className="space-y-6"
                 >
+                  {pendingPostBanner && (
+                    <div className="rounded-xl border border-[#10B981]/40 bg-[#10B981]/10 px-4 py-3 text-sm text-[#EFEFEF]">
+                      Video ready to schedule — use &ldquo;+ Schedule post&rdquo; to add it to your calendar.
+                    </div>
+                  )}
                   {/* Header row */}
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
