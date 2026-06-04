@@ -36,12 +36,14 @@ interface IdeaCard {
 }
 
 const SCRIPT_LOADING_MESSAGES = [
-  "Анализируем вашу нишу...",
-  "Ищем вирусные паттерны...",
-  "Пишем хук для вашей аудитории...",
-  "Финальные штрихи...",
-  "Почти готово...",
+  "generating...",
+  "thinking...",
+  "structuring hook...",
+  "writing problem & solution...",
+  "finalizing script...",
 ];
+const SCRIPT_LOADING_MIN_MS = 3500;
+const SCRIPT_LOADING_MESSAGE_MS = 850;
 
 interface ScriptVariant {
   hook: string;
@@ -274,6 +276,7 @@ export default function Dashboard() {
 
   // Auto-expanding textarea ref
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const scriptGenStartRef = useRef<number>(0);
 
   const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputVal(e.target.value);
@@ -324,7 +327,7 @@ export default function Dashboard() {
     setLoadingMessageIndex(0);
     const interval = setInterval(() => {
       setLoadingMessageIndex(prev => (prev + 1) % SCRIPT_LOADING_MESSAGES.length);
-    }, 1800);
+    }, SCRIPT_LOADING_MESSAGE_MS);
     return () => clearInterval(interval);
   }, [isGeneratingScript]);
 
@@ -372,6 +375,7 @@ export default function Dashboard() {
     }
 
     setIsGeneratingScript(true);
+    scriptGenStartRef.current = Date.now();
     setScriptError(null);
     setScriptVersions([]);
 
@@ -423,12 +427,17 @@ export default function Dashboard() {
       setScriptVersions([fallback]);
       setActiveVersionIndex(0);
     } finally {
-      setIsGeneratingScript(false);
-      setLoaderExiting(true);
+      const elapsed = Date.now() - scriptGenStartRef.current;
+      const remaining = Math.max(0, SCRIPT_LOADING_MIN_MS - elapsed);
+
       setTimeout(() => {
-        setLoaderExiting(false);
-        setScriptReveal(true);
-      }, 300);
+        setIsGeneratingScript(false);
+        setLoaderExiting(true);
+        setTimeout(() => {
+          setLoaderExiting(false);
+          setScriptReveal(true);
+        }, 300);
+      }, remaining);
     }
   };
 
@@ -983,17 +992,21 @@ export default function Dashboard() {
                             <div className="flex-1 relative overflow-y-auto py-4 px-4 scrollbar-thin min-h-[200px]">
                               {(isGeneratingScript || loaderExiting) && (
                                 <div className={`script-gen-loader rounded-lg ${loaderExiting ? "script-gen-loader--exit" : ""}`}>
-                                  <div className="w-8 h-8 rounded-[6px] bg-[#00E5A0] flex items-center justify-center shadow-[0_0_12px_rgba(0,229,160,0.3)] mb-4">
-                                    <Scissors className="w-4 h-4 text-[#0d0d0d] rotate-90" />
+                                  <div className="script-gen-terminal">
+                                    <span className="script-gen-prompt">clipr</span>
+                                    <span className="script-gen-prompt-sep">::</span>
+                                    <span className="script-gen-prompt-cmd">script</span>
                                   </div>
-                                  <div className="script-gen-orb" />
-                                  <p
-                                    key={loadingMessageIndex}
-                                    className="script-gen-message"
-                                  >
-                                    {SCRIPT_LOADING_MESSAGES[loadingMessageIndex]}
-                                  </p>
-                                  <p className="script-gen-subtext">Clipr AI · Script Engine</p>
+                                  <div className="script-gen-line" key={loadingMessageIndex}>
+                                    <span className="script-gen-chevron">&gt;</span>
+                                    <span className="script-gen-message">
+                                      {SCRIPT_LOADING_MESSAGES[loadingMessageIndex]}
+                                    </span>
+                                    <span className="script-gen-cursor" aria-hidden="true" />
+                                  </div>
+                                  <div className="script-gen-dots" aria-hidden="true">
+                                    <span /><span /><span />
+                                  </div>
                                 </div>
                               )}
 
