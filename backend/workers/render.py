@@ -4,13 +4,12 @@ import shutil
 from pathlib import Path
 
 from services.editor import (
-    WHISPER_ENABLED,
     add_background_audio,
-    burn_subtitles,
+    burn_subtitles_ass,
     check_ffmpeg,
     concatenate_clips,
+    generate_ass_simple,
     generate_description,
-    generate_srt,
     get_duration,
     resize_for_platform,
     transcribe_audio,
@@ -29,6 +28,7 @@ async def run_render_job(
     audio_file_id: str,
     audio_volume: float,
     add_subtitles: bool,
+    subtitle_preset: str,
     platform: str,
     script_summary: str,
 ):
@@ -63,6 +63,7 @@ async def run_render_job(
                 clip.trim_start,
                 clip.trim_end,
                 duration,
+                getattr(clip, "mute", False),
             )
             trimmed_paths.append(trimmed_path)
 
@@ -77,7 +78,7 @@ async def run_render_job(
         render_jobs[job_id]["progress"] = 50
 
         after_audio_path = resized_path
-        if audio_file_id:
+        if audio_file_id and str(audio_file_id).strip():
             audio_path = os.path.join(job_dir, "background.mp3")
             await download_file(f"audio/{audio_file_id}.mp3", audio_path)
             with_audio_path = os.path.join(job_dir, "with_audio.mp4")
@@ -93,14 +94,14 @@ async def run_render_job(
         render_jobs[job_id]["progress"] = 60
 
         final_path = after_audio_path
-        if add_subtitles and WHISPER_ENABLED:
+        if add_subtitles:
             segments = await asyncio.to_thread(transcribe_audio, after_audio_path)
-            srt_path = os.path.join(job_dir, "subtitles.srt")
-            generate_srt(segments, srt_path)
+            ass_path = os.path.join(job_dir, "subtitles.ass")
+            generate_ass_simple(segments, ass_path, subtitle_preset)
 
             with_subs_path = os.path.join(job_dir, "with_subs.mp4")
             await asyncio.to_thread(
-                burn_subtitles, after_audio_path, srt_path, with_subs_path, platform
+                burn_subtitles_ass, after_audio_path, ass_path, with_subs_path
             )
             final_path = with_subs_path
 

@@ -46,6 +46,7 @@ export interface VideoClip {
   order: number;
   trim_start: number;
   trim_end: number;
+  mute?: boolean;
 }
 
 export interface RenderRequest {
@@ -76,4 +77,6 @@ export interface UploadedClip {
   trim_end: number;
   duration?: number;
   uploading?: boolean;
+  /** When true, clip audio is removed at render — only background music remains */
+  mute?: boolean;
 }

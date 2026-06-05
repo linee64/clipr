@@ -114,7 +114,7 @@ export function UploadRenderStep({
         <section>
           <h3 className="text-sm font-medium text-[#EFEFEF]">Video clips</h3>
           <p className="text-xs text-[#888888] mt-1 mb-4">
-            Upload your filmed clips in order
+            Upload your filmed clips in order. Use the speaker icon to mute clip audio — only background music will play.
           </p>
           <input
             ref={videoInputRef}

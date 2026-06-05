@@ -12,8 +12,8 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 TEMP_DIR = str(BACKEND_DIR / "temp")
 os.makedirs(TEMP_DIR, exist_ok=True)
 
-# Whisper (OpenAI) отключён — включить, когда появится OPENAI_API_KEY
-WHISPER_ENABLED = False
+WHISPER_ENABLED = True
+_whisper_model = None
 
 _FFMPEG_HINT = (
     "FFmpeg not found. Put it in backend/tools/ffmpeg/bin/ "
@@ -54,27 +54,84 @@ def trim_clip(
     trim_start: float,
     trim_end: float,
     duration: float,
+    mute: bool = False,
 ):
-    """Trim a single video clip using FFmpeg."""
+    """Trim a single video clip. If mute=True, replace audio with silence for concat compatibility."""
     end_time = duration - trim_end if trim_end > 0 else duration
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-i",
-        input_path,
-        "-ss",
-        str(trim_start),
-        "-to",
-        str(end_time),
-        "-c:v",
-        "libx264",
-        "-c:a",
-        "aac",
-        "-preset",
-        "fast",
-        output_path,
-    ]
+    segment_len = max(0.01, end_time - trim_start)
+
+    if mute:
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_path,
+            "-ss",
+            str(trim_start),
+            "-to",
+            str(end_time),
+            "-f",
+            "lavfi",
+            "-i",
+            f"anullsrc=r=44100:cl=stereo:d={segment_len}",
+            "-map",
+            "0:v",
+            "-map",
+            "1:a",
+            "-c:v",
+            "libx264",
+            "-c:a",
+            "aac",
+            "-preset",
+            "fast",
+            "-shortest",
+            output_path,
+        ]
+    else:
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_path,
+            "-ss",
+            str(trim_start),
+            "-to",
+            str(end_time),
+            "-c:v",
+            "libx264",
+            "-c:a",
+            "aac",
+            "-preset",
+            "fast",
+            output_path,
+        ]
     _run(cmd)
+
+
+def has_audio_stream(file_path: str) -> bool:
+    """Return True if the file contains at least one audio stream."""
+    cmd = [
+        "ffprobe",
+        "-v",
+        "quiet",
+        "-select_streams",
+        "a",
+        "-show_entries",
+        "stream=index",
+        "-of",
+        "csv=p=0",
+        file_path,
+    ]
+    if cmd:
+        cmd = [_tool(cmd[0])] + cmd[1:]
+    try:
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError:
+        # ffprobe exits 1 when no audio stream exists — not an error for us
+        return False
+    except FileNotFoundError as e:
+        raise RuntimeError(_FFMPEG_HINT) from e
+    return bool(result.stdout.strip())
 
 
 def get_duration(file_path: str) -> float:
@@ -123,7 +180,19 @@ def concatenate_clips(clip_paths: list[str], output_path: str):
 def add_background_audio(
     video_path: str, audio_path: str, output_path: str, volume: float = 0.3
 ):
-    """Mix background audio into video at specified volume."""
+    """Mix background audio into video, or use only background if the clip has no audio."""
+    vol = max(0.05, min(float(volume), 2.0))
+
+    if has_audio_stream(video_path):
+        # normalize=0: do not squash both tracks; keeps background audible over clip audio
+        filter_complex = (
+            f"[1:a]volume={vol}[bg];"
+            f"[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]"
+        )
+    else:
+        # Clips filmed without mic often have no audio stream — old filter failed silently or errored
+        filter_complex = f"[1:a]volume={vol}[aout]"
+
     cmd = [
         "ffmpeg",
         "-y",
@@ -132,7 +201,7 @@ def add_background_audio(
         "-i",
         audio_path,
         "-filter_complex",
-        f"[1:a]volume={volume}[bg];[0:a][bg]amix=inputs=2:duration=first[aout]",
+        filter_complex,
         "-map",
         "0:v",
         "-map",
@@ -147,54 +216,515 @@ def add_background_audio(
     _run(cmd)
 
 
-def transcribe_audio(video_path: str) -> list[dict]:
-    """Whisper-транскрипция (требует OpenAI API). Сейчас отключена."""
-    raise RuntimeError("Whisper отключён. Добавьте OPENAI_API_KEY и WHISPER_ENABLED=True.")
+def transcribe_audio(audio_path: str) -> list[dict]:
+    """Transcribe audio/video and return timed segments synced to vocals."""
+    global _whisper_model
+
+    if not WHISPER_ENABLED:
+        raise RuntimeError("Whisper transcription is disabled.")
+
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError as e:
+        raise RuntimeError("Install faster-whisper: pip install faster-whisper") from e
+
+    if _whisper_model is None:
+        _whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
+
+    segments_iter, _ = _whisper_model.transcribe(
+        audio_path,
+        vad_filter=True,
+        word_timestamps=False,
+    )
+    segments = [
+        {"start": seg.start, "end": seg.end, "text": seg.text.strip()}
+        for seg in segments_iter
+        if seg.text.strip()
+    ]
+    if not segments:
+        raise RuntimeError("No speech detected in audio.")
+    return segments
 
 
-def generate_srt(segments: list, output_path: str):
-    """Convert Whisper segments to .srt subtitle file."""
+def segments_from_text(text: str, duration: float) -> list[dict]:
+    """Split plain text into timed segments for testing without Whisper."""
+    lines = [line.strip() for line in text.strip().split("\n") if line.strip()]
+    if not lines:
+        lines = [text.strip() or "..."]
+    chunk = max(duration / len(lines), 0.5)
+    segments = []
+    for i, line in enumerate(lines):
+        start = i * chunk
+        end = min((i + 1) * chunk, duration)
+        if start >= duration:
+            break
+        segments.append({"start": start, "end": end, "text": line})
+    return segments
 
-    def format_time(seconds: float) -> str:
+
+def generate_ass_simple(segments: list, output_path: str, style: str = "tiktok_bold"):
+    """
+    Generate .ass subtitle file with advanced styling.
+
+    style options:
+    - tiktok_bold: large bold white text, black outline, bottom center
+    - plaque: white text on dark semi-transparent background plaque
+    - center_caps: uppercase, center screen, thick outline, aggressive
+    """
+    styles = {
+        "tiktok_bold": {
+            "Name": "Default",
+            "Fontname": "Arial",
+            "Fontsize": "78",
+            "PrimaryColour": "&H00FFFFFF",
+            "SecondaryColour": "&H00FFFFFF",
+            "OutlineColour": "&H00000000",
+            "BackColour": "&H00000000",
+            "Bold": "1",
+            "Italic": "0",
+            "Outline": "4",
+            "Shadow": "2",
+            "Alignment": "2",
+            "MarginV": "150",
+        },
+        "plaque": {
+            "Name": "Default",
+            "Fontname": "Arial",
+            "Fontsize": "72",
+            "PrimaryColour": "&H00FFFFFF",
+            "SecondaryColour": "&H00FFFFFF",
+            "OutlineColour": "&H00000000",
+            "BackColour": "&HAA000000",
+            "Bold": "1",
+            "Italic": "0",
+            "Outline": "0",
+            "Shadow": "0",
+            "BorderStyle": "4",
+            "Alignment": "2",
+            "MarginV": "150",
+        },
+        "center_caps": {
+            "Name": "Default",
+            "Fontname": "Arial",
+            "Fontsize": "84",
+            "PrimaryColour": "&H00FFFFFF",
+            "SecondaryColour": "&H00FFFFFF",
+            "OutlineColour": "&H00000000",
+            "BackColour": "&H00000000",
+            "Bold": "1",
+            "Italic": "0",
+            "Outline": "4",
+            "Shadow": "2",
+            "Alignment": "5",
+            "MarginV": "0",
+        },
+    }
+
+    chosen = styles.get(style, styles["tiktok_bold"])
+
+    def format_ass_time(seconds: float) -> str:
         h = int(seconds // 3600)
         m = int((seconds % 3600) // 60)
         s = int(seconds % 60)
-        ms = int((seconds % 1) * 1000)
-        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+        cs = int((seconds % 1) * 100)
+        return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
+
+    style_line = (
+        f"Style: {chosen['Name']},"
+        f"{chosen['Fontname']},"
+        f"{chosen['Fontsize']},"
+        f"{chosen['PrimaryColour']},"
+        f"{chosen['SecondaryColour']},"
+        f"{chosen['OutlineColour']},"
+        f"{chosen['BackColour']},"
+        f"{chosen.get('Bold', '0')},"
+        f"{chosen.get('Italic', '0')},"
+        f"0,0,"
+        f"100,100,"
+        f"0,0,"
+        f"{chosen.get('BorderStyle', '1')},"
+        f"{chosen.get('Outline', '2')},"
+        f"{chosen.get('Shadow', '1')},"
+        f"{chosen.get('Alignment', '2')},"
+        f"10,10,"
+        f"{chosen.get('MarginV', '60')},"
+        f"1"
+    )
 
     with open(output_path, "w", encoding="utf-8") as f:
-        for i, seg in enumerate(segments, 1):
-            f.write(f"{i}\n")
-            f.write(f"{format_time(seg['start'])} --> {format_time(seg['end'])}\n")
-            f.write(f"{seg['text'].strip()}\n\n")
+        f.write("[Script Info]\n")
+        f.write("ScriptType: v4.00+\n")
+        f.write("PlayResX: 1080\n")
+        f.write("PlayResY: 1920\n\n")
+        f.write("[V4+ Styles]\n")
+        f.write(
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, "
+            "OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, "
+            "ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
+            "Alignment, MarginL, MarginR, MarginV, Encoding\n"
+        )
+        f.write(style_line + "\n\n")
+        f.write("[Events]\n")
+        f.write(
+            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+        )
+
+        for seg in segments:
+            text = seg["text"].strip()
+            if style == "center_caps":
+                text = text.upper()
+
+            start = format_ass_time(seg["start"])
+            end = format_ass_time(seg["end"])
+            f.write(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}\n")
 
 
-def _escape_subtitles_path(path: str) -> str:
-    return os.path.abspath(path).replace("\\", "/").replace(":", "\\:")
-
-
-def burn_subtitles(video_path: str, srt_path: str, output_path: str, platform: str):
-    """Burn subtitles into video with platform-specific styling."""
-    styles = {
-        "TikTok": "FontName=Inter,FontSize=18,PrimaryColour=&Hffffff,OutlineColour=&H000000,Outline=2,Alignment=2,MarginV=80",
-        "LinkedIn": "FontName=Inter,FontSize=14,PrimaryColour=&Hffffff,OutlineColour=&H000000,Outline=1,Alignment=2,MarginV=40",
-        "Reels": "FontName=Inter,FontSize=16,PrimaryColour=&Hffffff,OutlineColour=&H000000,Outline=2,Alignment=2,MarginV=80",
-    }
-    style = styles.get(platform, styles["TikTok"])
-    escaped_srt = _escape_subtitles_path(srt_path)
-
+def burn_subtitles_ass(video_path: str, ass_path: str, output_path: str) -> str:
+    """Burn .ass subtitles into video using FFmpeg."""
+    work_dir = os.path.dirname(os.path.abspath(ass_path))
     cmd = [
         "ffmpeg",
         "-y",
         "-i",
-        video_path,
+        os.path.basename(video_path),
         "-vf",
-        f"subtitles={escaped_srt}:force_style='{style}'",
+        f"ass={os.path.basename(ass_path)}",
         "-c:a",
         "copy",
+        os.path.basename(output_path),
+    ]
+    if cmd:
+        cmd = [_tool(cmd[0])] + cmd[1:]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, cwd=work_dir)
+    except FileNotFoundError as e:
+        raise RuntimeError(_FFMPEG_HINT) from e
+    return output_path
+
+
+def detect_beats(audio_path: str) -> list[float]:
+    """Analyze audio file and return timestamps (in seconds) of beat hits."""
+    import librosa
+
+    y, sr = librosa.load(audio_path, sr=None)
+    _, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
+    beat_times = librosa.frames_to_time(beat_frames, sr=sr).tolist()
+    return beat_times
+
+
+def _concat_with_fade(clip_paths: list[str], output_path: str, fade_duration: float = 0.12):
+    """Concatenate clips with crossfade transitions between each clip."""
+    if len(clip_paths) == 1:
+        import shutil
+
+        shutil.copy(clip_paths[0], output_path)
+        return
+
+    inputs = []
+    for path in clip_paths:
+        inputs += ["-i", path]
+
+    filter_parts = []
+    for i, _path in enumerate(clip_paths):
+        duration = get_duration(_path)
+        fade_start = max(0, duration - fade_duration)
+        filter_parts.append(
+            f"[{i}:v]fade=t=out:st={fade_start}:d={fade_duration}[v{i}];"
+        )
+        filter_parts.append(
+            f"[{i}:a]afade=t=out:st={fade_start}:d={fade_duration}[a{i}];"
+        )
+
+    v_inputs = "".join([f"[v{i}]" for i in range(len(clip_paths))])
+    a_inputs = "".join([f"[a{i}]" for i in range(len(clip_paths))])
+    filter_parts.append(f"{v_inputs}concat=n={len(clip_paths)}:v=1:a=0[vout];")
+    filter_parts.append(f"{a_inputs}concat=n={len(clip_paths)}:v=0:a=1[aout]")
+
+    filter_complex = "".join(filter_parts)
+
+    cmd = [
+        "ffmpeg",
+        "-y",
+        *inputs,
+        "-filter_complex",
+        filter_complex,
+        "-map",
+        "[vout]",
+        "-map",
+        "[aout]",
+        "-c:v",
+        "libx264",
+        "-c:a",
+        "aac",
+        "-preset",
+        "fast",
         output_path,
     ]
     _run(cmd)
+
+
+def snap_clips_to_beats(
+    clip_paths: list[str],
+    beat_times: list[float],
+    output_dir: str,
+) -> list[str]:
+    """
+    Trim each clip so it ends exactly on the nearest beat timestamp.
+    Trims from the end only; never trims more than 30% of clip duration.
+    """
+    import shutil
+
+    os.makedirs(output_dir, exist_ok=True)
+    snapped_paths = []
+    beat_cursor = 0.0
+
+    for i, clip_path in enumerate(clip_paths):
+        duration = get_duration(clip_path)
+        natural_end = beat_cursor + duration
+
+        if not beat_times:
+            snapped_paths.append(clip_path)
+            continue
+
+        nearest_beat = min(beat_times, key=lambda b: abs(b - natural_end))
+        diff = natural_end - nearest_beat
+        max_trim = duration * 0.30
+
+        snapped_path = os.path.join(output_dir, f"snapped_{i}.mp4")
+
+        if 0 < diff <= max_trim:
+            new_duration = duration - diff
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                clip_path,
+                "-t",
+                str(new_duration),
+                "-c:v",
+                "libx264",
+                "-c:a",
+                "aac",
+                "-preset",
+                "fast",
+                snapped_path,
+            ]
+            _run(cmd)
+            beat_cursor += new_duration
+
+        elif diff < 0 and abs(diff) <= 1.5:
+            freeze_duration = abs(diff)
+            freeze_path = os.path.join(output_dir, f"freeze_{i}.mp4")
+            last_frame = os.path.join(output_dir, f"last_frame_{i}.jpg")
+
+            _run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-sseof",
+                    "-0.1",
+                    "-i",
+                    clip_path,
+                    "-vframes",
+                    "1",
+                    last_frame,
+                ]
+            )
+
+            _run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-loop",
+                    "1",
+                    "-i",
+                    last_frame,
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    f"anullsrc=r=44100:cl=stereo:d={freeze_duration}",
+                    "-t",
+                    str(freeze_duration),
+                    "-c:v",
+                    "libx264",
+                    "-c:a",
+                    "aac",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-shortest",
+                    freeze_path,
+                ]
+            )
+
+            concatenate_clips([clip_path, freeze_path], snapped_path)
+            beat_cursor += duration + freeze_duration
+
+            for p in [last_frame, freeze_path]:
+                if os.path.exists(p):
+                    os.remove(p)
+        else:
+            shutil.copy(clip_path, snapped_path)
+            beat_cursor += duration
+
+        snapped_paths.append(snapped_path)
+
+    return snapped_paths
+
+
+def apply_beat_sync_transitions(
+    clip_paths: list[str],
+    audio_path: str,
+    output_path: str,
+    transition_type: str = "fade",
+    fade_duration: float = 0.12,
+    add_subtitles: bool = False,
+    subtitle_preset: str = "tiktok_bold",
+) -> str:
+    """Snap clips to beats, join with transitions, mix audio, optionally burn synced subs."""
+    beat_times = detect_beats(audio_path)
+    output_dir = os.path.dirname(os.path.abspath(output_path)) or TEMP_DIR
+    os.makedirs(output_dir, exist_ok=True)
+
+    snapped_paths: list[str] = []
+    if beat_times:
+        snapped_paths = snap_clips_to_beats(clip_paths, beat_times, output_dir)
+        source_clips = snapped_paths
+    else:
+        source_clips = clip_paths
+
+    concat_path = os.path.join(output_dir, "beat_concat.mp4")
+    if transition_type == "fade":
+        _concat_with_fade(source_clips, concat_path, fade_duration)
+    else:
+        concatenate_clips(source_clips, concat_path)
+
+    mixed_path = os.path.join(output_dir, "beat_mixed.mp4")
+    add_background_audio(concat_path, audio_path, mixed_path, volume=1.0)
+
+    if add_subtitles:
+        segments = transcribe_audio(audio_path)
+        ass_path = os.path.join(output_dir, "subs.ass")
+        generate_ass_simple(segments, ass_path, subtitle_preset)
+        burn_subtitles_ass(mixed_path, ass_path, output_path)
+        if os.path.exists(ass_path):
+            os.remove(ass_path)
+    else:
+        import shutil
+
+        shutil.move(mixed_path, output_path)
+
+    for p in snapped_paths:
+        if os.path.exists(p) and os.path.abspath(p) not in {
+            os.path.abspath(c) for c in clip_paths
+        }:
+            os.remove(p)
+    for p in [concat_path, mixed_path]:
+        if os.path.exists(p) and os.path.abspath(p) != os.path.abspath(output_path):
+            os.remove(p)
+
+    return output_path
+
+
+def detect_silence(
+    video_path: str,
+    silence_threshold: float = -35.0,
+    min_silence_duration: float = 0.5,
+) -> list[dict]:
+    """Detect silent moments in video using FFmpeg silencedetect."""
+    import re
+
+    cmd = [
+        "ffmpeg",
+        "-i",
+        video_path,
+        "-af",
+        f"silencedetect=noise={silence_threshold}dB:d={min_silence_duration}",
+        "-f",
+        "null",
+        "-",
+    ]
+    result = _run(cmd, text=True)
+
+    stderr = result.stderr
+    silences = []
+
+    starts = re.findall(r"silence_start: ([\d.]+)", stderr)
+    ends = re.findall(r"silence_end: ([\d.]+)", stderr)
+
+    for start, end in zip(starts, ends):
+        s = float(start)
+        e = float(end)
+        silences.append(
+            {
+                "start": round(s, 2),
+                "end": round(e, 2),
+                "duration": round(e - s, 2),
+            }
+        )
+
+    return silences
+
+
+def remove_silence(
+    video_path: str,
+    output_path: str,
+    silence_threshold: float = -35.0,
+) -> str:
+    """Remove silent segments from video automatically."""
+    import shutil
+
+    silences = detect_silence(video_path, silence_threshold)
+    total_duration = get_duration(video_path)
+
+    if not silences:
+        shutil.copy(video_path, output_path)
+        return output_path
+
+    keep_segments = []
+    prev_end = 0.0
+
+    for silence in silences:
+        if silence["start"] > prev_end + 0.1:
+            keep_segments.append((prev_end, silence["start"]))
+        prev_end = silence["end"]
+
+    if prev_end < total_duration - 0.1:
+        keep_segments.append((prev_end, total_duration))
+
+    if not keep_segments:
+        shutil.copy(video_path, output_path)
+        return output_path
+
+    temp_segments = []
+    for idx, (start, end) in enumerate(keep_segments):
+        seg_path = video_path.replace(".mp4", f"_seg_{idx}.mp4")
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            video_path,
+            "-ss",
+            str(start),
+            "-to",
+            str(end),
+            "-c:v",
+            "libx264",
+            "-c:a",
+            "aac",
+            "-preset",
+            "fast",
+            seg_path,
+        ]
+        _run(cmd)
+        temp_segments.append(seg_path)
+
+    concatenate_clips(temp_segments, output_path)
+
+    for p in temp_segments:
+        if os.path.exists(p):
+            os.remove(p)
+
+    return output_path
 
 
 def resize_for_platform(video_path: str, output_path: str, platform: str):

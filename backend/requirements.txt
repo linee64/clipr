@@ -7,3 +7,9 @@ python-multipart
 aiofiles
 boto3
 supabase
+librosa
+numpy
+soundfile
+scipy
+ass
+faster-whisper

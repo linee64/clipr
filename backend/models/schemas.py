@@ -47,6 +47,7 @@ class VideoClip(BaseModel):
     order: int
     trim_start: float
     trim_end: float
+    mute: bool = False
 
 
 class RenderRequest(BaseModel):
@@ -54,7 +55,8 @@ class RenderRequest(BaseModel):
     clips: list[VideoClip]
     audio_file_id: str
     audio_volume: float = 0.3
-    add_subtitles: bool = False
+    add_subtitles: bool = True
+    subtitle_preset: str = "tiktok_bold"
     platform: str
     script_summary: str
 
@@ -66,3 +68,32 @@ class RenderStatus(BaseModel):
     output_url: str = ""
     description: str = ""
     error: str = ""
+
+
+class BeatSyncRequest(BaseModel):
+    job_id: str
+    clip_ids: list[str]
+    audio_file_id: str
+    transition_type: str = "fade"
+    fade_duration: float = 0.12
+    add_subtitles: bool = False
+    subtitle_preset: str = "tiktok_bold"
+
+
+class SubtitleStyleRequest(BaseModel):
+    job_id: str
+    video_file_id: str
+    preset: str = "tiktok_bold"
+    custom_text: str | None = None
+    audio_file_id: str | None = None
+
+
+class SilenceDetectRequest(BaseModel):
+    clip_id: str
+    threshold: float = -35.0
+    min_duration: float = 0.5
+
+
+class SilenceRemoveRequest(BaseModel):
+    clip_id: str
+    threshold: float = -35.0

@@ -242,6 +242,7 @@ export function CreateFlow({
           order: startOrder + i,
           trim_start: 0,
           trim_end: 0,
+          mute: false,
           duration: duration > 0 ? duration : undefined,
         };
       })
@@ -289,6 +290,7 @@ export function CreateFlow({
           order: i,
           trim_start: c.trim_start,
           trim_end: c.trim_end,
+          mute: !!c.mute,
         })),
         audio_file_id: audioId,
         audio_volume: audioVolume / 100,

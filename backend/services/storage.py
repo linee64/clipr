@@ -1,3 +1,4 @@
+import asyncio
 import os
 import shutil
 from pathlib import Path
@@ -103,15 +104,26 @@ async def upload_file(local_path: str, remote_path: str) -> str:
     supabase = _get_supabase()
     _ensure_bucket(supabase)
 
-    try:
-        with open(local_path, "rb") as f:
+    with open(local_path, "rb") as f:
+        data = f.read()
+
+    last_err: Exception | None = None
+    for attempt in range(3):
+        try:
             supabase.storage.from_(BUCKET).upload(
                 remote_path,
-                f,
+                data,
                 file_options={"upsert": "true"},
             )
-    except Exception as e:
-        raise RuntimeError(_storage_error_hint(e)) from e
+            last_err = None
+            break
+        except Exception as e:
+            last_err = e
+            if attempt < 2:
+                await asyncio.sleep(2**attempt)
+
+    if last_err is not None:
+        raise RuntimeError(_storage_error_hint(last_err)) from last_err
     return supabase.storage.from_(BUCKET).get_public_url(remote_path)
 
 

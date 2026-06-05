@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Film, GripVertical, Trash2 } from "lucide-react";
+import { Film, GripVertical, Trash2, Volume2, VolumeX } from "lucide-react";
 import type { UploadedClip } from "@/lib/types";
 
 interface ClipListProps {
@@ -73,6 +73,7 @@ function SortableClipRow({
         {clip.duration != null && (
           <p className="text-xs text-[#888888]">
             {clip.duration.toFixed(1)}s
+            {clip.mute && " · no sound"}
             {clip.uploading && " · uploading..."}
           </p>
         )}
@@ -104,6 +105,24 @@ function SortableClipRow({
           title="Trim end (sec)"
         />
       </div>
+      <button
+        type="button"
+        onClick={() => onUpdate(clip.id, { mute: !clip.mute })}
+        className={`shrink-0 p-1.5 rounded-md border transition-colors ${
+          clip.mute
+            ? "border-[#10B981]/50 bg-[#10B981]/15 text-[#10B981]"
+            : "border-[#333333] text-[#888888] hover:text-[#EFEFEF] hover:border-[#555555]"
+        }`}
+        title={clip.mute ? "Clip muted — only background audio in render" : "Mute clip audio"}
+        aria-label={clip.mute ? "Unmute clip" : "Mute clip"}
+        aria-pressed={!!clip.mute}
+      >
+        {clip.mute ? (
+          <VolumeX className="w-4 h-4" />
+        ) : (
+          <Volume2 className="w-4 h-4" />
+        )}
+      </button>
       <button
         type="button"
         onClick={() => onRemove(clip.id)}
