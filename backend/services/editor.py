@@ -216,6 +216,34 @@ def add_background_audio(
     _run(cmd)
 
 
+def add_background_audio_only(
+    video_path: str, audio_path: str, output_path: str, volume: float = 0.6
+):
+    """Replace video audio with background music only — source clip audio is discarded."""
+    vol = max(0.05, min(float(volume), 2.0))
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        video_path,
+        "-i",
+        audio_path,
+        "-filter_complex",
+        f"[1:a]volume={vol}[aout]",
+        "-map",
+        "0:v",
+        "-map",
+        "[aout]",
+        "-c:v",
+        "copy",
+        "-c:a",
+        "aac",
+        "-shortest",
+        output_path,
+    ]
+    _run(cmd)
+
+
 def transcribe_audio(audio_path: str) -> list[dict]:
     """Transcribe audio/video and return timed segments synced to vocals."""
     global _whisper_model
@@ -315,6 +343,21 @@ def generate_ass_simple(segments: list, output_path: str, style: str = "tiktok_b
             "Italic": "0",
             "Outline": "4",
             "Shadow": "2",
+            "Alignment": "5",
+            "MarginV": "0",
+        },
+        "broll_center": {
+            "Name": "Default",
+            "Fontname": "Arial",
+            "Fontsize": "56",
+            "PrimaryColour": "&H00FFFFFF",
+            "SecondaryColour": "&H00FFFFFF",
+            "OutlineColour": "&H00000000",
+            "BackColour": "&H00000000",
+            "Bold": "0",
+            "Italic": "0",
+            "Outline": "1",
+            "Shadow": "1",
             "Alignment": "5",
             "MarginV": "0",
         },
@@ -571,6 +614,38 @@ def snap_clips_to_beats(
     return snapped_paths
 
 
+def beat_interval_durations(
+    num_clips: int,
+    beat_times: list[float],
+    fallbacks: list[float],
+) -> list[float]:
+    """One clip per beat interval — cut lengths follow the music grid."""
+    if len(beat_times) >= num_clips + 1:
+        durations = []
+        for i in range(num_clips):
+            d = beat_times[i + 1] - beat_times[i]
+            durations.append(max(0.8, min(d, 8.0)))
+        return durations
+    return [max(0.8, float(d)) for d in fallbacks[:num_clips]]
+
+
+def build_scene_timings(clip_paths: list[str], scenes: list[dict]) -> list[dict]:
+    """Map phrases to actual clip durations so only one text shows per scene."""
+    timed: list[dict] = []
+    cursor = 0.0
+    for clip_path, scene in zip(clip_paths, scenes):
+        duration = get_duration(clip_path)
+        timed.append(
+            {
+                **scene,
+                "start_time": cursor,
+                "duration_seconds": duration,
+            }
+        )
+        cursor += duration
+    return timed
+
+
 def apply_beat_sync_transitions(
     clip_paths: list[str],
     audio_path: str,
@@ -727,24 +802,12 @@ def remove_silence(
     return output_path
 
 
-def _drawtext_font_path() -> str:
-    candidates = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "C:/Windows/Fonts/arial.ttf",
-        "/System/Library/Fonts/Supplemental/Arial.ttf",
-    ]
-    for path in candidates:
-        if os.path.isfile(path):
-            return path.replace("\\", "/").replace(":", "\\:")
-    return ""
-
-
 def apply_color_grade(video_path: str, output_path: str, grade: str) -> str:
     """Apply cinematic color grade using FFmpeg filters."""
     filters = {
-        "dark_cinematic": "curves=vintage,eq=brightness=-0.05:contrast=1.2:saturation=0.8",
-        "moody": "curves=shadows_preset=lighter,eq=brightness=-0.08:contrast=1.15:saturation=0.7",
-        "high_contrast": "eq=brightness=-0.03:contrast=1.4:saturation=0.9,vignette=PI/4",
+        "dark_cinematic": "eq=brightness=-0.06:contrast=1.18:saturation=0.72,vignette=PI/5",
+        "moody": "eq=brightness=-0.08:contrast=1.12:saturation=0.65,vignette=PI/4",
+        "high_contrast": "eq=brightness=-0.03:contrast=1.35:saturation=0.85,vignette=PI/4",
     }
     f = filters.get(grade, filters["dark_cinematic"])
     cmd = [
@@ -768,68 +831,76 @@ def burn_text_overlay(
     scenes: list[dict],
 ) -> str:
     """Burn text phrases onto video at scene timestamps — heyeaslo aesthetic."""
-    drawtext_filters = []
-    font_path = _drawtext_font_path()
-    font_part = f"fontfile={font_path}:" if font_path else ""
-
+    segments = []
     for scene in scenes:
-        phrase = (
-            scene["phrase"]
-            .replace("\\", "\\\\")
-            .replace("'", "\\'")
-            .replace(":", "\\:")
+        start = float(scene.get("start_time", 0))
+        duration = float(scene.get("duration_seconds", 3))
+        # Small gap before next phrase so two lines never overlap on screen
+        end = start + max(0.1, duration - 0.04)
+        segments.append(
+            {
+                "start": start,
+                "end": end,
+                "text": scene["phrase"],
+            }
         )
-        start = scene.get("start_time", 0)
-        end = start + scene.get("duration_seconds", 3)
 
-        drawtext = (
-            f"drawtext="
-            f"text='{phrase}':"
-            f"{font_part}"
-            f"fontsize=36:"
-            f"fontcolor=white:"
-            f"alpha='if(between(t\\,{start}\\,{end}),1,0)':"
-            f"x=(w-text_w)/2:"
-            f"y=(h-text_h)/2:"
-            f"shadowcolor=black:"
-            f"shadowx=1:"
-            f"shadowy=1"
-        )
-        drawtext_filters.append(drawtext)
-
-    filter_chain = ",".join(drawtext_filters)
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-i",
-        video_path,
-        "-vf",
-        filter_chain,
-        "-c:a",
-        "copy",
-        output_path,
-    ]
-    _run(cmd)
+    job_dir = os.path.dirname(os.path.abspath(output_path))
+    ass_path = os.path.join(job_dir, "broll_text.ass")
+    generate_ass_simple(segments, ass_path, style="broll_center")
+    burn_subtitles_ass(video_path, ass_path, output_path)
     return output_path
 
 
-def trim_clip_to_duration(input_path: str, output_path: str, duration: float) -> str:
-    """Trim clip to exact target duration from start."""
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-i",
-        input_path,
-        "-t",
-        str(duration),
-        "-c:v",
-        "libx264",
-        "-c:a",
-        "aac",
-        "-preset",
-        "fast",
-        output_path,
-    ]
+def trim_clip_to_duration(
+    input_path: str,
+    output_path: str,
+    duration: float,
+    mute: bool = False,
+) -> str:
+    """Trim clip to exact target duration from start. mute=True strips source audio."""
+    duration = max(0.1, float(duration))
+    if mute:
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_path,
+            "-f",
+            "lavfi",
+            "-i",
+            f"anullsrc=r=44100:cl=stereo:d={duration}",
+            "-t",
+            str(duration),
+            "-map",
+            "0:v",
+            "-map",
+            "1:a",
+            "-c:v",
+            "libx264",
+            "-c:a",
+            "aac",
+            "-preset",
+            "fast",
+            "-shortest",
+            output_path,
+        ]
+    else:
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_path,
+            "-t",
+            str(duration),
+            "-c:v",
+            "libx264",
+            "-c:a",
+            "aac",
+            "-preset",
+            "fast",
+            output_path,
+        ]
     _run(cmd)
     return output_path
 

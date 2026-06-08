@@ -5,7 +5,10 @@ from pathlib import Path
 
 from services.editor import (
     add_background_audio,
+    add_background_audio_only,
     apply_color_grade,
+    beat_interval_durations,
+    build_scene_timings,
     burn_subtitles_ass,
     burn_text_overlay,
     check_ffmpeg,
@@ -15,7 +18,6 @@ from services.editor import (
     generate_description,
     get_duration,
     resize_for_platform,
-    snap_clips_to_beats,
     transcribe_audio,
     trim_clip,
     trim_clip_to_duration,
@@ -157,6 +159,17 @@ async def run_broll_render(
         os.makedirs(job_dir, exist_ok=True)
 
         render_jobs[job_id]["progress"] = 5
+
+        audio_path = os.path.join(job_dir, "music.mp3")
+        await download_file(f"audio/{audio_file_id}.mp3", audio_path)
+        beat_times = await asyncio.to_thread(detect_beats, audio_path)
+
+        fallbacks = [s["duration_seconds"] for s in scenes]
+        clip_durations = await asyncio.to_thread(
+            beat_interval_durations, len(scenes), beat_times, fallbacks
+        )
+
+        render_jobs[job_id]["progress"] = 15
         processed_clips = []
 
         for i, (scene, clip_id) in enumerate(zip(scenes, clip_ids)):
@@ -169,41 +182,33 @@ async def run_broll_render(
                 trim_clip_to_duration,
                 raw_path,
                 trimmed_path,
-                scene["duration_seconds"],
+                clip_durations[i],
+                True,
             )
             await asyncio.to_thread(
                 apply_color_grade, trimmed_path, graded_path, color_grade
             )
             processed_clips.append(graded_path)
 
-        render_jobs[job_id]["progress"] = 30
-
-        audio_path = os.path.join(job_dir, "music.mp3")
-        await download_file(f"audio/{audio_file_id}.mp3", audio_path)
-        beat_times = await asyncio.to_thread(detect_beats, audio_path)
-
-        render_jobs[job_id]["progress"] = 40
-
-        snapped_clips = await asyncio.to_thread(
-            snap_clips_to_beats, processed_clips, beat_times, job_dir
-        )
-        render_jobs[job_id]["progress"] = 55
+        render_jobs[job_id]["progress"] = 45
 
         concat_path = os.path.join(job_dir, "concat.mp4")
-        await asyncio.to_thread(concatenate_clips, snapped_clips, concat_path)
-        render_jobs[job_id]["progress"] = 65
+        await asyncio.to_thread(concatenate_clips, processed_clips, concat_path)
+        render_jobs[job_id]["progress"] = 60
 
         with_audio_path = os.path.join(job_dir, "with_audio.mp4")
         await asyncio.to_thread(
-            add_background_audio, concat_path, audio_path, with_audio_path, audio_volume
+            add_background_audio_only,
+            concat_path,
+            audio_path,
+            with_audio_path,
+            audio_volume,
         )
         render_jobs[job_id]["progress"] = 75
 
-        current_time = 0.0
-        scenes_with_timing = []
-        for scene in scenes:
-            scenes_with_timing.append({**scene, "start_time": current_time})
-            current_time += scene["duration_seconds"]
+        scenes_with_timing = await asyncio.to_thread(
+            build_scene_timings, processed_clips, scenes
+        )
 
         with_text_path = os.path.join(job_dir, "with_text.mp4")
         await asyncio.to_thread(
