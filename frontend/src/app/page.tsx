@@ -285,52 +285,52 @@ export default function Home() {
       </section>
 
       {/* 7. PRICING */}
-      <section id="pricing" className="relative py-24 md:py-32 bg-zinc-950/40 border-y border-zinc-900/60 z-10">
-        <div className="max-w-6xl mx-auto px-4 md:px-8">
+      <section id="pricing" className="relative py-16 md:py-24 bg-zinc-950/40 border-y border-zinc-900/60 z-10">
+        <div className="max-w-5xl mx-auto px-4 md:px-8">
           <motion.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
             variants={fadeInVariants}
-            className="text-center space-y-4 mb-16"
+            className="text-center space-y-3 mb-10"
           >
-            <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold">Subscription</span>
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white">
+            <span className="text-[10px] uppercase font-mono tracking-widest text-[#10B981] font-bold">Subscription</span>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white">
               Simple pricing
             </h2>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mx-auto items-stretch">
             {/* Free Plan */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="relative rounded-3xl bg-zinc-950 border border-zinc-800 p-8 md:p-10 flex flex-col justify-between"
+              className="relative rounded-2xl bg-zinc-950 border border-zinc-800 p-6 md:p-7 flex flex-col justify-between"
             >
-              <div className="absolute -top-3.5 left-[50%] -translate-x-[50%] bg-zinc-800 text-zinc-300 text-xs font-mono font-bold uppercase tracking-wider px-4 py-1.5 rounded-full border border-zinc-700">
+              <div className="absolute -top-3 left-[50%] -translate-x-[50%] bg-zinc-800 text-zinc-300 text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-zinc-700">
                 Free
               </div>
 
-              <div className="space-y-6 pt-2">
+              <div className="space-y-4 pt-1">
                 <div className="text-center">
-                  <span className="text-zinc-500 text-sm uppercase tracking-wider block font-bold">Starter</span>
-                  <div className="flex items-baseline justify-center mt-2">
-                    <span className="text-5xl font-black text-white">$0</span>
-                    <span className="text-zinc-500 text-sm ml-1">/ month</span>
+                  <span className="text-zinc-500 text-xs uppercase tracking-wider block font-bold">Starter</span>
+                  <div className="flex items-baseline justify-center mt-1.5">
+                    <span className="text-4xl font-black text-white">$0</span>
+                    <span className="text-zinc-500 text-xs ml-1">/ month</span>
                   </div>
                 </div>
 
-                <div className="border-t border-zinc-900 pt-6 space-y-4">
+                <div className="border-t border-zinc-900 pt-4 space-y-2.5">
                   {[
                     "5 scripts per month",
                     "Script preview & export",
                     "Basic hook suggestions",
                   ].map((feat, idx) => (
-                    <div key={idx} className="flex items-center space-x-3 text-zinc-300 text-sm">
-                      <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center shrink-0">
-                        <Check className="w-3.5 h-3.5 text-zinc-400" />
+                    <div key={idx} className="flex items-center space-x-2.5 text-zinc-300 text-xs">
+                      <div className="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center shrink-0">
+                        <Check className="w-3 h-3 text-zinc-400" />
                       </div>
                       <span>{feat}</span>
                     </div>
@@ -338,11 +338,11 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="pt-8 space-y-3">
-                <Button variant="outline" className="w-full py-4 rounded-xl" onClick={scrollToWaitlist}>
+              <div className="pt-6 space-y-2">
+                <Button variant="outline" size="sm" className="w-full py-2.5 rounded-lg text-xs" onClick={scrollToWaitlist}>
                   Start for free
                 </Button>
-                <p className="text-[10px] text-zinc-500 text-center tracking-wide">
+                <p className="text-[9px] text-zinc-500 text-center tracking-wide">
                   Free forever · No credit card
                 </p>
               </div>
@@ -354,28 +354,28 @@ export default function Home() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="relative rounded-3xl bg-zinc-950 border-2 border-[#10B981]/50 p-8 md:p-10 shadow-[0_10px_50px_rgba(16,185,129,0.15)] flex flex-col justify-between"
+              className="relative rounded-2xl bg-zinc-950 border-2 border-[#10B981]/50 p-6 md:p-7 shadow-[0_8px_40px_rgba(16,185,129,0.12)] flex flex-col justify-between"
             >
-              <div className="absolute -top-3.5 left-[50%] -translate-x-[50%] bg-[#10B981] text-white text-xs font-mono font-bold uppercase tracking-wider px-4 py-1.5 rounded-full shadow-[0_4px_15px_rgba(16,185,129,0.4)]">
+              <div className="absolute -top-3 left-[50%] -translate-x-[50%] bg-[#10B981] text-white text-[10px] font-mono font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-[0_4px_12px_rgba(16,185,129,0.35)]">
                 Launch Offer
               </div>
 
-              <div className="space-y-6 pt-2">
+              <div className="space-y-4 pt-1">
                 <div className="text-center">
-                  <span className="text-zinc-500 text-sm uppercase tracking-wider block font-bold">Full Workflow</span>
-                  <div className="flex flex-col items-center mt-2 space-y-1">
-                    <span className="text-lg text-zinc-500 line-through font-semibold">$29</span>
+                  <span className="text-zinc-500 text-xs uppercase tracking-wider block font-bold">Full Workflow</span>
+                  <div className="flex flex-col items-center mt-1.5 space-y-0.5">
+                    <span className="text-base text-zinc-500 line-through font-semibold">$29</span>
                     <div className="flex items-baseline justify-center">
-                      <span className="text-5xl font-black text-white">$20</span>
-                      <span className="text-zinc-500 text-sm ml-1">/ month</span>
+                      <span className="text-4xl font-black text-white">$20</span>
+                      <span className="text-zinc-500 text-xs ml-1">/ month</span>
                     </div>
-                    <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/20 px-2.5 py-1 rounded-full mt-1">
+                    <span className="inline-block text-[9px] font-mono font-bold uppercase tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/20 px-2 py-0.5 rounded-full mt-1">
                       Save $9 · Limited time
                     </span>
                   </div>
                 </div>
 
-                <div className="border-t border-zinc-900 pt-6 space-y-4">
+                <div className="border-t border-zinc-900 pt-4 space-y-2.5">
                   {[
                     "Unlimited script generation",
                     "TikTok & LinkedIn auto-posting",
@@ -383,9 +383,9 @@ export default function Home() {
                     "Trend comment generator",
                     "Reference library",
                   ].map((feat, idx) => (
-                    <div key={idx} className="flex items-center space-x-3 text-zinc-300 text-sm">
-                      <div className="w-5 h-5 rounded-full bg-[#10B981]/10 flex items-center justify-center shrink-0">
-                        <Check className="w-3.5 h-3.5 text-[#10B981]" />
+                    <div key={idx} className="flex items-center space-x-2.5 text-zinc-300 text-xs">
+                      <div className="w-4 h-4 rounded-full bg-[#10B981]/10 flex items-center justify-center shrink-0">
+                        <Check className="w-3 h-3 text-[#10B981]" />
                       </div>
                       <span>{feat}</span>
                     </div>
@@ -393,11 +393,11 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="pt-8 space-y-3">
-                <Button variant="primary" className="w-full py-4 rounded-xl" onClick={scrollToWaitlist}>
+              <div className="pt-6 space-y-2">
+                <Button variant="primary" size="sm" className="w-full py-2.5 rounded-lg text-xs" onClick={scrollToWaitlist}>
                   Start 7-day free trial
                 </Button>
-                <p className="text-[10px] text-zinc-500 text-center tracking-wide">
+                <p className="text-[9px] text-zinc-500 text-center tracking-wide">
                   Free 7-day trial · Then $20/mo · Cancel anytime
                 </p>
               </div>
