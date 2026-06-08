@@ -133,10 +133,11 @@ async def silence_detect(request: SilenceDetectRequest):
 
 @router.post("/silence/remove")
 async def silence_remove(request: SilenceRemoveRequest, background_tasks: BackgroundTasks):
-    """Automatically remove silent segments from a clip."""
-    new_clip_id = str(uuid.uuid4())
+    """Automatically remove silent segments from one or more clips."""
+    # Map each source clip to a freshly generated output clip id.
+    clip_map = [(clip_id, str(uuid.uuid4())) for clip_id in request.clip_ids]
 
-    async def run():
+    async def run_one(clip_id: str, new_clip_id: str):
         try:
             job_dir = os.path.join(TEMP_DIR, f"silence_{new_clip_id}")
             os.makedirs(job_dir, exist_ok=True)
@@ -144,7 +145,7 @@ async def silence_remove(request: SilenceRemoveRequest, background_tasks: Backgr
             input_path = os.path.join(job_dir, "input.mp4")
             output_path = os.path.join(job_dir, "cleaned.mp4")
 
-            await download_file(f"clips/{request.clip_id}.mp4", input_path)
+            await download_file(f"clips/{clip_id}.mp4", input_path)
             remove_silence(input_path, output_path, request.threshold)
 
             remote = f"clips/{new_clip_id}.mp4"
@@ -155,10 +156,20 @@ async def silence_remove(request: SilenceRemoveRequest, background_tasks: Backgr
             shutil.rmtree(job_dir, ignore_errors=True)
 
         except Exception as e:
-            print(f"Silence remove error: {e}")
+            print(f"Silence remove error for {clip_id}: {e}")
+
+    async def run():
+        for clip_id, new_clip_id in clip_map:
+            await run_one(clip_id, new_clip_id)
 
     background_tasks.add_task(run)
-    return {"new_clip_id": new_clip_id, "status": "processing"}
+    return {
+        "status": "processing",
+        "results": [
+            {"clip_id": clip_id, "new_clip_id": new_clip_id}
+            for clip_id, new_clip_id in clip_map
+        ],
+    }
 
 
 @router.post("/beat-sync")
@@ -341,6 +352,7 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
         audio_volume=request.audio_volume,
         color_grade=request.color_grade,
         platform=request.platform,
+        beats_per_clip=request.beats_per_clip,
     )
 
     return {"job_id": request.job_id, "status": "pending"}

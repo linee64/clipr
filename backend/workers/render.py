@@ -145,6 +145,7 @@ async def run_broll_render(
     audio_volume: float,
     color_grade: str,
     platform: str,
+    beats_per_clip: int = 2,
 ):
     render_jobs[job_id] = {
         "status": "processing",
@@ -166,7 +167,7 @@ async def run_broll_render(
 
         fallbacks = [s["duration_seconds"] for s in scenes]
         clip_durations = await asyncio.to_thread(
-            beat_interval_durations, len(scenes), beat_times, fallbacks
+            beat_interval_durations, len(scenes), beat_times, fallbacks, beats_per_clip
         )
 
         render_jobs[job_id]["progress"] = 15

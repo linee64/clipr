@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic import BaseModel
 
 
@@ -53,6 +55,7 @@ class BrollRenderRequest(BaseModel):
     audio_volume: float = 0.6
     color_grade: str = "dark_cinematic"
     platform: str = "TikTok"
+    beats_per_clip: int = 2  # how many beats each clip is held for (1 = cut on every beat)
 
 
 class VideoClip(BaseModel):
@@ -108,5 +111,5 @@ class SilenceDetectRequest(BaseModel):
 
 
 class SilenceRemoveRequest(BaseModel):
-    clip_id: str
+    clip_ids: List[str]
     threshold: float = -35.0

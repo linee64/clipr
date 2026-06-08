@@ -618,13 +618,23 @@ def beat_interval_durations(
     num_clips: int,
     beat_times: list[float],
     fallbacks: list[float],
+    beats_per_clip: int = 2,
 ) -> list[float]:
-    """One clip per beat interval — cut lengths follow the music grid."""
-    if len(beat_times) >= num_clips + 1:
+    """Each clip spans `beats_per_clip` beat intervals — cut lengths follow the music grid.
+
+    A single beat at ~120 BPM is only ~0.5s, which chops clips too short and makes
+    the whole video feel rushed (6 clips -> ~5s). Holding each cut for a couple of
+    beats keeps the music sync but lets every clip breathe.
+    """
+    beats_per_clip = max(1, int(beats_per_clip))
+    needed = num_clips * beats_per_clip + 1
+    if len(beat_times) >= needed:
         durations = []
         for i in range(num_clips):
-            d = beat_times[i + 1] - beat_times[i]
-            durations.append(max(0.8, min(d, 8.0)))
+            start = beat_times[i * beats_per_clip]
+            end = beat_times[(i + 1) * beats_per_clip]
+            d = end - start
+            durations.append(max(0.8, min(d, 12.0)))
         return durations
     return [max(0.8, float(d)) for d in fallbacks[:num_clips]]
 
