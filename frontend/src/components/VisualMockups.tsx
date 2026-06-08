@@ -10,109 +10,39 @@ const TwitterIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-// 1. HERO SECTION MOCKUP
-export function HeroDashboardMockup() {
-  const ideaCards = [
-    {
-      title: "Idea #1: The Resume Shredder",
-      hook: "Stop reading resumes. Here is how AI reads 1,000 profiles in 3 seconds...",
-      time: "TikTok • 45s",
-      badge: "Viral Hook",
-    },
-    {
-      title: "Idea #2: Why HR is Broken",
-      hook: "Most HR managers waste 15 hours a week on scheduling. We fixed it with 1 prompt.",
-      time: "Reels • 60s",
-      badge: "High Ret.",
-    },
-    {
-      title: "Idea #3: 3 Tools to Automate Hiring",
-      hook: "If you are hiring in 2026, these 3 automation pipelines will save you $10k.",
-      time: "YouTube • 90s",
-      badge: "Tutorial",
-    },
-  ];
-
+// 1. HERO DEMO SLOT — drop your startup demo into `children`
+export function HeroDemoSlot({ children }: { children?: React.ReactNode }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 40, rotateX: 15 }}
       animate={{ opacity: 1, y: 0, rotateX: 1 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
-      className="w-full relative max-w-2xl mx-auto"
+      className="w-full relative max-w-4xl mx-auto"
       style={{ perspective: 1000 }}
     >
-      {/* Glow shadow underneath */}
-      <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#10B981]/30 to-[#0a0f1e]/80 blur-xl opacity-75 group-hover:opacity-100 transition duration-1000" />
+      <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#10B981]/30 to-[#0a0f1e]/80 blur-xl opacity-75 transition duration-1000" />
 
-      {/* Main card */}
-      <div className="relative rounded-2xl bg-zinc-950 border border-zinc-800 p-6 shadow-2xl overflow-hidden">
-        {/* Top title bar */}
-        <div className="flex items-center justify-between pb-4 border-b border-zinc-900 mb-6">
+      <div className="relative rounded-2xl bg-zinc-950 border border-zinc-800 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-900">
           <div className="flex items-center space-x-2">
             <span className="w-3 h-3 rounded-full bg-red-500/80" />
             <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
             <span className="w-3 h-3 rounded-full bg-green-500/80" />
-            <span className="text-zinc-500 text-xs font-mono ml-2">clipr_dashboard.v1</span>
+            <span className="text-zinc-500 text-xs font-mono ml-2">clipr_demo</span>
           </div>
           <div className="flex items-center space-x-2 text-xs bg-[#10B981]/10 text-[#10B981] px-3 py-1 rounded-full border border-[#10B981]/20 font-medium">
             <Sparkles className="w-3.5 h-3.5 mr-1" />
-            AI Content Pipeline
+            Live Demo
           </div>
         </div>
 
-        {/* Input Field */}
-        <div className="mb-6 space-y-2">
-          <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-            Your Base Idea
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              readOnly
-              value="I'm building an AI tool for HR automation..."
-              className="w-full bg-zinc-900/60 border border-zinc-800 text-zinc-100 px-4 py-3 rounded-xl text-sm focus:outline-none"
+        <div className="relative min-h-[420px] md:min-h-[520px] w-full">
+          {children ?? (
+            <div
+              className="absolute inset-0 m-4 rounded-xl border border-dashed border-zinc-800/70 bg-zinc-900/20"
+              aria-hidden
             />
-            <div className="absolute right-3 top-2.5 flex items-center space-x-1.5 bg-[#10B981] text-white text-xs px-2.5 py-1 rounded-lg">
-              <span>Generating</span>
-              <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
-            </div>
-          </div>
-        </div>
-
-        {/* Result Cards */}
-        <div className="space-y-3">
-          <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-            Generated Workflow Ideas
-          </label>
-          {ideaCards.map((card, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 + idx * 0.15 }}
-              className="flex items-start justify-between p-4 bg-zinc-900/40 hover:bg-zinc-900/80 border border-zinc-850 rounded-xl transition-all duration-200 group"
-            >
-              <div className="space-y-1 pr-4">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-semibold text-zinc-100 group-hover:text-white transition-colors">
-                    {card.title}
-                  </span>
-                  <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-mono">
-                    {card.badge}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-400 line-clamp-1 italic">
-                  &ldquo;{card.hook}&rdquo;
-                </p>
-              </div>
-              <div className="flex flex-col items-end justify-between h-full shrink-0">
-                <span className="text-[10px] text-zinc-500 font-medium">{card.time}</span>
-                <span className="text-[10px] text-[#10B981] font-semibold mt-2 group-hover:translate-x-0.5 transition-transform flex items-center">
-                  Review Script →
-                </span>
-              </div>
-            </motion.div>
-          ))}
+          )}
         </div>
       </div>
     </motion.div>

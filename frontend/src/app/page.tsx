@@ -18,11 +18,7 @@ import { WaitlistForm } from "@/components/WaitlistForm";
 import { Marquee } from "@/components/Marquee";
 import { Button } from "@/components/ui/button";
 import {
-  HeroDashboardMockup,
-  BentoScriptMockup,
-  BentoCalendarMockup,
-  BentoReferencesMockup,
-  BentoCommentsMockup,
+  HeroDemoSlot,
 } from "@/components/VisualMockups";
 
 export default function Home() {
@@ -78,7 +74,6 @@ export default function Home() {
           <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-zinc-400">
             <a href="#problem" className="hover:text-white transition-colors">The Problem</a>
             <a href="#how-it-works" className="hover:text-white transition-colors">How it Works</a>
-            <a href="#features" className="hover:text-white transition-colors">Features</a>
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
           </nav>
 
@@ -145,9 +140,9 @@ export default function Home() {
             </p>
           </motion.div>
 
-          {/* Hero visual: tilted mockup dashboard */}
-          <div className="pt-12 md:pt-16 max-w-4xl mx-auto">
-            <HeroDashboardMockup />
+          {/* Hero visual: startup demo slot */}
+          <div className="pt-12 md:pt-16 w-full">
+            <HeroDemoSlot />
           </div>
         </div>
       </section>
@@ -289,101 +284,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 6. FEATURES — BENTO GRID */}
-      <section id="features" className="relative py-24 md:py-32 z-10 max-w-6xl mx-auto px-4 md:px-8">
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={fadeInVariants}
-          className="text-center space-y-4 mb-16"
-        >
-          <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold">Capabilities</span>
-          <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white">
-            Everything in one place
-          </h2>
-        </motion.div>
-
-        {/* Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-          {/* Card 1: AI Script Generator (2 cols wide) */}
-          <div className="md:col-span-2 rounded-2xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 transition-all p-6 md:p-8 flex flex-col justify-between space-y-6 overflow-hidden min-h-[350px]">
-            <div className="space-y-2">
-              <span className="text-[10px] uppercase font-mono tracking-widest text-[#10B981] bg-[#10B981]/10 px-2 py-0.5 rounded-full font-bold">Main Engine</span>
-              <h3 className="text-2xl font-bold text-white">AI Script Generator</h3>
-              <p className="text-sm text-zinc-400 max-w-md">
-                Writes high-conversion scripts tailored to your voice model, optimized hooks, and custom overlays.
-              </p>
-            </div>
-            <div className="w-full">
-              <BentoScriptMockup />
-            </div>
-          </div>
-
-          {/* Card 2: Trend Comments (Medium) */}
-          <div className="rounded-2xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 transition-all p-6 md:p-8 flex flex-col justify-between space-y-6 min-h-[350px]">
-            <div className="space-y-2">
-              <span className="text-[10px] uppercase font-mono tracking-widest text-sky-400 bg-sky-400/10 px-2 py-0.5 rounded-full font-bold">Growth Hack</span>
-              <h3 className="text-2xl font-bold text-white">Trend Comments</h3>
-              <p className="text-sm text-zinc-400">
-                Clipr spots trending news in your industry and scripts comments/takes written in your specific voice.
-              </p>
-            </div>
-            <BentoCommentsMockup />
-          </div>
-
-          {/* Card 3: Content Calendar (Medium) */}
-          <div className="rounded-2xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 transition-all p-6 md:p-8 flex flex-col justify-between space-y-6 min-h-[350px]">
-            <div className="space-y-2">
-              <span className="text-[10px] uppercase font-mono tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full font-bold">Automation</span>
-              <h3 className="text-2xl font-bold text-white">Content Calendar</h3>
-              <p className="text-sm text-zinc-400">
-                Plan, organize, and drag-and-drop drafts. Automate posting days weeks in advance.
-              </p>
-            </div>
-            <BentoCalendarMockup />
-          </div>
-
-          {/* Card 4: References (Small / Row) */}
-          <div className="rounded-2xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 transition-all p-6 md:p-8 flex flex-col justify-between space-y-6 min-h-[350px]">
-            <div className="space-y-2">
-              <span className="text-[10px] uppercase font-mono tracking-widest text-[#10B981] bg-[#10B981]/10 px-2 py-0.5 rounded-full font-bold">Curation</span>
-              <h3 className="text-2xl font-bold text-white">Competitor Library</h3>
-              <p className="text-sm text-zinc-400">
-                A feed of top references matching your generated hooks so you see format trends immediately.
-              </p>
-            </div>
-            <BentoReferencesMockup />
-          </div>
-
-          {/* Card 5: Auto Posting (Small / Row) */}
-          <div className="rounded-2xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 transition-all p-6 md:p-8 flex flex-col justify-between min-h-[350px] text-center">
-            <div className="space-y-2 text-left">
-              <span className="text-[10px] uppercase font-mono tracking-widest text-[#10B981] bg-[#10B981]/10 px-2 py-0.5 rounded-full font-bold">Publishing</span>
-              <h3 className="text-2xl font-bold text-white">Auto Posting</h3>
-              <p className="text-sm text-zinc-400">
-                Direct integration with social platforms. Clipr posts directly to your profile.
-              </p>
-            </div>
-
-            <div className="py-6 flex flex-wrap gap-3 justify-center items-center">
-              {["TikTok", "Instagram", "LinkedIn", "YouTube", "Twitter/X"].map((plat, idx) => (
-                <div key={idx} className="flex items-center space-x-1.5 bg-zinc-900/60 border border-zinc-850 px-3.5 py-2 rounded-full text-xs font-semibold text-zinc-300">
-                  <Check className="w-3.5 h-3.5 text-green-500" />
-                  <span>{plat}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="text-[10px] text-zinc-500 border-t border-zinc-900 pt-3 text-left">
-              * Official developer APIs only. Secure & sandbox verified.
-            </div>
-          </div>
-
-        </div>
-      </section>
-
       {/* 7. PRICING */}
       <section id="pricing" className="relative py-24 md:py-32 bg-zinc-950/40 border-y border-zinc-900/60 z-10">
         <div className="max-w-6xl mx-auto px-4 md:px-8">
@@ -400,26 +300,78 @@ export default function Home() {
             </h2>
           </motion.div>
 
-          <div className="max-w-md mx-auto">
-            {/* Center Plan Card */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto items-stretch">
+            {/* Free Plan */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
+              className="relative rounded-3xl bg-zinc-950 border border-zinc-800 p-8 md:p-10 flex flex-col justify-between"
+            >
+              <div className="absolute -top-3.5 left-[50%] -translate-x-[50%] bg-zinc-800 text-zinc-300 text-xs font-mono font-bold uppercase tracking-wider px-4 py-1.5 rounded-full border border-zinc-700">
+                Free
+              </div>
+
+              <div className="space-y-6 pt-2">
+                <div className="text-center">
+                  <span className="text-zinc-500 text-sm uppercase tracking-wider block font-bold">Starter</span>
+                  <div className="flex items-baseline justify-center mt-2">
+                    <span className="text-5xl font-black text-white">$0</span>
+                    <span className="text-zinc-500 text-sm ml-1">/ month</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-zinc-900 pt-6 space-y-4">
+                  {[
+                    "5 scripts per month",
+                    "Script preview & export",
+                    "Basic hook suggestions",
+                  ].map((feat, idx) => (
+                    <div key={idx} className="flex items-center space-x-3 text-zinc-300 text-sm">
+                      <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center shrink-0">
+                        <Check className="w-3.5 h-3.5 text-zinc-400" />
+                      </div>
+                      <span>{feat}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-8 space-y-3">
+                <Button variant="outline" className="w-full py-4 rounded-xl" onClick={scrollToWaitlist}>
+                  Start for free
+                </Button>
+                <p className="text-[10px] text-zinc-500 text-center tracking-wide">
+                  Free forever · No credit card
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Pro Plan */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
               className="relative rounded-3xl bg-zinc-950 border-2 border-[#10B981]/50 p-8 md:p-10 shadow-[0_10px_50px_rgba(16,185,129,0.15)] flex flex-col justify-between"
             >
-              {/* Hot badge */}
               <div className="absolute -top-3.5 left-[50%] -translate-x-[50%] bg-[#10B981] text-white text-xs font-mono font-bold uppercase tracking-wider px-4 py-1.5 rounded-full shadow-[0_4px_15px_rgba(16,185,129,0.4)]">
-                Pro Access
+                Launch Offer
               </div>
 
               <div className="space-y-6 pt-2">
                 <div className="text-center">
                   <span className="text-zinc-500 text-sm uppercase tracking-wider block font-bold">Full Workflow</span>
-                  <div className="flex items-baseline justify-center mt-2">
-                    <span className="text-5xl font-black text-white">$29</span>
-                    <span className="text-zinc-500 text-sm ml-1">/ month</span>
+                  <div className="flex flex-col items-center mt-2 space-y-1">
+                    <span className="text-lg text-zinc-500 line-through font-semibold">$29</span>
+                    <div className="flex items-baseline justify-center">
+                      <span className="text-5xl font-black text-white">$20</span>
+                      <span className="text-zinc-500 text-sm ml-1">/ month</span>
+                    </div>
+                    <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/20 px-2.5 py-1 rounded-full mt-1">
+                      Save $9 · Limited time
+                    </span>
                   </div>
                 </div>
 
@@ -443,10 +395,10 @@ export default function Home() {
 
               <div className="pt-8 space-y-3">
                 <Button variant="primary" className="w-full py-4 rounded-xl" onClick={scrollToWaitlist}>
-                  Get started
+                  Start 7-day free trial
                 </Button>
                 <p className="text-[10px] text-zinc-500 text-center tracking-wide">
-                  Then $29/mo · Cancel anytime
+                  Free 7-day trial · Then $20/mo · Cancel anytime
                 </p>
               </div>
             </motion.div>
