@@ -1,20 +1,20 @@
 from fastapi import APIRouter, HTTPException
-from models.schemas import ScriptRequest, ScriptResponse
-from services.gemini import generate_script
+from models.schemas import VisualScriptRequest, VisualScriptResponse
+from services.gemini import generate_visual_script
 
 router = APIRouter(prefix="/api/scripts", tags=["scripts"])
 
 
-@router.post("/", response_model=ScriptResponse)
-async def get_script(request: ScriptRequest):
+@router.post("/visual", response_model=VisualScriptResponse)
+async def get_visual_script(request: VisualScriptRequest):
     try:
-        script = generate_script(
+        script = generate_visual_script(
             idea_title=request.idea_title,
-            hook_preview=request.hook_preview,
+            hook_phrase=request.hook_phrase,
             platform=request.platform,
             tone=request.tone,
-            niche=request.niche
+            niche=request.niche,
         )
-        return ScriptResponse(**script)
+        return VisualScriptResponse(**script)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

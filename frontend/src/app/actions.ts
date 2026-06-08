@@ -34,9 +34,15 @@ export async function submitWaitlist(formData: FormData): Promise<ActionResponse
   }
 
   try {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://clipr-ai.xyz";
+
     // 1. Send passwordless magic link (signInWithOtp) to verify email and register user
     const { error: signUpError } = await supabase.auth.signInWithOtp({
       email,
+      options: {
+        // After confirm → landing page only (not dashboard)
+        emailRedirectTo: `${siteUrl}/?confirmed=1`,
+      },
     });
 
     if (signUpError) {

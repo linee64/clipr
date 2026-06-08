@@ -69,80 +69,113 @@ def _parse_json_response(text: str):
     return json.loads(text.strip())
 
 
-def generate_ideas(topic, platform, format, niche, tone) -> list[dict]:
-    user_context = build_user_context(niche, tone, platform, topic)
+IDEA_PROMPT = """
+You are Clipr's content strategist for aesthetic b-roll short-form videos.
 
-    prompt = f"""
-{user_context}
+Target creator: {niche}, tone: {tone}, platform: {platform}
+Topic: {topic}
 
-TASK: Generate exactly 8 video ideas for this creator.
+Generate 8 video ideas in the style of @heyeaslo — dark aesthetic b-roll,
+text overlays, no talking head, cinematic feel.
 
-Requirements:
-- Each idea must be specific to their niche ({niche})
-- Format preference: {format}
-- Ideas must feel native to {platform}
-- Titles must be scroll-stopping, not generic
-- Hook previews must create immediate curiosity
+Each idea is a MOMENT or CONTRAST that resonates emotionally with founders/creators.
+Think: "What discipline actually looks like", "building solo", "2am coding sessions"
 
-Return ONLY this JSON:
+Rules:
+- Title max 6 words, lowercase preferred
+- Must feel real and personal, not corporate
+- Should make the viewer think "this is literally me"
+- No buzzwords, no generic motivational content
+
+Return ONLY valid JSON:
 [
   {{
-    "title": "specific punchy title",
-    "hook_preview": "exact first sentence that stops the scroll",
-    "format": "{format}",
+    "title": "short punchy title",
+    "hook_phrase": "first text that appears on screen",
+    "vibe": "dark and focused|late night energy|grind aesthetic|raw founder life",
     "platform": "{platform}",
     "potential": "High potential|Trending topic|Viral format"
   }}
 ]
 """
+
+
+def generate_ideas(topic, platform, format, niche, tone) -> list[dict]:
+    prompt = IDEA_PROMPT.format(
+        niche=niche,
+        tone=tone,
+        platform=platform,
+        topic=topic,
+    )
     response = model.generate_content(prompt)
     return _parse_json_response(response.text)
 
 
-def generate_script(idea_title, hook_preview, platform, tone, niche) -> dict:
-    user_context = build_user_context(niche, tone, platform, idea_title)
-
+def generate_visual_script(idea_title, hook_phrase, platform, tone, niche) -> dict:
     prompt = f"""
-{user_context}
+You are creating a visual b-roll script for a short-form video.
+Style: aesthetic, cinematic, dark, minimal text — like @heyeaslo on Instagram.
 
-TASK: Write 3 script variants for this video.
+Idea: {idea_title}
+Opening hook: {hook_phrase}
+Creator niche: {niche}
+Platform: {platform}
 
-Video title: {idea_title}
-Opening hook: {hook_preview}
+Create a storyboard of 4-6 scenes. Each scene has:
+- A short text phrase that appears on screen (max 5 words, lowercase)
+- What to film for that scene (simple, realistic, 3-5 words)
+- Duration in seconds (2-4 seconds each)
 
-VARIANT RULES:
-- aggressive: bold claims, strong opinions, slightly controversial, punchy short sentences
-- storytelling: starts with personal moment, builds emotion, ends with lesson
-- educational: clear numbered structure, actionable, "here's exactly how" energy
+The sequence should tell a story or build tension that pays off at the end.
+Last scene always has the shortest, most impactful phrase — the "punch".
 
-Each script = max 60 seconds when spoken aloud (~150 words total).
+Rules for phrases:
+- lowercase always
+- no punctuation except "." at end of last phrase
+- conversational, real, not motivational poster
+- each phrase stands alone but flows into the next
 
-For EACH variant:
-- hook (0-3 sec): one sentence, maximum tension or curiosity
-- problem (3-15 sec): the pain point in 2-3 short sentences, make them feel it
-- solution (15-45 sec): the insight or answer, 3-4 sentences, specific not vague
-- cta (45-60 sec): one clear next action, not "follow me" — something valuable
+Rules for filming suggestions:
+- realistic things a founder can film with iPhone
+- specific: "hands on keyboard" not "working"
+- variety: desk shots, screen glow, coffee cup, empty chair, phone screen, etc.
 
-Return ONLY this JSON:
+Return ONLY valid JSON:
 {{
-  "aggressive": {{
-    "hook": "...",
-    "problem": "...",
-    "solution": "...",
-    "cta": "..."
-  }},
-  "storytelling": {{
-    "hook": "...",
-    "problem": "...",
-    "solution": "...",
-    "cta": "..."
-  }},
-  "educational": {{
-    "hook": "...",
-    "problem": "...",
-    "solution": "...",
-    "cta": "..."
-  }}
+  "title": "{idea_title}",
+  "platform": "{platform}",
+  "scenes": [
+    {{
+      "order": 1,
+      "phrase": "text shown on screen",
+      "film_suggestion": "what to film",
+      "duration_seconds": 3,
+      "role": "hook"
+    }},
+    {{
+      "order": 2,
+      "phrase": "...",
+      "film_suggestion": "...",
+      "duration_seconds": 3,
+      "role": "body"
+    }},
+    {{
+      "order": 3,
+      "phrase": "...",
+      "film_suggestion": "...",
+      "duration_seconds": 3,
+      "role": "body"
+    }},
+    {{
+      "order": 4,
+      "phrase": "...",
+      "film_suggestion": "...",
+      "duration_seconds": 2,
+      "role": "punch"
+    }}
+  ],
+  "music_vibe": "dark ambient|lo-fi beats|atmospheric|minimal electronic",
+  "color_grade": "dark_cinematic|moody|high_contrast"
 }}
 """
     response = model.generate_content(prompt)

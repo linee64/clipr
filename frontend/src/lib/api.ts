@@ -1,10 +1,10 @@
 import type {
+  BrollRenderRequest,
   IdeaRequest,
   IdeasResponse,
-  RenderRequest,
   RenderStatus,
-  ScriptRequest,
-  ScriptResponse,
+  VisualScriptRequest,
+  VisualScriptResponse,
 } from "./types";
 
 export const API_BASE = "http://localhost:8000";
@@ -54,16 +54,15 @@ export async function uploadAudio(
   return parseJson(res);
 }
 
-export async function startRender(
-  payload: RenderRequest
-): Promise<{ job_id: string }> {
-  const res = await fetch(`${API_BASE}/api/video/render`, {
+export async function startBrollRender(
+  payload: BrollRenderRequest
+): Promise<{ job_id: string; status: string }> {
+  const res = await fetch(`${API_BASE}/api/video/broll-render`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  const data = await parseJson<RenderStatus>(res);
-  return { job_id: data.job_id };
+  return parseJson(res);
 }
 
 export async function getRenderStatus(jobId: string): Promise<RenderStatus> {
@@ -82,10 +81,10 @@ export async function generateIdeas(
   return parseJson(res);
 }
 
-export async function generateScript(
-  payload: ScriptRequest
-): Promise<ScriptResponse> {
-  const res = await fetch(`${API_BASE}/api/scripts`, {
+export async function generateVisualScript(
+  payload: VisualScriptRequest
+): Promise<VisualScriptResponse> {
+  const res = await fetch(`${API_BASE}/api/scripts/visual`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

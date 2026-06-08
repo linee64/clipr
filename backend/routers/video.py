@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 
 from models.schemas import (
     BeatSyncRequest,
+    BrollRenderRequest,
     RenderRequest,
     RenderStatus,
     SilenceDetectRequest,
@@ -26,7 +27,7 @@ from services.editor import (
     transcribe_audio,
 )
 from services.storage import download_file, local_file_path, upload_file, use_local_storage
-from workers.render import render_jobs, run_render_job
+from workers.render import render_jobs, run_broll_render, run_render_job
 
 router = APIRouter(prefix="/api/video", tags=["video"])
 
@@ -318,6 +319,31 @@ async def apply_subtitles(request: SubtitleStyleRequest, background_tasks: Backg
 
     background_tasks.add_task(run)
     return {"job_id": request.job_id, "status": "processing"}
+
+
+@router.post("/broll-render")
+async def broll_render(request: BrollRenderRequest, background_tasks: BackgroundTasks):
+    """Full aesthetic b-roll render: clips + phrases + music → graded video with text."""
+    render_jobs[request.job_id] = {
+        "status": "pending",
+        "progress": 0,
+        "output_url": "",
+        "description": "",
+        "error": "",
+    }
+
+    background_tasks.add_task(
+        run_broll_render,
+        job_id=request.job_id,
+        scenes=[s.model_dump() for s in request.scenes],
+        clip_ids=request.clip_ids,
+        audio_file_id=request.audio_file_id,
+        audio_volume=request.audio_volume,
+        color_grade=request.color_grade,
+        platform=request.platform,
+    )
+
+    return {"job_id": request.job_id, "status": "pending"}
 
 
 @router.post("/render", response_model=RenderStatus)

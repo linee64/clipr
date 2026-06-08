@@ -8,8 +8,8 @@ export interface IdeaRequest {
 
 export interface Idea {
   title: string;
-  hook_preview: string;
-  format: string;
+  hook_phrase: string;
+  vibe: string;
   platform: string;
   potential: string;
 }
@@ -18,45 +18,38 @@ export interface IdeasResponse {
   ideas: Idea[];
 }
 
-export interface ScriptRequest {
+export interface Scene {
+  order: number;
+  phrase: string;
+  film_suggestion: string;
+  duration_seconds: number;
+  role: "hook" | "body" | "punch";
+}
+
+export interface VisualScriptRequest {
   idea_title: string;
-  hook_preview: string;
+  hook_phrase: string;
   platform: string;
   tone: string;
   niche: string;
 }
 
-export interface ScriptVariant {
-  hook: string;
-  problem: string;
-  solution: string;
-  cta: string;
+export interface VisualScriptResponse {
+  title: string;
+  platform: string;
+  scenes: Scene[];
+  music_vibe: string;
+  color_grade: string;
 }
 
-export interface ScriptResponse {
-  aggressive: ScriptVariant;
-  storytelling: ScriptVariant;
-  educational: ScriptVariant;
-}
-
-export type ScriptVariantKey = keyof ScriptResponse;
-
-export interface VideoClip {
-  clip_id: string;
-  order: number;
-  trim_start: number;
-  trim_end: number;
-  mute?: boolean;
-}
-
-export interface RenderRequest {
+export interface BrollRenderRequest {
   job_id: string;
-  clips: VideoClip[];
+  scenes: Scene[];
+  clip_ids: string[];
   audio_file_id: string;
   audio_volume: number;
-  add_subtitles: boolean;
+  color_grade: string;
   platform: string;
-  script_summary: string;
 }
 
 export interface RenderStatus {
@@ -68,15 +61,8 @@ export interface RenderStatus {
   error: string;
 }
 
-export interface UploadedClip {
-  id: string;
+export interface UploadedClipSlot {
   file: File;
   clip_id?: string;
-  order: number;
-  trim_start: number;
-  trim_end: number;
-  duration?: number;
-  uploading?: boolean;
-  /** When true, clip audio is removed at render — only background music remains */
-  mute?: boolean;
+  previewUrl?: string;
 }

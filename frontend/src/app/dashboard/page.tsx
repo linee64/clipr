@@ -30,6 +30,7 @@ interface IdeaCard {
   id: string;
   title: string;
   hook: string;
+  vibe?: string;
   tags: string[];
   estimate: string;
   script?: ScriptVariant;
@@ -49,7 +50,8 @@ const generateDynamicIdeas = (product: string, platform: string): IdeaCard[] => 
       id: "dynamic-1",
       title: `3 ошибки при продвижении: ${keywords}`,
       hook: `Большинство создателей думают, что продвигать ${keywords} просто. Вот почему они ошибаются.`,
-      tags: ["Советы", platform],
+      vibe: "dark and focused",
+      tags: ["dark and focused", platform],
       estimate: "Высокий потенциал",
       script: {
         hook: `Большинство думают, что рассказывать про ${keywords} легко. Вот почему они ошибаются.`,
@@ -70,7 +72,8 @@ const generateDynamicIdeas = (product: string, platform: string): IdeaCard[] => 
       id: "dynamic-2",
       title: `Почему я почти провалил запуск ${keywords}`,
       hook: `Моя самая большая ошибка при работе с ${keywords}. Не повторяйте её.`,
-      tags: ["История", platform],
+      vibe: "late night energy",
+      tags: ["late night energy", platform],
       estimate: "Трендовый формат",
       script: {
         hook: `Моя самая большая ошибка при работе с ${keywords}. Не повторяйте её.`,
@@ -91,7 +94,8 @@ const generateDynamicIdeas = (product: string, platform: string): IdeaCard[] => 
       id: "dynamic-3",
       title: `Чек-лист на 5 минут: Идеальный старт в ${keywords}`,
       hook: `Если бы я начинал работать с ${keywords} с нуля, я бы сделал это.`,
-      tags: ["Списки", platform],
+      vibe: "grind aesthetic",
+      tags: ["grind aesthetic", platform],
       estimate: "Вирусный хук",
       script: {
         hook: `Если бы я начинал работать с ${keywords} с нуля, я бы сделал это.`,
@@ -112,7 +116,8 @@ const generateDynamicIdeas = (product: string, platform: string): IdeaCard[] => 
       id: "dynamic-4",
       title: `Честное мнение: Почему ${keywords} изменит всё в 2026 году`,
       hook: `Непопулярное мнение: будущее контента и ${keywords} за этим решением.`,
-      tags: ["Мнение", platform],
+      vibe: "raw founder life",
+      tags: ["raw founder life", platform],
       estimate: "Горячая тема",
       script: {
         hook: `Непопулярное мнение: будущее контента и ${keywords} за этим решением.`,
@@ -136,30 +141,34 @@ const generateDynamicIdeas = (product: string, platform: string): IdeaCard[] => 
 const IDEA_CARDS: IdeaCard[] = [
   {
     id: "idea-1",
-    title: "3 mistakes that kill employee onboarding",
-    hook: "Most founders think onboarding takes a week. Here's why they're wrong...",
-    tags: ["Tutorial", "LinkedIn"],
+    title: "what discipline looks like",
+    hook: "nobody sees this part",
+    vibe: "dark and focused",
+    tags: ["dark and focused", "TikTok"],
     estimate: "High potential"
   },
   {
     id: "idea-2",
-    title: "Why I almost lost my first hire",
-    hook: "Day 3. My best engineer sends me a message at 11pm...",
-    tags: ["Story", "TikTok"],
+    title: "building solo at 2am",
+    hook: "just you and the screen",
+    vibe: "late night energy",
+    tags: ["late night energy", "TikTok"],
     estimate: "High potential"
   },
   {
     id: "idea-3",
-    title: "The 5-minute onboarding checklist",
-    hook: "Save this. Your future self will thank you...",
-    tags: ["List", "Reels"],
+    title: "the grind nobody posts",
+    hook: "same desk. different day.",
+    vibe: "grind aesthetic",
+    tags: ["grind aesthetic", "Reels"],
     estimate: "Trending topic"
   },
   {
     id: "idea-4",
-    title: "Hot take: Slack is destroying your culture",
-    hook: "Unpopular opinion incoming. Ready?",
-    tags: ["Hot Take", "TikTok"],
+    title: "raw founder life",
+    hook: "no team. no safety net.",
+    vibe: "raw founder life",
+    tags: ["raw founder life", "TikTok"],
     estimate: "Viral format"
   }
 ];
@@ -808,7 +817,9 @@ export default function Dashboard() {
                             >
                               {/* Card Header Row */}
                               <div className="flex justify-between items-start">
-                                <div>{/* Removed tags */}</div>
+                                <span className="text-[11px] border border-[#333333] rounded-full px-2.5 py-0.5 text-[#888888]">
+                                  {idea.vibe || idea.tags[0] || "dark and focused"}
+                                </span>
                                 <span className="text-[12px] uppercase font-semibold tracking-wider text-[rgba(0,229,160,0.6)]">
                                   {idea.estimate || "High potential"}
                                 </span>
@@ -819,9 +830,9 @@ export default function Dashboard() {
                                 {idea.title}
                               </h3>
 
-                              {/* Card Description */}
-                              <p className="text-[15px] text-[var(--text-secondary)] mt-2 leading-[1.6] line-clamp-2">
-                                {idea.hook}
+                              {/* Hook phrase */}
+                              <p className="text-[15px] text-[var(--text-secondary)] mt-2 leading-[1.6] line-clamp-2 italic">
+                                &ldquo;{idea.hook}&rdquo;
                               </p>
                             </div>
                           ))
@@ -837,7 +848,8 @@ export default function Dashboard() {
                               id: selectedIdea.id,
                               title: selectedIdea.title,
                               hook: selectedIdea.hook,
-                              tags: selectedIdea.tags,
+                              vibe: selectedIdea.vibe || selectedIdea.tags[0] || "dark and focused",
+                              platform: selectedIdea.tags[1] || selectedPlatform,
                               estimate: selectedIdea.estimate,
                             }}
                             defaultPlatform={selectedPlatform}
@@ -1285,7 +1297,7 @@ export default function Dashboard() {
                   className="text-[#00E5A0] font-semibold text-[15px] flex items-center gap-1 hover:opacity-85 transition-opacity"
                   style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                 >
-                  Write script <span className="ml-1">→</span>
+                  Create storyboard <span className="ml-1">→</span>
                 </button>
               </div>
             </motion.div>

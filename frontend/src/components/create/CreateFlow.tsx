@@ -4,29 +4,24 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { ChevronLeft } from "lucide-react";
 import {
-  generateScript,
+  generateVisualScript,
   getRenderStatus,
-  startRender,
+  startBrollRender,
   uploadAudio,
   uploadClip,
 } from "@/lib/api";
-import type {
-  RenderStatus,
-  ScriptResponse,
-  ScriptVariantKey,
-  UploadedClip,
-} from "@/lib/types";
+import type { RenderStatus, Scene, UploadedClipSlot, VisualScriptResponse } from "@/lib/types";
 import { StepIndicator, type FlowStep } from "./StepIndicator";
-import { ScriptStep } from "./ScriptStep";
-import { ReferencesStep } from "./ReferencesStep";
-import { UploadRenderStep } from "./UploadRenderStep";
-import { buildScriptSummary, type ScriptSection } from "./scriptUtils";
+import { StoryboardStep } from "./StoryboardStep";
+import { UploadBySlotStep } from "./UploadBySlotStep";
+import { RenderStep } from "./RenderStep";
 
 export interface CreateFlowIdea {
   id: string;
   title: string;
   hook: string;
-  tags: string[];
+  vibe: string;
+  platform: string;
   estimate?: string;
 }
 
@@ -42,21 +37,43 @@ interface CreateFlowProps {
   }) => void;
 }
 
-function probeVideoDuration(file: File): Promise<number> {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const video = document.createElement("video");
-    video.preload = "metadata";
-    video.onloadedmetadata = () => {
-      URL.revokeObjectURL(url);
-      resolve(video.duration);
-    };
-    video.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(0);
-    };
-    video.src = url;
-  });
+function fallbackVisualScript(idea: CreateFlowIdea): VisualScriptResponse {
+  return {
+    title: idea.title,
+    platform: idea.platform,
+    music_vibe: "dark ambient",
+    color_grade: "dark_cinematic",
+    scenes: [
+      {
+        order: 1,
+        phrase: idea.hook.toLowerCase(),
+        film_suggestion: "hands on keyboard",
+        duration_seconds: 3,
+        role: "hook",
+      },
+      {
+        order: 2,
+        phrase: "nobody sees this part",
+        film_suggestion: "screen glow in dark",
+        duration_seconds: 3,
+        role: "body",
+      },
+      {
+        order: 3,
+        phrase: "just you and the work",
+        film_suggestion: "coffee cup on desk",
+        duration_seconds: 3,
+        role: "body",
+      },
+      {
+        order: 4,
+        phrase: "worth it.",
+        film_suggestion: "city lights through window",
+        duration_seconds: 2,
+        role: "punch",
+      },
+    ],
+  };
 }
 
 export function CreateFlow({
@@ -65,25 +82,17 @@ export function CreateFlow({
   onBack,
   onSchedulePost,
 }: CreateFlowProps) {
-  const [currentStep, setCurrentStep] = useState<FlowStep>(1);
-  const [referencesSkipped, setReferencesSkipped] = useState(false);
-  const [selectedVariant, setSelectedVariant] = useState<ScriptVariantKey>("aggressive");
-  const [scriptData, setScriptData] = useState<ScriptResponse | null>(null);
-  const [editedScripts, setEditedScripts] = useState<ScriptResponse | null>(null);
+  const [currentStep, setCurrentStep] = useState<FlowStep>(2);
+  const [visualScript, setVisualScript] = useState<VisualScriptResponse | null>(null);
   const [isLoadingScript, setIsLoadingScript] = useState(true);
   const [scriptError, setScriptError] = useState<string | null>(null);
-  const [scriptSaved, setScriptSaved] = useState(false);
 
-  const [uploadedClips, setUploadedClips] = useState<UploadedClip[]>([]);
+  const [uploadedClips, setUploadedClips] = useState<Record<number, UploadedClipSlot>>({});
   const [audioFile, setAudioFile] = useState<{
     file: File;
     audio_file_id?: string;
   } | null>(null);
-  const [audioVolume, setAudioVolume] = useState(30);
-  const [addSubtitles, setAddSubtitles] = useState(true);
-  const [outputPlatform, setOutputPlatform] = useState<
-    "TikTok" | "LinkedIn" | "Reels"
-  >(defaultPlatform);
+  const [selectedMusicVibe, setSelectedMusicVibe] = useState("dark ambient");
 
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [renderStatus, setRenderStatus] = useState<RenderStatus | null>(null);
@@ -91,20 +100,16 @@ export function CreateFlow({
   const [isStartingRender, setIsStartingRender] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const platform = idea.tags[1] || defaultPlatform;
-  const format = idea.tags[0] || "Video";
+  const outputPlatform = idea.platform || defaultPlatform;
 
-  const fetchScript = useCallback(async () => {
+  const fetchStoryboard = useCallback(async () => {
     setIsLoadingScript(true);
     setScriptError(null);
 
-    const saved = localStorage.getItem(`clipr_script_${idea.title}`);
+    const saved = localStorage.getItem(`clipr_storyboard_${idea.title}`);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved) as ScriptResponse;
-        setScriptData(parsed);
-        setEditedScripts(parsed);
-        setScriptSaved(true);
+        setVisualScript(JSON.parse(saved) as VisualScriptResponse);
         setIsLoadingScript(false);
         return;
       } catch {
@@ -126,49 +131,30 @@ export function CreateFlow({
         }
       }
 
-      const data = await generateScript({
+      const data = await generateVisualScript({
         idea_title: idea.title,
-        hook_preview: idea.hook,
-        platform,
+        hook_phrase: idea.hook,
+        platform: outputPlatform,
         tone,
         niche,
       });
-      setScriptData(data);
-      setEditedScripts(JSON.parse(JSON.stringify(data)));
+      setVisualScript(data);
+      localStorage.setItem(`clipr_storyboard_${idea.title}`, JSON.stringify(data));
+      setSelectedMusicVibe(data.music_vibe.split("|")[0]?.trim() || "dark ambient");
     } catch (err) {
       setScriptError(
-        err instanceof Error ? err.message : "Failed to generate script"
+        err instanceof Error ? err.message : "Failed to generate storyboard"
       );
-      const fallback: ScriptResponse = {
-        aggressive: {
-          hook: idea.hook,
-          problem: "Most creators struggle with the same mistake.",
-          solution: "Here is a simple framework to fix it fast.",
-          cta: "Follow for more tips.",
-        },
-        storytelling: {
-          hook: idea.hook,
-          problem: "I learned this the hard way.",
-          solution: "These three steps changed everything.",
-          cta: "Save this for later.",
-        },
-        educational: {
-          hook: idea.hook,
-          problem: "Here is what most people get wrong.",
-          solution: "Do this instead for better results.",
-          cta: "Comment if you want part two.",
-        },
-      };
-      setScriptData(fallback);
-      setEditedScripts(JSON.parse(JSON.stringify(fallback)));
+      const fallback = fallbackVisualScript(idea);
+      setVisualScript(fallback);
     } finally {
       setIsLoadingScript(false);
     }
-  }, [idea.title, idea.hook, platform]);
+  }, [idea, outputPlatform]);
 
   useEffect(() => {
-    fetchScript();
-  }, [fetchScript]);
+    fetchStoryboard();
+  }, [fetchStoryboard]);
 
   useEffect(() => {
     if (!renderJobId) return;
@@ -177,6 +163,9 @@ export function CreateFlow({
       try {
         const status = await getRenderStatus(renderJobId);
         setRenderStatus(status);
+        if (status.status === "done") {
+          setCurrentStep(5);
+        }
         if (status.status === "done" || status.status === "error") {
           if (pollingRef.current) {
             clearInterval(pollingRef.current);
@@ -203,100 +192,67 @@ export function CreateFlow({
     };
   }, [renderJobId]);
 
-  const handleScriptEdit = (
-    variant: ScriptVariantKey,
-    section: ScriptSection,
-    value: string
-  ) => {
-    setEditedScripts((prev) => {
+  const handlePhraseEdit = (order: number, phrase: string) => {
+    setVisualScript((prev) => {
       if (!prev) return prev;
-      return {
+      const updated = {
         ...prev,
-        [variant]: { ...prev[variant], [section]: value },
+        scenes: prev.scenes.map((s) => (s.order === order ? { ...s, phrase } : s)),
       };
+      localStorage.setItem(`clipr_storyboard_${idea.title}`, JSON.stringify(updated));
+      return updated;
     });
   };
 
-  const goToReferences = () => {
-    setReferencesSkipped(false);
-    setCurrentStep(2);
-  };
-
-  const skipReferences = () => {
-    setReferencesSkipped(true);
-    setCurrentStep(3);
-  };
-
-  const goToUpload = () => {
-    setCurrentStep(3);
-  };
-
-  const handleAddClips = async (files: FileList) => {
-    const startOrder = uploadedClips.length;
-    const newClips: UploadedClip[] = await Promise.all(
-      Array.from(files).map(async (file, i) => {
-        const duration = await probeVideoDuration(file);
-        return {
-          id: uuidv4(),
-          file,
-          order: startOrder + i,
-          trim_start: 0,
-          trim_end: 0,
-          mute: false,
-          duration: duration > 0 ? duration : undefined,
-        };
-      })
-    );
-    setUploadedClips((prev) => [...prev, ...newClips]);
+  const handleClipUpload = (sceneOrder: number, file: File) => {
+    setUploadedClips((prev) => ({
+      ...prev,
+      [sceneOrder]: { file, previewUrl: URL.createObjectURL(file) },
+    }));
   };
 
   const handleStartRender = async () => {
-    if (uploadedClips.length === 0) return;
+    if (!visualScript) return;
+    const scenes = [...visualScript.scenes].sort((a, b) => a.order - b.order);
+    if (Object.keys(uploadedClips).length !== scenes.length || !audioFile) return;
+
     setIsStartingRender(true);
     setRenderError(null);
     setRenderStatus(null);
+    setCurrentStep(4);
 
     try {
-      const clipsWithIds = await Promise.all(
-        uploadedClips.map(async (clip) => {
-          if (clip.clip_id) return clip;
-          const { clip_id } = await uploadClip(clip.file);
-          return { ...clip, clip_id };
-        })
-      );
-      setUploadedClips(clipsWithIds);
-
-      let audioId = "";
-      if (audioFile) {
-        if (audioFile.audio_file_id) {
-          audioId = audioFile.audio_file_id;
+      const clipIds: string[] = [];
+      for (const scene of scenes) {
+        const slot = uploadedClips[scene.order];
+        if (slot.clip_id) {
+          clipIds.push(slot.clip_id);
         } else {
-          const { audio_file_id } = await uploadAudio(audioFile.file);
-          audioId = audio_file_id;
-          setAudioFile({ ...audioFile, audio_file_id });
+          const { clip_id } = await uploadClip(slot.file);
+          clipIds.push(clip_id);
+          setUploadedClips((prev) => ({
+            ...prev,
+            [scene.order]: { ...prev[scene.order], clip_id },
+          }));
         }
       }
 
-      const variant = editedScripts?.[selectedVariant];
-      const scriptSummary = variant
-        ? buildScriptSummary(variant)
-        : idea.hook;
+      let audioId = audioFile.audio_file_id;
+      if (!audioId) {
+        const { audio_file_id } = await uploadAudio(audioFile.file);
+        audioId = audio_file_id;
+        setAudioFile({ ...audioFile, audio_file_id });
+      }
 
       const jobId = uuidv4();
-      await startRender({
+      await startBrollRender({
         job_id: jobId,
-        clips: clipsWithIds.map((c, i) => ({
-          clip_id: c.clip_id!,
-          order: i,
-          trim_start: c.trim_start,
-          trim_end: c.trim_end,
-          mute: !!c.mute,
-        })),
+        scenes: scenes as Scene[],
+        clip_ids: clipIds,
         audio_file_id: audioId,
-        audio_volume: audioVolume / 100,
-        add_subtitles: addSubtitles,
+        audio_volume: 0.6,
+        color_grade: visualScript.color_grade.split("|")[0]?.trim() || "dark_cinematic",
         platform: outputPlatform,
-        script_summary: scriptSummary,
       });
 
       setRenderJobId(jobId);
@@ -310,6 +266,7 @@ export function CreateFlow({
       });
     } catch (err) {
       setRenderError(err instanceof Error ? err.message : "Render failed to start");
+      setCurrentStep(3);
     } finally {
       setIsStartingRender(false);
     }
@@ -319,10 +276,8 @@ export function CreateFlow({
     setRenderJobId(null);
     setRenderStatus(null);
     setRenderError(null);
+    setCurrentStep(3);
   };
-
-  const hookPreview =
-    editedScripts?.[selectedVariant]?.hook ?? idea.hook;
 
   const isRendering =
     !!renderJobId &&
@@ -343,75 +298,48 @@ export function CreateFlow({
         </button>
       </div>
 
-      <StepIndicator
-        currentStep={currentStep}
-        referencesSkipped={referencesSkipped}
-        onSkipReferences={skipReferences}
-      />
+      <StepIndicator currentStep={currentStep} />
 
-      {currentStep === 1 && (
-        <ScriptStep
-          ideaTitle={idea.title}
-          ideaHook={idea.hook}
-          platform={platform}
-          format={format}
-          scriptData={scriptData}
+      {currentStep === 2 && (
+        <StoryboardStep
+          visualScript={visualScript}
           isLoading={isLoadingScript}
           error={scriptError}
-          selectedVariant={selectedVariant}
-          onVariantChange={setSelectedVariant}
-          editedScripts={editedScripts}
-          onScriptEdit={handleScriptEdit}
-          onBrowseReferences={goToReferences}
-          onSkipToUpload={skipReferences}
-          onScriptSaved={() => setScriptSaved(true)}
+          onPhraseEdit={handlePhraseEdit}
+          onRegenerate={() => {
+            localStorage.removeItem(`clipr_storyboard_${idea.title}`);
+            fetchStoryboard();
+          }}
+          onContinue={() => setCurrentStep(3)}
         />
       )}
 
-      {currentStep === 2 && (
-        <ReferencesStep onSkip={skipReferences} onContinue={goToUpload} />
+      {currentStep === 3 && visualScript && (
+        <UploadBySlotStep
+          visualScript={visualScript}
+          uploadedClips={uploadedClips}
+          audioFile={audioFile}
+          selectedMusicVibe={selectedMusicVibe}
+          onClipUpload={handleClipUpload}
+          onClipReplace={handleClipUpload}
+          onAudioSelect={(file) => setAudioFile({ file })}
+          onMusicVibeSelect={setSelectedMusicVibe}
+          onStartRender={handleStartRender}
+          isStartingRender={isStartingRender}
+        />
       )}
 
-      {currentStep === 3 && (
-        <UploadRenderStep
-          ideaTitle={idea.title}
-          platform={platform}
-          format={format}
-          hookPreview={hookPreview}
-          scriptSaved={scriptSaved}
-          uploadedClips={uploadedClips}
-          onClipsChange={setUploadedClips}
-          onClipUpdate={(id, patch) =>
-            setUploadedClips((prev) =>
-              prev.map((c) => (c.id === id ? { ...c, ...patch } : c))
-            )
-          }
-          onClipRemove={(id) =>
-            setUploadedClips((prev) =>
-              prev.filter((c) => c.id !== id).map((c, i) => ({ ...c, order: i }))
-            )
-          }
-          onAddClips={handleAddClips}
-          audioFile={audioFile}
-          audioVolume={audioVolume}
-          onAudioVolumeChange={setAudioVolume}
-          onAudioSelect={(file) => setAudioFile({ file })}
-          onAudioRemove={() => setAudioFile(null)}
-          addSubtitles={addSubtitles}
-          onAddSubtitlesChange={setAddSubtitles}
-          outputPlatform={outputPlatform}
-          onOutputPlatformChange={setOutputPlatform}
-          isRendering={isRendering}
-          isStartingRender={isStartingRender}
+      {(currentStep === 4 || currentStep === 5) && (
+        <RenderStep
           renderStatus={renderStatus}
           renderError={renderError}
-          onStartRender={handleStartRender}
-          onRetryRender={handleRetryRender}
+          isRendering={isRendering}
+          onRetry={handleRetryRender}
           onSchedulePost={() => {
             if (!renderStatus?.output_url) return;
             onSchedulePost({
               title: idea.title,
-              description: renderStatus.description || idea.title,
+              description: idea.title,
               outputUrl: renderStatus.output_url,
               platform: outputPlatform,
             });

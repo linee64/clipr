@@ -4,77 +4,56 @@ export async function POST(req: Request) {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "Gemini API key is not configured in .env.local" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Gemini API key is not configured in .env.local" },
+        { status: 500 }
+      );
     }
 
     const body = await req.json();
     const { product, audience, tone, platform, prompt } = body;
 
-    const systemInstruction = `You are an expert short-form video content strategist. 
-Your goal is to generate exactly 4 unique, creative content ideas for short-form videos (TikTok, Instagram Reels, YouTube Shorts, or LinkedIn posts).
+    const systemInstruction = `You are Clipr's content strategist for aesthetic b-roll short-form videos.
 
-Each idea must be:
-- Unique in angle and approach
-- Relevant to the product/topic and target audience
-- Designed for the specified platform
-- Written in the same language as the user prompt (if Russian/Cyrillic, write in Russian; otherwise English)
+Generate exactly 4 video ideas in the style of @heyeaslo — dark aesthetic b-roll,
+text overlays, no talking head, cinematic feel.
 
-For each idea, you must provide:
-- id: a unique identifier string (e.g. "ai-idea-1", "ai-idea-2", etc.)
-- title: a catchy, compelling title for the content piece (max 60 chars)
-- hook: a short engaging hook sentence that captures attention (max 120 chars)
-- tags: an array of exactly 2 strings — [content format type, platform name]. Format types can be: "Советы", "История", "Списки", "Мнение", "Туториал", "Разбор", "Тренд", "Кейс" (for Russian) or "Tips", "Story", "List", "Hot Take", "Tutorial", "Breakdown", "Trend", "Case Study" (for English)
-- estimate: a short engagement potential label. Use one of: "Высокий потенциал", "Трендовый формат", "Вирусный хук", "Горячая тема" (for Russian) or "High potential", "Trending topic", "Viral format", "Hot topic" (for English)
+Each idea is a MOMENT or CONTRAST that resonates emotionally with founders/creators.
+Think: "What discipline actually looks like", "building solo", "2am coding sessions"
 
-Return the output ONLY as a JSON array of exactly 4 objects matching this schema:
-[
-  {
-    "id": "ai-idea-1",
-    "title": "string",
-    "hook": "string",
-    "tags": ["string", "string"],
-    "estimate": "string"
-  },
-  ...
-]
+Rules:
+- Title max 6 words, lowercase preferred
+- Must feel real and personal, not corporate
+- Should make the viewer think "this is literally me"
+- No buzzwords, no generic motivational content
+- Write in the same language as the user prompt (Russian if Cyrillic, otherwise English)
 
-Make the ideas diverse — mix different content formats (tips, stories, lists, hot takes, tutorials, breakdowns).
-Each idea should feel distinct and approach the topic from a different angle.
-Do not add markdown formatting or wrappers (like \`\`\`json) around the JSON output. Return only the raw JSON array.`;
+For each idea provide:
+- id: unique string (e.g. "ai-idea-1")
+- title: short punchy title
+- hook: first text that appears on screen (the hook phrase)
+- vibe: one of "dark and focused", "late night energy", "grind aesthetic", "raw founder life"
+- tags: [vibe, platform]
+- estimate: "High potential" | "Trending topic" | "Viral format" (or Russian equivalents)
 
-    const userPrompt = `You must generate exactly 4 content ideas based directly on the User Prompt:
-"${prompt}"
+Return ONLY a JSON array of exactly 4 objects. No markdown.`;
 
-Please prioritize what the user wrote above. Use the following profile info only as supplementary context:
-Product/Topic Profile: ${product}
-Target Audience Profile: ${audience}
-Tone Profile: ${tone}
-Platform Profile: ${platform}`;
+    const userPrompt = `Topic/prompt: "${prompt}"
+
+Creator context:
+- Product/topic: ${product}
+- Audience: ${audience}
+- Tone: ${tone}
+- Platform: ${platform}`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: userPrompt,
-                },
-              ],
-            },
-          ],
-          systemInstruction: {
-            parts: [
-              {
-                text: systemInstruction,
-              },
-            ],
-          },
+          contents: [{ parts: [{ text: userPrompt }] }],
+          systemInstruction: { parts: [{ text: systemInstruction }] },
           generationConfig: {
             responseMimeType: "application/json",
             temperature: 0.9,
@@ -86,7 +65,10 @@ Platform Profile: ${platform}`;
     if (!response.ok) {
       const errText = await response.text();
       console.error("Gemini API error response:", errText);
-      return NextResponse.json({ error: "Gemini API call failed", details: errText }, { status: response.status });
+      return NextResponse.json(
+        { error: "Gemini API call failed", details: errText },
+        { status: response.status }
+      );
     }
 
     const data = await response.json();
@@ -96,7 +78,6 @@ Platform Profile: ${platform}`;
     }
 
     let cleanedText = textContent.trim();
-    // Strip markdown code block fences if they exist
     if (cleanedText.startsWith("```")) {
       cleanedText = cleanedText.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
     }

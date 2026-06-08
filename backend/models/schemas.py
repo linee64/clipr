@@ -11,8 +11,8 @@ class IdeaRequest(BaseModel):
 
 class Idea(BaseModel):
     title: str
-    hook_preview: str
-    format: str
+    hook_phrase: str
+    vibe: str
     platform: str
     potential: str  # "High potential" | "Trending topic" | "Viral format"
 
@@ -21,25 +21,38 @@ class IdeasResponse(BaseModel):
     ideas: list[Idea]
 
 
-class ScriptRequest(BaseModel):
+class Scene(BaseModel):
+    order: int
+    phrase: str
+    film_suggestion: str
+    duration_seconds: int
+    role: str  # "hook" | "body" | "punch"
+
+
+class VisualScriptResponse(BaseModel):
+    title: str
+    platform: str
+    scenes: list[Scene]
+    music_vibe: str
+    color_grade: str
+
+
+class VisualScriptRequest(BaseModel):
     idea_title: str
-    hook_preview: str
+    hook_phrase: str
     platform: str
     tone: str
     niche: str
 
 
-class ScriptVariant(BaseModel):
-    hook: str        # 0-3 sec
-    problem: str     # 3-15 sec
-    solution: str    # 15-45 sec
-    cta: str         # 45-60 sec
-
-
-class ScriptResponse(BaseModel):
-    aggressive: ScriptVariant
-    storytelling: ScriptVariant
-    educational: ScriptVariant
+class BrollRenderRequest(BaseModel):
+    job_id: str
+    scenes: list[Scene]
+    clip_ids: list[str]
+    audio_file_id: str
+    audio_volume: float = 0.6
+    color_grade: str = "dark_cinematic"
+    platform: str = "TikTok"
 
 
 class VideoClip(BaseModel):

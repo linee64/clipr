@@ -727,6 +727,113 @@ def remove_silence(
     return output_path
 
 
+def _drawtext_font_path() -> str:
+    candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path.replace("\\", "/").replace(":", "\\:")
+    return ""
+
+
+def apply_color_grade(video_path: str, output_path: str, grade: str) -> str:
+    """Apply cinematic color grade using FFmpeg filters."""
+    filters = {
+        "dark_cinematic": "curves=vintage,eq=brightness=-0.05:contrast=1.2:saturation=0.8",
+        "moody": "curves=shadows_preset=lighter,eq=brightness=-0.08:contrast=1.15:saturation=0.7",
+        "high_contrast": "eq=brightness=-0.03:contrast=1.4:saturation=0.9,vignette=PI/4",
+    }
+    f = filters.get(grade, filters["dark_cinematic"])
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        video_path,
+        "-vf",
+        f,
+        "-c:a",
+        "copy",
+        output_path,
+    ]
+    _run(cmd)
+    return output_path
+
+
+def burn_text_overlay(
+    video_path: str,
+    output_path: str,
+    scenes: list[dict],
+) -> str:
+    """Burn text phrases onto video at scene timestamps — heyeaslo aesthetic."""
+    drawtext_filters = []
+    font_path = _drawtext_font_path()
+    font_part = f"fontfile={font_path}:" if font_path else ""
+
+    for scene in scenes:
+        phrase = (
+            scene["phrase"]
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace(":", "\\:")
+        )
+        start = scene.get("start_time", 0)
+        end = start + scene.get("duration_seconds", 3)
+
+        drawtext = (
+            f"drawtext="
+            f"text='{phrase}':"
+            f"{font_part}"
+            f"fontsize=36:"
+            f"fontcolor=white:"
+            f"alpha='if(between(t\\,{start}\\,{end}),1,0)':"
+            f"x=(w-text_w)/2:"
+            f"y=(h-text_h)/2:"
+            f"shadowcolor=black:"
+            f"shadowx=1:"
+            f"shadowy=1"
+        )
+        drawtext_filters.append(drawtext)
+
+    filter_chain = ",".join(drawtext_filters)
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        video_path,
+        "-vf",
+        filter_chain,
+        "-c:a",
+        "copy",
+        output_path,
+    ]
+    _run(cmd)
+    return output_path
+
+
+def trim_clip_to_duration(input_path: str, output_path: str, duration: float) -> str:
+    """Trim clip to exact target duration from start."""
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        input_path,
+        "-t",
+        str(duration),
+        "-c:v",
+        "libx264",
+        "-c:a",
+        "aac",
+        "-preset",
+        "fast",
+        output_path,
+    ]
+    _run(cmd)
+    return output_path
+
+
 def resize_for_platform(video_path: str, output_path: str, platform: str):
     """Resize video to platform-specific dimensions."""
     resolutions = {
