@@ -2,8 +2,9 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Sparkles, 
+import Image from "next/image";
+import {
+  Sparkles,
   ChevronRight, 
   ChevronLeft, 
   Check, 
@@ -219,9 +220,13 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         <div className="space-y-8">
           {/* Logo */}
           <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 rounded-[6px] bg-[#10B981] flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-[#070B0D]" />
-            </div>
+            <Image
+              src="/Clipr-logo.png"
+              alt="Clipr"
+              width={24}
+              height={24}
+              className="w-6 h-6 rounded-[6px]"
+            />
             <span className="text-lg font-bold tracking-tight text-white">
               Clipr<span className="text-[#10B981] font-mono">.</span>
             </span>

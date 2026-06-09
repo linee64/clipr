@@ -19,15 +19,21 @@ export const metadata: Metadata = {
   description:
     "Clipr turns your idea into a ready-to-post Reel or TikTok — script, references, calendar, and auto-posting. All in one visual flow.",
   metadataBase: new URL("https://clipr.ai"),
+  icons: {
+    icon: "/Clipr-logo.png",
+    apple: "/Clipr-logo.png",
+  },
   openGraph: {
     title: "Clipr — Your content team. Minus the team.",
     description: "Turns an idea into a full video content workflow: script, references, calendar, and auto-posting.",
     type: "website",
+    images: ["/Clipr-logo.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Clipr — AI Video Content Workflow",
     description: "Your content team. Minus the team. Script, references, calendar, and auto-posting in one flow.",
+    images: ["/Clipr-logo.png"],
   },
 };
 

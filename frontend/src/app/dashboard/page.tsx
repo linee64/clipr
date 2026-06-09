@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import "../globals.css";
 import {
-  Scissors,
   Home,
   Film,
   Calendar as CalendarIcon,
@@ -618,9 +618,13 @@ export default function Dashboard() {
             onClick={() => window.location.href = '/'}
             className="flex items-center space-x-2 cursor-pointer hover:opacity-85 transition-opacity"
           >
-            <div className="w-6 h-6 rounded-[6px] bg-[#10B981] flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.3)]">
-              <Scissors className="w-3.5 h-3.5 text-[#070B0D] rotate-90" />
-            </div>
+            <Image
+              src="/Clipr-logo.png"
+              alt="Clipr"
+              width={24}
+              height={24}
+              className="w-6 h-6 rounded-[6px] shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+            />
             <span className="text-lg font-bold tracking-tight text-[#EFEFEF] flex items-center leading-none">
               Clipr<span className="text-[#10B981] font-mono">.</span>
             </span>

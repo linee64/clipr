@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import {
-  Scissors,
   Clock,
   Link2Off,
   CalendarOff,
@@ -63,9 +63,14 @@ export default function Home() {
       >
         <div className="max-w-6xl mx-auto px-6 md:px-8 flex items-center justify-between">
           <div className="flex items-center space-x-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-            <div className="w-8 h-8 rounded-lg bg-[#10B981] flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.5)]">
-              <Scissors className="w-4 h-4 text-white rotate-90" />
-            </div>
+            <Image
+              src="/Clipr-logo.png"
+              alt="Clipr"
+              width={32}
+              height={32}
+              priority
+              className="w-8 h-8 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.5)]"
+            />
             <span className="text-xl font-bold tracking-tight text-white flex items-center">
               Clipr<span className="text-[#10B981] font-mono">.</span>
             </span>
@@ -431,9 +436,13 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="space-y-2 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start space-x-2">
-              <div className="w-6 h-6 rounded-md bg-[#10B981] flex items-center justify-center">
-                <Scissors className="w-3.5 h-3.5 text-white rotate-90" />
-              </div>
+              <Image
+                src="/Clipr-logo.png"
+                alt="Clipr"
+                width={24}
+                height={24}
+                className="w-6 h-6 rounded-md"
+              />
               <span className="font-bold text-lg text-white">Clipr</span>
             </div>
             <p className="text-xs text-zinc-500">From idea to posted.</p>
