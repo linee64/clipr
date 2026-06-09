@@ -18,7 +18,6 @@ re-processes.
 """
 
 import argparse
-import hashlib
 import json
 import os
 import re
@@ -37,7 +36,6 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 from services.editor import _run, get_duration  # noqa: E402  (needs sys.path first)
-from services.templates import CAPTION_FONTS  # noqa: E402
 
 REF_DIR = BACKEND_DIR / "reference_videos"
 TEMPLATES_PATH = BACKEND_DIR / "templates" / "templates.json"
@@ -249,12 +247,9 @@ def signals_to_template(name: str, signals: dict) -> dict:
         music_vibe = "dark ambient"
 
     uavg, vavg = signals.get("u"), signals.get("v")
-    # tone-matched grade built from the reference's real colors + a distinct caption
-    # font/size per reference so different picks visibly differ
+    # tone-matched grade built from the reference's real colors (caption font/size/
+    # position now come from a per-template preset in services.templates)
     grade_filter = _build_grade_filter(brightness, saturation, uavg, vavg)
-    fi = int(hashlib.md5(name.encode("utf-8")).hexdigest(), 16)
-    caption_font = CAPTION_FONTS[fi % len(CAPTION_FONTS)]
-    caption_size = 80 if target_cut_len < 0.7 else 68 if target_cut_len <= 1.1 else 60
 
     return {
         "id": f"ref-{_slug(name)}",
@@ -270,8 +265,6 @@ def signals_to_template(name: str, signals: dict) -> dict:
         },
         "phrase": phrase,
         "caption_style": caption_style,
-        "caption_font": caption_font,
-        "caption_size": caption_size,
         "color_grade": grade,
         "grade_filter": grade_filter,
         "music_vibe": music_vibe,

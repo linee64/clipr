@@ -14,19 +14,23 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_PATH = BACKEND_DIR / "templates" / "templates.json"
 
-# Distinctive caption fonts, each template gets a different one so the picked style
-# visibly changes the subtitle look. Chosen from the msttcorefonts family so they
-# exist on Windows (dev) AND on a Linux render host that has msttcorefonts installed.
-# NOTE for prod: on a bare Linux image WITHOUT msttcorefonts, libass substitutes a
-# single default face for all of these — captions still render, but the per-template
-# font variety is lost. Install msttcorefonts (or bundle the .ttf files + fontsdir)
-# on the render host to keep the variety.
-CAPTION_FONTS = [
-    "Impact",
-    "Arial Black",
-    "Verdana",
-    "Trebuchet MS",
-    "Georgia",
+# Caption presets: each template gets a DISTINCT subtitle treatment, not just a
+# font. We vary base font, an emphasis font for the active/highlighted word (so a
+# single video shows two fonts, like the references do), text case, italic, and
+# on-screen position (alignment 2=bottom, 5=middle, 8=top). All faces are from the
+# msttcorefonts family (serif / mono / casual / heavy-sans for real contrast) so
+# they exist on Windows AND on a Linux render host with msttcorefonts installed.
+# NOTE (prod): a bare Linux image WITHOUT msttcorefonts substitutes one default face
+# for all of these — captions still render but the variety is lost; install
+# msttcorefonts (or bundle .ttf + fontsdir) on the render host.
+CAPTION_PRESETS = [
+    {"font": "Impact", "emphasis_font": "Georgia", "uppercase": True, "italic": False, "alignment": 2, "outline": 4, "marginv": 300},
+    {"font": "Verdana", "emphasis_font": "Impact", "uppercase": False, "italic": False, "alignment": 5, "outline": 3, "marginv": 0},
+    {"font": "Georgia", "emphasis_font": "Impact", "uppercase": False, "italic": True, "alignment": 8, "outline": 3, "marginv": 260},
+    {"font": "Arial Black", "emphasis_font": "Comic Sans MS", "uppercase": False, "italic": False, "alignment": 2, "outline": 3, "marginv": 340},
+    {"font": "Trebuchet MS", "emphasis_font": "Georgia", "uppercase": True, "italic": False, "alignment": 5, "outline": 3, "marginv": 0},
+    {"font": "Times New Roman", "emphasis_font": "Impact", "uppercase": False, "italic": True, "alignment": 2, "outline": 3, "marginv": 300},
+    {"font": "Courier New", "emphasis_font": "Arial Black", "uppercase": True, "italic": False, "alignment": 5, "outline": 3, "marginv": 0},
 ]
 
 # Fallback used when no template is selected or an id is unknown. Matches the
@@ -117,14 +121,17 @@ def caption_style_of(template: dict) -> str:
     return (template or {}).get("caption_style") or DEFAULT_TEMPLATE["caption_style"]
 
 
-def caption_font_of(template: dict) -> str:
-    """Template's caption font, or a stable per-template choice so every template
-    (incl. seeds, which don't set one) gets a visibly different font."""
+def caption_preset_of(template: dict) -> dict:
+    """A full per-template caption treatment: base font, emphasis font (for the
+    active/highlighted word -> two fonts in one video), text case, italic, position
+    and size. Stable per template id so each template looks distinct."""
     t = template or {}
-    if t.get("caption_font"):
-        return t["caption_font"]
     key = (t.get("id") or t.get("label") or "default").encode("utf-8")
-    return CAPTION_FONTS[int(hashlib.md5(key).hexdigest(), 16) % len(CAPTION_FONTS)]
+    preset = dict(CAPTION_PRESETS[int(hashlib.md5(key).hexdigest(), 16) % len(CAPTION_PRESETS)])
+    if t.get("caption_font"):  # explicit template override of the base font
+        preset["font"] = t["caption_font"]
+    preset["fontsize"] = caption_size_of(t)
+    return preset
 
 
 def caption_size_of(template: dict):

@@ -25,8 +25,7 @@ from services.editor import (
 from services.storage import download_file, upload_file
 from services.templates import (
     DEFAULT_TEMPLATE,
-    caption_font_of,
-    caption_size_of,
+    caption_preset_of,
     caption_style_of,
     get_template,
     pacing_of,
@@ -197,8 +196,7 @@ async def run_broll_render(
         # Tone-matched custom grade (built from the reference's measured colors) wins
         # over the preset name; caption font/size vary per template too.
         grade_filter = template.get("grade_filter") or grade
-        caption_font = caption_font_of(template)
-        caption_size = caption_size_of(template)
+        caption_preset = caption_preset_of(template)
 
         # Lay scenes on the video timeline with each scene change snapped to an
         # audible beat (same clock the captions use).
@@ -277,8 +275,7 @@ async def run_broll_render(
                 ass_path,
                 "karaoke",
                 resolution,
-                caption_font,
-                caption_size,
+                caption_preset,
             )
         else:
             # one static phrase per scene in the template's caption style
@@ -297,8 +294,7 @@ async def run_broll_render(
                 ass_path,
                 caption_style,
                 resolution,
-                caption_font,
-                caption_size,
+                caption_preset,
             )
 
         final_path = os.path.join(job_dir, "final.mp4")

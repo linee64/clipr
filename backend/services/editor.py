@@ -446,7 +446,6 @@ ASS_STYLES = {
 
 # Mint accent (#10B981) written as ASS &HBBGGRR for the currently-spoken word.
 KARAOKE_ACTIVE_COLOR = "&H81B910&"
-KARAOKE_BASE_COLOR = "&HFFFFFF&"
 
 
 def _ass_time(seconds: float) -> str:
@@ -460,14 +459,34 @@ def _ass_time(seconds: float) -> str:
     return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
 
 
-def _ass_style_line(style: str, font: str = "", fontsize=None) -> str:
-    chosen = ASS_STYLES.get(style, ASS_STYLES["tiktok_bold"])
-    fontname = font or chosen["Fontname"]
-    size = str(int(fontsize)) if fontsize else chosen["Fontsize"]
+def _overrides_from_preset(preset: dict | None) -> dict | None:
+    """Map a caption preset (from services.templates) to ASS style overrides."""
+    if not preset:
+        return None
+    o: dict = {"Italic": "1" if preset.get("italic") else "0"}
+    if preset.get("font"):
+        o["Fontname"] = preset["font"]
+    if preset.get("fontsize"):
+        o["Fontsize"] = str(int(preset["fontsize"]))
+    if preset.get("alignment") is not None:
+        o["Alignment"] = str(preset["alignment"])
+    if preset.get("outline") is not None:
+        o["Outline"] = str(preset["outline"])
+    if preset.get("marginv") is not None:
+        o["MarginV"] = str(preset["marginv"])
+    return o
+
+
+def _ass_style_line(style: str, overrides: dict | None = None) -> str:
+    chosen = dict(ASS_STYLES.get(style, ASS_STYLES["tiktok_bold"]))
+    if overrides:
+        for k, v in overrides.items():
+            if v is not None and v != "":
+                chosen[k] = str(v)
     return (
         f"Style: {chosen['Name']},"
-        f"{fontname},"
-        f"{size},"
+        f"{chosen['Fontname']},"
+        f"{chosen['Fontsize']},"
         f"{chosen['PrimaryColour']},"
         f"{chosen['SecondaryColour']},"
         f"{chosen['OutlineColour']},"
@@ -488,7 +507,7 @@ def _ass_style_line(style: str, font: str = "", fontsize=None) -> str:
 
 
 def _write_ass_header(
-    f, style: str, play_w: int = 1080, play_h: int = 1920, font: str = "", fontsize=None
+    f, style: str, play_w: int = 1080, play_h: int = 1920, overrides: dict | None = None
 ) -> None:
     f.write("[Script Info]\n")
     f.write("ScriptType: v4.00+\n")
@@ -503,7 +522,7 @@ def _write_ass_header(
         "ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
         "Alignment, MarginL, MarginR, MarginV, Encoding\n"
     )
-    f.write(_ass_style_line(style, font, fontsize) + "\n\n")
+    f.write(_ass_style_line(style, overrides) + "\n\n")
     f.write("[Events]\n")
     f.write(
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
@@ -515,8 +534,7 @@ def generate_ass_simple(
     output_path: str,
     style: str = "tiktok_bold",
     resolution: str = "1080:1920",
-    font: str = "",
-    fontsize=None,
+    preset: dict | None = None,
 ):
     """
     Generate .ass subtitle file with advanced styling.
@@ -526,18 +544,20 @@ def generate_ass_simple(
     - plaque: white text on dark semi-transparent background plaque
     - center_caps: uppercase, center screen, thick outline, aggressive
 
-    font / fontsize override the style's defaults so each template can have its own
-    caption look.
+    preset (from services.templates.caption_preset_of) overrides font/size/position/
+    case so each template gets its own caption look.
     """
     try:
         play_w, play_h = (int(float(x)) for x in resolution.split(":"))
     except (ValueError, TypeError):
         play_w, play_h = 1080, 1920
+    overrides = _overrides_from_preset(preset)
+    upper = bool(preset and preset.get("uppercase")) or style == "center_caps"
     with open(output_path, "w", encoding="utf-8") as f:
-        _write_ass_header(f, style, play_w, play_h, font, fontsize)
+        _write_ass_header(f, style, play_w, play_h, overrides)
         for seg in segments:
             text = seg["text"].strip()
-            if style == "center_caps":
+            if upper:
                 text = text.upper()
             f.write(
                 f"Dialogue: 0,{_ass_time(seg['start'])},{_ass_time(seg['end'])},"
@@ -599,20 +619,24 @@ def _karaoke_word_times(start: float, end: float, n_words: int, beats: list[floa
     return clean
 
 
-def _render_cumulative(lines_struct, visible: int, active: int) -> str:
-    """Render the first `visible` words across wrapped lines, the `active` one mint."""
+def _render_cumulative(
+    lines_struct, visible: int, active: int, upper: bool = False, emph: str = ""
+) -> str:
+    """Render the first `visible` words across wrapped lines. The `active` (newest)
+    word is mint and, when `emph` is set, drawn in a second font — so a single video
+    shows two fonts. `\\r` resets back to the base style for anything after it."""
     out_lines: list[str] = []
     gi = 0
     for line in lines_struct:
         toks: list[str] = []
         for w in line:
             if gi < visible:
+                ww = w.upper() if upper else w
                 if gi == active:
-                    toks.append(
-                        f"{{\\c{KARAOKE_ACTIVE_COLOR}}}{w}{{\\c{KARAOKE_BASE_COLOR}}}"
-                    )
+                    fn = f"\\fn{emph}" if emph else ""
+                    toks.append(f"{{{fn}\\c{KARAOKE_ACTIVE_COLOR}}}{ww}{{\\r}}")
                 else:
-                    toks.append(w)
+                    toks.append(ww)
             gi += 1
         if toks:
             out_lines.append(" ".join(toks))
@@ -627,22 +651,26 @@ def generate_ass_karaoke(
     output_path: str,
     style: str = "karaoke",
     resolution: str = "1080:1920",
-    font: str = "",
-    fontsize=None,
+    preset: dict | None = None,
 ):
     """Write an .ass where each scene's phrase reveals word-by-word, in time with
     the beat, the newest word highlighted in mint — a montage caption look.
 
-    font / fontsize override the style defaults so each template's captions differ.
+    preset (from services.templates.caption_preset_of) sets the per-template font,
+    size, position, case, and an emphasis font for the active word.
     """
     try:
         play_w, play_h = (int(float(x)) for x in resolution.split(":"))
     except (ValueError, TypeError):
         play_w, play_h = 1080, 1920
 
+    overrides = _overrides_from_preset(preset)
+    upper = bool(preset and preset.get("uppercase"))
+    emph = (preset or {}).get("emphasis_font") or ""
+
     beats = sorted(b for b in (beat_times or []) if b is not None and b >= 0)
     with open(output_path, "w", encoding="utf-8") as f:
-        _write_ass_header(f, style, play_w, play_h, font, fontsize)
+        _write_ass_header(f, style, play_w, play_h, overrides)
         for scene in scenes_timed:
             phrase = str(scene.get("phrase", "")).strip()
             if not phrase:
@@ -659,7 +687,9 @@ def generate_ass_karaoke(
                 seg_end = times[j + 1] if j + 1 < n else end
                 if seg_end <= seg_start:
                     seg_end = seg_start + 0.05
-                text = _render_cumulative(lines_struct, visible=j + 1, active=j)
+                text = _render_cumulative(
+                    lines_struct, visible=j + 1, active=j, upper=upper, emph=emph
+                )
                 f.write(
                     f"Dialogue: 0,{_ass_time(seg_start)},{_ass_time(seg_end)},"
                     f"Default,,0,0,0,,{text}\n"

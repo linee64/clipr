@@ -288,8 +288,6 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
-    "caption_font": "Verdana",
-    "caption_size": 68,
     "color_grade": "moody",
     "grade_filter": "eq=contrast=1.05:brightness=0.004:saturation=0.91,colorbalance=rm=0.027:bm=-0.027",
     "music_vibe": "lo-fi beats",
@@ -349,8 +347,6 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
-    "caption_font": "Impact",
-    "caption_size": 80,
     "color_grade": "dark_cinematic",
     "grade_filter": "eq=contrast=1.05:brightness=0.027:saturation=0.92",
     "music_vibe": "energetic / trap",
@@ -408,8 +404,6 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
-    "caption_font": "Verdana",
-    "caption_size": 60,
     "color_grade": "moody",
     "grade_filter": "eq=contrast=1.05:brightness=-0.034:saturation=0.88,vignette=PI/6",
     "music_vibe": "lo-fi beats",
@@ -469,8 +463,6 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
-    "caption_font": "Trebuchet MS",
-    "caption_size": 80,
     "color_grade": "moody",
     "grade_filter": "eq=contrast=1.05:brightness=0.021:saturation=0.96,colorbalance=rm=0.055:bm=-0.055",
     "music_vibe": "lo-fi beats",
@@ -528,8 +520,6 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
-    "caption_font": "Arial Black",
-    "caption_size": 60,
     "color_grade": "dark_cinematic",
     "grade_filter": "eq=contrast=1.05:brightness=0.029:saturation=0.93,colorbalance=rm=0.029:bm=-0.029",
     "music_vibe": "lo-fi beats",
@@ -587,8 +577,6 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
-    "caption_font": "Impact",
-    "caption_size": 60,
     "color_grade": "moody",
     "grade_filter": "eq=contrast=1.05:brightness=-0.034:saturation=0.89,colorbalance=rm=0.031:bm=-0.031,vignette=PI/6",
     "music_vibe": "dark ambient",
@@ -646,8 +634,6 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
-    "caption_font": "Impact",
-    "caption_size": 60,
     "color_grade": "moody",
     "grade_filter": "eq=contrast=1.05:brightness=-0.038:saturation=0.89,colorbalance=rm=0.026:bm=-0.026,vignette=PI/6",
     "music_vibe": "energetic / trap",
@@ -705,8 +691,6 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
-    "caption_font": "Impact",
-    "caption_size": 68,
     "color_grade": "moody",
     "grade_filter": "eq=contrast=1.05:brightness=0.016:saturation=0.92,colorbalance=rm=0.051:bm=-0.051",
     "music_vibe": "lo-fi beats",
@@ -764,8 +748,6 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
-    "caption_font": "Trebuchet MS",
-    "caption_size": 60,
     "color_grade": "moody",
     "grade_filter": "eq=contrast=1.05:brightness=0.012:saturation=0.89",
     "music_vibe": "energetic / trap",
@@ -823,8 +805,6 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
-    "caption_font": "Impact",
-    "caption_size": 60,
     "color_grade": "moody",
     "grade_filter": "eq=contrast=1.05:brightness=-0.025:saturation=0.87,colorbalance=rm=0.011:bm=-0.011",
     "music_vibe": "lo-fi beats",
