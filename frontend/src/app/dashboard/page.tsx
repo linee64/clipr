@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { CreateFlow } from "@/components/create/CreateFlow";
-import { listReferences, resolveBackendUrl } from "@/lib/api";
+import { API_BASE, listReferences, resolveBackendUrl } from "@/lib/api";
 import type { TemplateOption } from "@/lib/types";
 
 // ----------------------------------------------------
@@ -273,13 +273,19 @@ export default function Dashboard() {
   const [sidebarActive, setSidebarActive] = useState<"Home" | "My Content" | "Calendar" | "References" | "Settings">("Home");
   const [references, setReferences] = useState<TemplateOption[]>([]);
   const [refsLoading, setRefsLoading] = useState(false);
+  const [refsError, setRefsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeTab !== "References" || references.length > 0 || refsLoading) return;
     setRefsLoading(true);
+    setRefsError(null);
     listReferences()
       .then((d) => setReferences(d.templates))
-      .catch(() => setReferences([]))
+      .catch(() =>
+        setRefsError(
+          `Couldn't reach the backend at ${API_BASE}. Start it with: uvicorn main:app --port 8000`
+        )
+      )
       .finally(() => setRefsLoading(false));
   }, [activeTab, references.length, refsLoading]);
 
@@ -1259,6 +1265,12 @@ export default function Dashboard() {
                   {refsLoading ? (
                     <div className="flex items-center justify-center py-16 text-[#6B7C85] text-sm">
                       Loading references…
+                    </div>
+                  ) : refsError ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <Film className="w-8 h-8 text-[#3A1E1E]" />
+                      <p className="text-sm text-[#EF8B8B] mt-3">Couldn&apos;t load references.</p>
+                      <p className="text-xs text-[#6B7C85] mt-1 max-w-md">{refsError}</p>
                     </div>
                   ) : references.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
