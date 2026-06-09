@@ -24,7 +24,7 @@ export function StepIndicator({ currentStep }: StepIndicatorProps) {
   };
 
   return (
-    <div className="sticky top-0 z-30 bg-[#1C1C1C] border-b border-[#333333] px-8 py-4 shrink-0">
+    <div className="sticky top-0 z-30 bg-[#0B1012] border-b border-[#152226] px-8 py-4 shrink-0">
       <div className="flex items-start justify-center max-w-4xl mx-auto">
         {STEPS.map((step, idx) => {
           const state = getStepState(step.num);
@@ -39,8 +39,8 @@ export function StepIndicator({ currentStep }: StepIndicatorProps) {
                       state === "active"
                         ? "bg-[#10B981] text-white"
                         : state === "completed"
-                          ? "bg-[#333333] text-[#10B981]"
-                          : "border border-[#333333] text-[#888888] bg-transparent"
+                          ? "bg-[#152226] text-[#10B981]"
+                          : "border border-[#152226] text-[#6B7C85] bg-transparent"
                     }`}
                   >
                     {state === "completed" ? (
@@ -50,11 +50,11 @@ export function StepIndicator({ currentStep }: StepIndicatorProps) {
                     )}
                   </div>
                   {!isLast && (
-                    <div className="flex-1 h-px bg-[#333333] mx-2 mt-4 min-w-[16px]" />
+                    <div className="flex-1 h-px bg-[#152226] mx-2 mt-4 min-w-[16px]" />
                   )}
                 </div>
                 <div className="mt-2 text-center w-full px-1">
-                  <span className="text-xs text-[#888888] block leading-tight">
+                  <span className="text-xs text-[#6B7C85] block leading-tight">
                     {step.label}
                   </span>
                 </div>

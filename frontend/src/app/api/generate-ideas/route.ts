@@ -13,38 +13,40 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { product, audience, tone, platform, prompt } = body;
 
-    const systemInstruction = `You are Clipr's content strategist for aesthetic b-roll short-form videos.
+    const systemInstruction = `You are Clipr's short-form video idea strategist for TikTok, Reels, and YouTube Shorts.
 
-Generate exactly 4 video ideas in the style of @heyeaslo — dark aesthetic b-roll,
-text overlays, no talking head, cinematic feel.
+Your job: generate exactly 6 distinct, scroll-stopping video ideas that directly PROMOTE and SHOWCASE the specific product/topic the user gives you. Every idea must be about THAT product — what it does, the problem it solves, its standout features, the transformation it gives the user, or real scenarios where someone would use it.
 
-Each idea is a MOMENT or CONTRAST that resonates emotionally with founders/creators.
-Think: "What discipline actually looks like", "building solo", "2am coding sessions"
-
-Rules:
-- Title max 6 words, lowercase preferred
-- Must feel real and personal, not corporate
-- Should make the viewer think "this is literally me"
-- No buzzwords, no generic motivational content
-- Write in the same language as the user prompt (Russian if Cyrillic, otherwise English)
+Hard rules:
+- Stay strictly on-topic. The ideas must clearly be about the user's actual product. For example, if the product is an AI outfit try-on / styling app, every idea must be about trying on clothes, picking looks, or styling with AI — NOT about founder life, coding, hustle, loneliness, or generic motivation.
+- Never default to moody "building solo / 2am grind / founder life" content unless the product is literally about that.
+- Make each of the 6 ideas a clearly DIFFERENT angle, e.g.: problem → solution, before/after transformation, a quick "watch this" demo, a relatable everyday scenario, myth-busting, a bold claim/result, a "how it works" reveal, or a common mistake.
+- Each idea needs a strong first-line hook that stops the scroll and is specific to the product.
+- Be concrete and specific. No vague buzzwords, no corporate fluff.
+- Write everything in the same language as the user's request (Russian if it contains Cyrillic, otherwise English).
 
 For each idea provide:
 - id: unique string (e.g. "ai-idea-1")
-- title: short punchy title
-- hook: first text that appears on screen (the hook phrase)
-- vibe: one of "dark and focused", "late night energy", "grind aesthetic", "raw founder life"
+- title: short punchy title, max 6 words
+- hook: the first text shown on screen — specific to the product
+- vibe: a 2-3 word style/mood that fits THIS idea and product (e.g. "clean and aspirational", "fun try-on", "bold reveal")
 - tags: [vibe, platform]
-- estimate: "High potential" | "Trending topic" | "Viral format" (or Russian equivalents)
+- estimate: one of "High potential", "Trending topic", "Viral format" (use the Russian equivalent if writing in Russian)
 
-Return ONLY a JSON array of exactly 4 objects. No markdown.`;
+Return ONLY a JSON array of exactly 6 objects. No markdown, no commentary.`;
 
-    const userPrompt = `Topic/prompt: "${prompt}"
+    const userPrompt = `The user wants short-form videos about this:
+"${prompt}"
 
-Creator context:
+This request is the PRIMARY subject — every one of the 6 ideas must be directly about it.
+
+Extra context (use only if relevant, never let it override the request above):
 - Product/topic: ${product}
 - Audience: ${audience}
 - Tone: ${tone}
-- Platform: ${platform}`;
+- Platform: ${platform}
+
+Generate the 6 ideas now.`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,

@@ -37,3 +37,14 @@ backend/tools/ffmpeg/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+
+# reference videos used to build montage templates (kept locally, not committed)
+backend/reference_videos/
+
+# claude code machine-local settings
+.claude/settings.local.json

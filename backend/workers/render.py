@@ -6,23 +6,29 @@ from pathlib import Path
 from services.editor import (
     add_background_audio,
     add_background_audio_only,
-    apply_color_grade,
-    beat_interval_durations,
-    build_scene_timings,
+    build_scene_timings_from_cuts,
     burn_subtitles_ass,
-    burn_text_overlay,
     check_ffmpeg,
     concatenate_clips,
     detect_beats,
+    extract_montage_cut,
+    generate_ass_karaoke,
     generate_ass_simple,
     generate_description,
     get_duration,
+    montage_scene_windows,
+    plan_scene_cuts,
     resize_for_platform,
     transcribe_audio,
     trim_clip,
-    trim_clip_to_duration,
 )
 from services.storage import download_file, upload_file
+from services.templates import (
+    DEFAULT_TEMPLATE,
+    caption_style_of,
+    get_template,
+    pacing_of,
+)
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 TEMP_DIR = str(BACKEND_DIR / "temp")
@@ -145,7 +151,8 @@ async def run_broll_render(
     audio_volume: float,
     color_grade: str,
     platform: str,
-    beats_per_clip: int = 2,
+    beats_per_clip: int = 2,  # kept for API stability; b-roll pacing now comes from the template
+    template_id: str = "",
 ):
     render_jobs[job_id] = {
         "status": "processing",
@@ -156,6 +163,14 @@ async def run_broll_render(
     }
 
     try:
+        if not scenes or not clip_ids:
+            raise ValueError("No scenes or clips provided for render.")
+        if len(scenes) != len(clip_ids):
+            raise ValueError(
+                f"scene/clip count mismatch: {len(scenes)} scenes vs "
+                f"{len(clip_ids)} clips"
+            )
+
         job_dir = os.path.join(TEMP_DIR, job_id)
         os.makedirs(job_dir, exist_ok=True)
 
@@ -165,37 +180,71 @@ async def run_broll_render(
         await download_file(f"audio/{audio_file_id}.mp3", audio_path)
         beat_times = await asyncio.to_thread(detect_beats, audio_path)
 
-        fallbacks = [s["duration_seconds"] for s in scenes]
-        clip_durations = await asyncio.to_thread(
-            beat_interval_durations, len(scenes), beat_times, fallbacks, beats_per_clip
+        resolution = "1920:1080" if platform == "LinkedIn" else "1080:1920"
+
+        # Style template drives pacing + caption style (falls back to defaults).
+        template = get_template(template_id) or DEFAULT_TEMPLATE
+        pacing = pacing_of(template)
+        target_cut_len = pacing["target_cut_len"]
+        max_cuts = pacing["max_cuts_per_scene"]
+        zooms = pacing["zooms"]
+        caption_style = caption_style_of(template)
+        # Template owns the whole look: grade comes from the template too (not just
+        # the request payload), so the color can't drift from pacing/captions.
+        grade = template.get("color_grade") or color_grade or "dark_cinematic"
+
+        # Lay scenes on the video timeline with each scene change snapped to an
+        # audible beat (same clock the captions use).
+        windows = await asyncio.to_thread(
+            montage_scene_windows,
+            [s["duration_seconds"] for s in scenes],
+            beat_times,
+            target_cut_len,
         )
 
         render_jobs[job_id]["progress"] = 15
-        processed_clips = []
+
+        # Slice every uploaded clip into several beat-synced montage cuts. A handful
+        # of source clips becomes a fast sequence of jump cuts instead of a slideshow.
+        cut_paths: list[str] = []
+        scene_cut_counts: list[int] = []
+        cut_idx = 0
+        total = max(1, len(scenes))
 
         for i, (scene, clip_id) in enumerate(zip(scenes, clip_ids)):
             raw_path = os.path.join(job_dir, f"raw_{i}.mp4")
-            trimmed_path = os.path.join(job_dir, f"trimmed_{i}.mp4")
-            graded_path = os.path.join(job_dir, f"graded_{i}.mp4")
-
             await download_file(f"clips/{clip_id}.mp4", raw_path)
-            await asyncio.to_thread(
-                trim_clip_to_duration,
-                raw_path,
-                trimmed_path,
-                clip_durations[i],
-                True,
+            src_dur = await asyncio.to_thread(get_duration, raw_path)
+
+            window_start, window_len = windows[i]
+            cuts = plan_scene_cuts(
+                window_start, window_len, src_dur, beat_times,
+                target_cut_len, max_cuts, zooms,
             )
-            await asyncio.to_thread(
-                apply_color_grade, trimmed_path, graded_path, color_grade
-            )
-            processed_clips.append(graded_path)
+
+            for cut in cuts:
+                out_path = os.path.join(job_dir, f"cut_{cut_idx:03d}.mp4")
+                await asyncio.to_thread(
+                    extract_montage_cut,
+                    raw_path,
+                    out_path,
+                    cut["src_offset"],
+                    cut["length"],
+                    cut["zoom"],
+                    grade,
+                    resolution,
+                )
+                cut_paths.append(out_path)
+                cut_idx += 1
+
+            scene_cut_counts.append(len(cuts))
+            render_jobs[job_id]["progress"] = 15 + int(30 * (i + 1) / total)
 
         render_jobs[job_id]["progress"] = 45
 
         concat_path = os.path.join(job_dir, "concat.mp4")
-        await asyncio.to_thread(concatenate_clips, processed_clips, concat_path)
-        render_jobs[job_id]["progress"] = 60
+        await asyncio.to_thread(concatenate_clips, cut_paths, concat_path)
+        render_jobs[job_id]["progress"] = 62
 
         with_audio_path = os.path.join(job_dir, "with_audio.mp4")
         await asyncio.to_thread(
@@ -207,18 +256,40 @@ async def run_broll_render(
         )
         render_jobs[job_id]["progress"] = 75
 
+        # Measure real scene windows from the rendered cuts so word timing is exact.
         scenes_with_timing = await asyncio.to_thread(
-            build_scene_timings, processed_clips, scenes
+            build_scene_timings_from_cuts, cut_paths, scene_cut_counts, scenes
         )
 
-        with_text_path = os.path.join(job_dir, "with_text.mp4")
-        await asyncio.to_thread(
-            burn_text_overlay, with_audio_path, with_text_path, scenes_with_timing
-        )
-        render_jobs[job_id]["progress"] = 88
+        ass_path = os.path.join(job_dir, "broll_captions.ass")
+        if caption_style == "karaoke":
+            await asyncio.to_thread(
+                generate_ass_karaoke,
+                scenes_with_timing,
+                beat_times,
+                ass_path,
+                "karaoke",
+                resolution,
+            )
+        else:
+            # one static phrase per scene in the template's caption style
+            segments = [
+                {
+                    "start": s["start_time"],
+                    "end": s["start_time"] + max(0.1, s["duration_seconds"] - 0.04),
+                    "text": s.get("phrase", ""),
+                }
+                for s in scenes_with_timing
+                if s.get("phrase")
+            ]
+            await asyncio.to_thread(
+                generate_ass_simple, segments, ass_path, caption_style, resolution
+            )
 
         final_path = os.path.join(job_dir, "final.mp4")
-        await asyncio.to_thread(resize_for_platform, with_text_path, final_path, platform)
+        await asyncio.to_thread(
+            burn_subtitles_ass, with_audio_path, ass_path, final_path
+        )
         render_jobs[job_id]["progress"] = 95
 
         remote = f"rendered/{job_id}_broll_final.mp4"

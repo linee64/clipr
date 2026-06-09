@@ -111,34 +111,66 @@ def generate_ideas(topic, platform, format, niche, tone) -> list[dict]:
     return _parse_json_response(response.text)
 
 
-def generate_visual_script(idea_title, hook_phrase, platform, tone, niche) -> dict:
+def generate_visual_script(idea_title, hook_phrase, platform, tone, niche, template=None) -> dict:
+    import re
+
+    from services.templates import DEFAULT_TEMPLATE, scene_count_range
+
+    tmpl = template or DEFAULT_TEMPLATE
+    lo, hi = scene_count_range(tmpl)
+    ph = tmpl.get("phrase") or {}
+    min_w = int(ph.get("min_words", 4))
+    max_w = int(ph.get("max_words", 8))
+    phrase_tone = ph.get("tone", "conversational, real, not motivational poster")
+    structure = tmpl.get("structure") or ["hook", "body", "body", "punch"]
+    shots = tmpl.get("shots") or [
+        "wide", "close-up", "over-the-shoulder", "detail", "reaction", "screen recording",
+    ]
+    grade = tmpl.get("color_grade", "dark_cinematic")
+    vibe = tmpl.get("music_vibe", "dark ambient")
+    structure_str = " -> ".join(str(s) for s in structure)
+    shots_str = ", ".join(str(s) for s in shots)
+
+    lang = "Russian" if re.search(r"[Ѐ-ӿ]", f"{idea_title} {hook_phrase}") else "English"
     prompt = f"""
 You are creating a visual b-roll script for a short-form video.
-Style: aesthetic, cinematic, dark, minimal text — like @heyeaslo on Instagram.
+Style: aesthetic, cinematic, dark, intentional — like @heyeaslo on Instagram.
 
 Idea: {idea_title}
 Opening hook: {hook_phrase}
 Creator niche: {niche}
 Platform: {platform}
 
-Create a storyboard of 4-6 scenes. Each scene has:
-- A short text phrase that appears on screen (max 5 words, lowercase)
-- What to film for that scene (simple, realistic, 3-5 words)
-- Duration in seconds (2-4 seconds each)
+LANGUAGE: Write EVERYTHING in {lang}. Every "phrase", every "film_suggestion", and the "caption"
+MUST be written in {lang}. Do not use any other language anywhere in the output.
 
-The sequence should tell a story or build tension that pays off at the end.
-Last scene always has the shortest, most impactful phrase — the "punch".
+Create a storyboard of {lo}-{hi} scenes — short scenes for a montage, not a few long ones. Each scene has:
+- An on-screen line, lowercase, {min_w} to {max_w} words; the final "punch" line can be shorter
+- A detailed filming suggestion: describe the exact shot in 10-18 words: camera framing/angle, the subject, the action, and the setting or lighting (so the creator knows precisely what to film)
+- Duration in seconds (each scene at least 3 seconds)
+
+Narrative shape to follow across the scenes: {structure_str}.
+Last scene is the "punch" — the shortest, most impactful line.
 
 Rules for phrases:
 - lowercase always
-- no punctuation except "." at end of last phrase
-- conversational, real, not motivational poster
+- {min_w}-{max_w} words so the words can reveal one by one on the beat — never a wordy sentence
+- tone: {phrase_tone}
+- commas are fine; no periods except "." at the end of the very last phrase
 - each phrase stands alone but flows into the next
 
 Rules for filming suggestions:
-- realistic things a founder can film with iPhone
-- specific: "hands on keyboard" not "working"
-- variety: desk shots, screen glow, coffee cup, empty chair, phone screen, etc.
+- realistic shots the creator can film with a phone, and relevant to the actual topic/product
+- be specific and detailed: shot type + subject + action + setting/light
+- vary the shots across scenes, drawing from these types: {shots_str}
+
+Also write a ready-to-post caption for {platform} in {lang}:
+- 1-2 short sentences that hook the viewer and describe what the video is about (not too short, not a wall of text)
+- then 4-6 relevant, specific hashtags on a new line
+- natural and tailored to the topic, not generic
+
+IMPORTANT: the "scenes" array below shows the SHAPE, not the count — return {lo} to {hi} scene objects.
+The first scene is "hook", the very last is "punch", everything between is "body".
 
 Return ONLY valid JSON:
 {{
@@ -147,36 +179,42 @@ Return ONLY valid JSON:
   "scenes": [
     {{
       "order": 1,
-      "phrase": "text shown on screen",
-      "film_suggestion": "what to film",
-      "duration_seconds": 3,
+      "phrase": "on-screen line of {min_w} to {max_w} words",
+      "film_suggestion": "detailed shot: framing + subject + action + setting/light",
+      "duration_seconds": 4,
       "role": "hook"
     }},
     {{
       "order": 2,
+      "phrase": "another line that flows on",
+      "film_suggestion": "...",
+      "duration_seconds": 3,
+      "role": "body"
+    }},
+    {{
+      "order": "... continue body scenes until you have {lo}-{hi} total ...",
       "phrase": "...",
       "film_suggestion": "...",
       "duration_seconds": 3,
       "role": "body"
     }},
     {{
-      "order": 3,
-      "phrase": "...",
+      "order": {hi},
+      "phrase": "the punch.",
       "film_suggestion": "...",
       "duration_seconds": 3,
-      "role": "body"
-    }},
-    {{
-      "order": 4,
-      "phrase": "...",
-      "film_suggestion": "...",
-      "duration_seconds": 2,
       "role": "punch"
     }}
   ],
-  "music_vibe": "dark ambient|lo-fi beats|atmospheric|minimal electronic",
-  "color_grade": "dark_cinematic|moody|high_contrast"
+  "music_vibe": "{vibe}",
+  "color_grade": "{grade}",
+  "caption": "two short sentences that sell the video, then 4-6 hashtags on a new line"
 }}
 """
     response = model.generate_content(prompt)
-    return _parse_json_response(response.text)
+    script = _parse_json_response(response.text)
+    # The template owns the look — force grade/vibe so the rendered montage matches
+    # the chosen template regardless of what the model echoed back.
+    script["color_grade"] = grade
+    script["music_vibe"] = vibe
+    return script

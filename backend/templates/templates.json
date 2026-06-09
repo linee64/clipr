@@ -1,0 +1,811 @@
+[
+  {
+    "id": "cinematic-slow-builder",
+    "label": "Cinematic slow builder",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      7,
+      9
+    ],
+    "pacing": {
+      "target_cut_len": 1.1,
+      "max_cuts_per_scene": 2,
+      "zooms": [
+        1.0,
+        1.06
+      ]
+    },
+    "phrase": {
+      "min_words": 5,
+      "max_words": 9,
+      "tone": "calm, reflective, lets each line breathe"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "dark_cinematic",
+    "music_vibe": "dark ambient",
+    "structure": [
+      "hook",
+      "slow build of tension",
+      "quiet turn",
+      "punch"
+    ],
+    "shots": [
+      "wide establishing",
+      "close-up hands",
+      "face in monitor light",
+      "detail",
+      "slow pan"
+    ],
+    "source": "seed"
+  },
+  {
+    "id": "fast-grind-montage",
+    "label": "Fast grind montage",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      9,
+      12
+    ],
+    "pacing": {
+      "target_cut_len": 0.55,
+      "max_cuts_per_scene": 6,
+      "zooms": [
+        1.0,
+        1.15,
+        1.0,
+        1.18
+      ]
+    },
+    "phrase": {
+      "min_words": 3,
+      "max_words": 6,
+      "tone": "clipped, punchy fragments, high energy"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "high_contrast",
+    "music_vibe": "trap / hard lo-fi",
+    "structure": [
+      "hook",
+      "rapid montage of effort",
+      "stakes",
+      "turn",
+      "punch"
+    ],
+    "shots": [
+      "screen recording",
+      "close-up hands typing",
+      "reaction",
+      "wide",
+      "detail",
+      "over-the-shoulder"
+    ],
+    "source": "seed"
+  },
+  {
+    "id": "moody-story",
+    "label": "Moody story arc",
+    "platforms": [
+      "TikTok",
+      "Reels",
+      "LinkedIn"
+    ],
+    "scene_count": [
+      8,
+      10
+    ],
+    "pacing": {
+      "target_cut_len": 0.9,
+      "max_cuts_per_scene": 3,
+      "zooms": [
+        1.0,
+        1.12
+      ]
+    },
+    "phrase": {
+      "min_words": 4,
+      "max_words": 8,
+      "tone": "honest, personal, story-driven"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "moody",
+    "music_vibe": "atmospheric",
+    "structure": [
+      "hook",
+      "the struggle",
+      "the moment it changed",
+      "the result",
+      "punch"
+    ],
+    "shots": [
+      "face close-up",
+      "wide environment",
+      "hands working",
+      "screen",
+      "reaction",
+      "detail"
+    ],
+    "source": "seed"
+  },
+  {
+    "id": "punch-list",
+    "label": "Punchy list",
+    "platforms": [
+      "TikTok",
+      "Reels",
+      "LinkedIn"
+    ],
+    "scene_count": [
+      8,
+      11
+    ],
+    "pacing": {
+      "target_cut_len": 0.7,
+      "max_cuts_per_scene": 4,
+      "zooms": [
+        1.0,
+        1.14
+      ]
+    },
+    "phrase": {
+      "min_words": 3,
+      "max_words": 7,
+      "tone": "list items, each a sharp standalone point"
+    },
+    "caption_style": "center_caps",
+    "color_grade": "high_contrast",
+    "music_vibe": "minimal electronic",
+    "structure": [
+      "hook",
+      "point 1",
+      "point 2",
+      "point 3",
+      "point 4",
+      "punch"
+    ],
+    "shots": [
+      "close-up detail",
+      "screen recording",
+      "wide",
+      "hands",
+      "product detail"
+    ],
+    "source": "seed"
+  },
+  {
+    "id": "minimal-aesthetic",
+    "label": "Minimal aesthetic",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      6,
+      8
+    ],
+    "pacing": {
+      "target_cut_len": 1.2,
+      "max_cuts_per_scene": 2,
+      "zooms": [
+        1.0,
+        1.05
+      ]
+    },
+    "phrase": {
+      "min_words": 4,
+      "max_words": 7,
+      "tone": "spare, poetic, very few words"
+    },
+    "caption_style": "broll_center",
+    "color_grade": "dark_cinematic",
+    "music_vibe": "dark ambient",
+    "structure": [
+      "hook",
+      "contrast",
+      "contrast",
+      "punch"
+    ],
+    "shots": [
+      "wide establishing",
+      "slow pan",
+      "silhouette",
+      "detail",
+      "face in low light"
+    ],
+    "source": "seed"
+  },
+  {
+    "id": "plaque-talkish",
+    "label": "Plaque caption talk",
+    "platforms": [
+      "TikTok",
+      "Reels",
+      "LinkedIn"
+    ],
+    "scene_count": [
+      8,
+      10
+    ],
+    "pacing": {
+      "target_cut_len": 0.85,
+      "max_cuts_per_scene": 3,
+      "zooms": [
+        1.0,
+        1.1
+      ]
+    },
+    "phrase": {
+      "min_words": 4,
+      "max_words": 8,
+      "tone": "conversational, like talking to one person"
+    },
+    "caption_style": "plaque",
+    "color_grade": "moody",
+    "music_vibe": "lo-fi beats",
+    "structure": [
+      "hook",
+      "setup",
+      "insight",
+      "insight",
+      "punch"
+    ],
+    "shots": [
+      "face close-up",
+      "over-the-shoulder",
+      "screen",
+      "hands",
+      "wide",
+      "reaction"
+    ],
+    "source": "seed"
+  },
+  {
+    "id": "ref-and-no-excuses-focusmode-lockedin-growthmindset-mindsetshift-selfgrowth",
+    "label": "Ref: And no excuses !!#focusmode #lockedin #growthmindset #mindsetshift #selfgrowth",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      5,
+      7
+    ],
+    "pacing": {
+      "target_cut_len": 1.05,
+      "max_cuts_per_scene": 2,
+      "zooms": [
+        1.0,
+        1.12
+      ]
+    },
+    "phrase": {
+      "min_words": 4,
+      "max_words": 8,
+      "tone": "matched to the pacing of a reference montage"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "moody",
+    "music_vibe": "lo-fi beats",
+    "structure": [
+      "hook",
+      "body",
+      "body",
+      "body",
+      "punch"
+    ],
+    "shots": [
+      "close-up hands",
+      "wide establishing",
+      "over-the-shoulder",
+      "screen recording",
+      "detail",
+      "reaction"
+    ],
+    "source": "extracted",
+    "ref": "And no excuses !!#focusmode #lockedin #growthmindset #mindsetshift #selfgrowth",
+    "measured": {
+      "duration": 7.38,
+      "cuts": 6,
+      "avg_cut_len": 1.055,
+      "bpm": 117.5,
+      "brightness": 60.1,
+      "saturation": 6.6,
+      "caption_density": null
+    }
+  },
+  {
+    "id": "ref-aqo7vko2ichdfsv4hlm3npdovogvzvonkusxlttmux2oa4u5bmo7fsmctkpwxzioqg00e-xdrh4gutmwagtyroc-v31-0lau",
+    "label": "Ref: AQO7VKO2IcHdfSV4hLm3npdOvOgvZvonKUSxltTmuX2OA4U5Bmo7FSMctkPWXZIoQg00E_Xdrh4GuTmWaGtYRoc-V31-0lAu",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      5,
+      7
+    ],
+    "pacing": {
+      "target_cut_len": 0.69,
+      "max_cuts_per_scene": 2,
+      "zooms": [
+        1.0,
+        1.15,
+        1.0,
+        1.18
+      ]
+    },
+    "phrase": {
+      "min_words": 3,
+      "max_words": 6,
+      "tone": "matched to the pacing of a reference montage"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "dark_cinematic",
+    "music_vibe": "energetic / trap",
+    "structure": [
+      "hook",
+      "body",
+      "body",
+      "body",
+      "punch"
+    ],
+    "shots": [
+      "close-up hands",
+      "wide establishing",
+      "over-the-shoulder",
+      "screen recording",
+      "detail",
+      "reaction"
+    ],
+    "source": "extracted",
+    "ref": "AQO7VKO2IcHdfSV4hLm3npdOvOgvZvonKUSxltTmuX2OA4U5Bmo7FSMctkPWXZIoQg00E_Xdrh4GuTmWaGtYRoc-V31-0lAu",
+    "measured": {
+      "duration": 8.96,
+      "cuts": 12,
+      "avg_cut_len": 0.689,
+      "bpm": 129.2,
+      "brightness": 71.4,
+      "saturation": 7.9,
+      "caption_density": null
+    }
+  },
+  {
+    "id": "ref-came-from-nothing-motivation-motivational-entrepreneur-fyp-reels",
+    "label": "Ref: came from nothing  #motivation #motivational #entrepreneur #fyp #reels",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      5,
+      7
+    ],
+    "pacing": {
+      "target_cut_len": 1.6,
+      "max_cuts_per_scene": 2,
+      "zooms": [
+        1.0,
+        1.06
+      ]
+    },
+    "phrase": {
+      "min_words": 5,
+      "max_words": 9,
+      "tone": "matched to the pacing of a reference montage"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "moody",
+    "music_vibe": "lo-fi beats",
+    "structure": [
+      "hook",
+      "body",
+      "body",
+      "body",
+      "punch"
+    ],
+    "shots": [
+      "close-up hands",
+      "wide establishing",
+      "over-the-shoulder",
+      "screen recording",
+      "detail",
+      "reaction"
+    ],
+    "source": "extracted",
+    "ref": "came from nothing  #motivation #motivational #entrepreneur #fyp #reels",
+    "measured": {
+      "duration": 12.12,
+      "cuts": 0,
+      "avg_cut_len": 12.116,
+      "bpm": 99.4,
+      "brightness": 41.1,
+      "saturation": 4.1,
+      "caption_density": null
+    }
+  },
+  {
+    "id": "ref-ease-is-a-greater-threat-to-progress-than-hardship-find-me-on-tiktok-herstudymemoir",
+    "label": "Ref: Ease is a greater threat to progress than hardship.••Find me on TikTok @herstudymemoir ••_______",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      5,
+      7
+    ],
+    "pacing": {
+      "target_cut_len": 0.47,
+      "max_cuts_per_scene": 6,
+      "zooms": [
+        1.0,
+        1.15,
+        1.0,
+        1.18
+      ]
+    },
+    "phrase": {
+      "min_words": 3,
+      "max_words": 6,
+      "tone": "matched to the pacing of a reference montage"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "moody",
+    "music_vibe": "lo-fi beats",
+    "structure": [
+      "hook",
+      "body",
+      "body",
+      "body",
+      "punch"
+    ],
+    "shots": [
+      "close-up hands",
+      "wide establishing",
+      "over-the-shoulder",
+      "screen recording",
+      "detail",
+      "reaction"
+    ],
+    "source": "extracted",
+    "ref": "Ease is a greater threat to progress than hardship.••Find me on TikTok @herstudymemoir ••_______",
+    "measured": {
+      "duration": 17.83,
+      "cuts": 37,
+      "avg_cut_len": 0.469,
+      "bpm": 112.3,
+      "brightness": 68.5,
+      "saturation": 13.7,
+      "caption_density": null
+    }
+  },
+  {
+    "id": "ref-i-don-t-care-adayinlife-of-follow-for-more-fyp-viralreels-aestheticreels-trendi",
+    "label": "Ref: I don’t care. @adayinlife_of 🌻 follow for more........#fypシ #viralreels #aestheticreels #trendi",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      5,
+      7
+    ],
+    "pacing": {
+      "target_cut_len": 1.6,
+      "max_cuts_per_scene": 2,
+      "zooms": [
+        1.0,
+        1.06
+      ]
+    },
+    "phrase": {
+      "min_words": 5,
+      "max_words": 9,
+      "tone": "matched to the pacing of a reference montage"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "dark_cinematic",
+    "music_vibe": "lo-fi beats",
+    "structure": [
+      "hook",
+      "body",
+      "body",
+      "body",
+      "punch"
+    ],
+    "shots": [
+      "close-up hands",
+      "wide establishing",
+      "over-the-shoulder",
+      "screen recording",
+      "detail",
+      "reaction"
+    ],
+    "source": "extracted",
+    "ref": "I don’t care. @adayinlife_of 🌻 follow for more........#fypシ #viralreels #aestheticreels #trendi",
+    "measured": {
+      "duration": 12.54,
+      "cuts": 0,
+      "avg_cut_len": 12.536,
+      "bpm": 107.7,
+      "brightness": 72.3,
+      "saturation": 10.2,
+      "caption_density": null
+    }
+  },
+  {
+    "id": "ref-it-s-okay-to-have-off-days-we-aren-t-robots-the-9-to-5-is-draining-and-some-nights-you-just",
+    "label": "Ref: It’s okay to have off-days. We aren’t robots. ☕️The 9-to-5 is draining, and some nights you just",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      5,
+      7
+    ],
+    "pacing": {
+      "target_cut_len": 1.6,
+      "max_cuts_per_scene": 2,
+      "zooms": [
+        1.0,
+        1.06
+      ]
+    },
+    "phrase": {
+      "min_words": 5,
+      "max_words": 9,
+      "tone": "matched to the pacing of a reference montage"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "moody",
+    "music_vibe": "dark ambient",
+    "structure": [
+      "hook",
+      "body",
+      "body",
+      "body",
+      "punch"
+    ],
+    "shots": [
+      "close-up hands",
+      "wide establishing",
+      "over-the-shoulder",
+      "screen recording",
+      "detail",
+      "reaction"
+    ],
+    "source": "extracted",
+    "ref": "It’s okay to have off-days. We aren’t robots. ☕️The 9-to-5 is draining, and some nights you just",
+    "measured": {
+      "duration": 6.38,
+      "cuts": 0,
+      "avg_cut_len": 6.383,
+      "bpm": 69.8,
+      "brightness": 41.1,
+      "saturation": 4.6,
+      "caption_density": null
+    }
+  },
+  {
+    "id": "ref-it-s-you-versus-you",
+    "label": "Ref: It’s you versus you.",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      5,
+      7
+    ],
+    "pacing": {
+      "target_cut_len": 1.6,
+      "max_cuts_per_scene": 2,
+      "zooms": [
+        1.0,
+        1.06
+      ]
+    },
+    "phrase": {
+      "min_words": 5,
+      "max_words": 9,
+      "tone": "matched to the pacing of a reference montage"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "moody",
+    "music_vibe": "energetic / trap",
+    "structure": [
+      "hook",
+      "body",
+      "body",
+      "body",
+      "punch"
+    ],
+    "shots": [
+      "close-up hands",
+      "wide establishing",
+      "over-the-shoulder",
+      "screen recording",
+      "detail",
+      "reaction"
+    ],
+    "source": "extracted",
+    "ref": "It’s you versus you.",
+    "measured": {
+      "duration": 7.29,
+      "cuts": 0,
+      "avg_cut_len": 7.288,
+      "bpm": 136.0,
+      "brightness": 38.8,
+      "saturation": 4.5,
+      "caption_density": null
+    }
+  },
+  {
+    "id": "ref-katanya-break-the-pattern-today-or-the-loop-will-repeat-tomorrow-editing-davinciresolve-v",
+    "label": "Ref: Katanya, Break the pattern today, or the loop will repeat tomorrow.#editing #davinciresolve #v",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      5,
+      7
+    ],
+    "pacing": {
+      "target_cut_len": 0.83,
+      "max_cuts_per_scene": 3,
+      "zooms": [
+        1.0,
+        1.12
+      ]
+    },
+    "phrase": {
+      "min_words": 4,
+      "max_words": 8,
+      "tone": "matched to the pacing of a reference montage"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "moody",
+    "music_vibe": "lo-fi beats",
+    "structure": [
+      "hook",
+      "body",
+      "body",
+      "body",
+      "punch"
+    ],
+    "shots": [
+      "close-up hands",
+      "wide establishing",
+      "over-the-shoulder",
+      "screen recording",
+      "detail",
+      "reaction"
+    ],
+    "source": "extracted",
+    "ref": "Katanya, Break the pattern today, or the loop will repeat tomorrow.#editing #davinciresolve #v",
+    "measured": {
+      "duration": 12.47,
+      "cuts": 14,
+      "avg_cut_len": 0.831,
+      "bpm": 117.5,
+      "brightness": 65.9,
+      "saturation": 8.5,
+      "caption_density": null
+    }
+  },
+  {
+    "id": "ref-locked-in",
+    "label": "Ref: Locked in",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      5,
+      7
+    ],
+    "pacing": {
+      "target_cut_len": 1.6,
+      "max_cuts_per_scene": 2,
+      "zooms": [
+        1.0,
+        1.06
+      ]
+    },
+    "phrase": {
+      "min_words": 5,
+      "max_words": 9,
+      "tone": "matched to the pacing of a reference montage"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "moody",
+    "music_vibe": "energetic / trap",
+    "structure": [
+      "hook",
+      "body",
+      "body",
+      "body",
+      "punch"
+    ],
+    "shots": [
+      "close-up hands",
+      "wide establishing",
+      "over-the-shoulder",
+      "screen recording",
+      "detail",
+      "reaction"
+    ],
+    "source": "extracted",
+    "ref": "Locked in",
+    "measured": {
+      "duration": 13.74,
+      "cuts": 7,
+      "avg_cut_len": 1.718,
+      "bpm": 184.6,
+      "brightness": 63.9,
+      "saturation": 5.1,
+      "caption_density": null
+    }
+  },
+  {
+    "id": "ref-study-forgirls-selfgrowth-education",
+    "label": "Ref: 📚✨...#study #forgirls #selfgrowth #education",
+    "platforms": [
+      "TikTok",
+      "Reels"
+    ],
+    "scene_count": [
+      5,
+      7
+    ],
+    "pacing": {
+      "target_cut_len": 1.6,
+      "max_cuts_per_scene": 2,
+      "zooms": [
+        1.0,
+        1.06
+      ]
+    },
+    "phrase": {
+      "min_words": 5,
+      "max_words": 9,
+      "tone": "matched to the pacing of a reference montage"
+    },
+    "caption_style": "karaoke",
+    "color_grade": "moody",
+    "music_vibe": "lo-fi beats",
+    "structure": [
+      "hook",
+      "body",
+      "body",
+      "body",
+      "punch"
+    ],
+    "shots": [
+      "close-up hands",
+      "wide establishing",
+      "over-the-shoulder",
+      "screen recording",
+      "detail",
+      "reaction"
+    ],
+    "source": "extracted",
+    "ref": "📚✨...#study #forgirls #selfgrowth #education",
+    "measured": {
+      "duration": 11.96,
+      "cuts": 0,
+      "avg_cut_len": 11.957,
+      "bpm": 95.7,
+      "brightness": 45.5,
+      "saturation": 2.5,
+      "caption_density": null
+    }
+  }
+]

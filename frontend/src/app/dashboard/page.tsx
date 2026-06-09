@@ -17,6 +17,7 @@ import {
   Edit2,
   MoreVertical,
   X,
+  Check,
   ChevronRight
 } from "lucide-react";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
@@ -133,6 +134,50 @@ const generateDynamicIdeas = (product: string, platform: string): IdeaCard[] => 
         ],
         cta: "Напиши в комментариях, согласен ты или нет"
       }
+    },
+    {
+      id: "dynamic-5",
+      title: `Как за 1 минуту объяснить ${keywords}`,
+      hook: `Тебе нужно всего 60 секунд, чтобы понять суть ${keywords}.`,
+      vibe: "clean and clear",
+      tags: ["clean and clear", platform],
+      estimate: "Вирусный хук",
+      script: {
+        hook: `Тебе нужно всего 60 секунд, чтобы понять суть ${keywords}.`,
+        problem: [
+          "Люди думают, что разобраться слишком сложно и долго",
+          "Поэтому откладывают и так и не пробуют",
+          "А конкуренты уже используют это каждый день"
+        ],
+        solution: [
+          "Покажи один понятный пример за 15 секунд",
+          "Сравни «до» и «после» наглядно",
+          "Дай простой первый шаг прямо в видео"
+        ],
+        cta: "Сохрани, чтобы попробовать сегодня"
+      }
+    },
+    {
+      id: "dynamic-6",
+      title: `Главная ошибка новичков в ${keywords}`,
+      hook: `Эту ошибку с ${keywords} совершают почти все. А ты?`,
+      vibe: "bold reveal",
+      tags: ["bold reveal", platform],
+      estimate: "Трендовый формат",
+      script: {
+        hook: `Эту ошибку с ${keywords} совершают почти все. А ты?`,
+        problem: [
+          "Все копируют чужие шаблоны без понимания",
+          "Результат получается серым и незаметным",
+          "Время и силы уходят впустую"
+        ],
+        solution: [
+          "Найди свой угол и говори от себя",
+          "Тестируй маленькими итерациями каждый день",
+          "Опирайся на реальные данные, а не на догадки"
+        ],
+        cta: "Подпишись, чтобы не повторять чужих ошибок"
+      }
     }
   ];
 };
@@ -170,6 +215,22 @@ const IDEA_CARDS: IdeaCard[] = [
     vibe: "raw founder life",
     tags: ["raw founder life", "TikTok"],
     estimate: "Viral format"
+  },
+  {
+    id: "idea-5",
+    title: "before vs after",
+    hook: "the part nobody shows",
+    vibe: "clean and clear",
+    tags: ["clean and clear", "Reels"],
+    estimate: "Viral format"
+  },
+  {
+    id: "idea-6",
+    title: "watch this in 30s",
+    hook: "stop scrolling, this is quick",
+    vibe: "bold reveal",
+    tags: ["bold reveal", "TikTok"],
+    estimate: "Trending topic"
   }
 ];
 
@@ -225,7 +286,15 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState<number | null>(10);
   const [showCalendarPanel, setShowCalendarPanel] = useState(true);
   const [ideasError, setIdeasError] = useState<string | null>(null);
-  const [pendingPostBanner, setPendingPostBanner] = useState(false);
+
+  // Scheduling
+  const [calendarPosts, setCalendarPosts] = useState(MOCK_CALENDAR_POSTS);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleTitle, setScheduleTitle] = useState("");
+  const [schedulePlatform, setSchedulePlatform] = useState<"TikTok" | "LinkedIn" | "Instagram">("TikTok");
+  const [scheduleDay, setScheduleDay] = useState<number>(10);
+  const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [scheduleConfirmation, setScheduleConfirmation] = useState<string | null>(null);
 
   // Filters
   const [contentFilter, setContentFilter] = useState<"All" | "Drafts" | "Scheduled" | "Published">("All");
@@ -287,10 +356,6 @@ export default function Dashboard() {
     setIsLoadingOnboarding(false);
   }, []);
 
-  useEffect(() => {
-    setPendingPostBanner(!!sessionStorage.getItem("clipr_pending_post"));
-  }, [activeTab]);
-
   const handleOnboardingComplete = (data: {
     product: string;
     audience: string;
@@ -329,21 +394,61 @@ export default function Dashboard() {
     setSelectedIdea(null);
   };
 
+  const normalizePlatform = (p: string): "TikTok" | "LinkedIn" | "Instagram" => {
+    if (p === "LinkedIn") return "LinkedIn";
+    if (p === "Reels" || p === "Instagram" || p === "Instagram Reels") return "Instagram";
+    return "TikTok";
+  };
+
+  // "14:30" (24h input value) -> "2:30 PM" (calendar display)
+  const formatTime = (t: string): string => {
+    const [hStr, m] = (t || "09:00").split(":");
+    let h = Number(hStr);
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12;
+    if (h === 0) h = 12;
+    return `${h}:${m ?? "00"} ${ampm}`;
+  };
+
+  const openScheduleModal = (draft?: { title?: string; platform?: string; day?: number }) => {
+    setScheduleTitle(draft?.title ?? "");
+    setSchedulePlatform(normalizePlatform(draft?.platform ?? selectedPlatform));
+    setScheduleDay(draft?.day ?? selectedDate ?? 10);
+    setScheduleTime("09:00");
+    setScheduleOpen(true);
+  };
+
+  const confirmSchedule = () => {
+    const day = scheduleDay;
+    const displayTime = formatTime(scheduleTime);
+    const post = {
+      platform: schedulePlatform,
+      title: scheduleTitle.trim() || "Untitled video",
+      time: displayTime,
+      status: "Scheduled" as const,
+    };
+    setCalendarPosts((prev) => ({ ...prev, [day]: [...(prev[day] ?? []), post] }));
+    setScheduleOpen(false);
+    setScheduleConfirmation(`Scheduled “${post.title}” to June ${day} at ${post.time}`);
+    setActiveTab("Calendar");
+    setSidebarActive("Calendar");
+    setSelectedDate(day);
+    setShowCalendarPanel(true);
+  };
+
   const handleScheduleFromRender = (payload: {
     title: string;
     description: string;
     outputUrl: string;
     platform: string;
   }) => {
-    sessionStorage.setItem(
-      "clipr_pending_post",
-      JSON.stringify(payload)
-    );
-    setPendingPostBanner(true);
     setSelectedIdeaId(null);
     setSelectedIdea(null);
-    setActiveTab("Calendar");
-    setSidebarActive("Calendar");
+    openScheduleModal({
+      title: payload.title,
+      platform: payload.platform,
+      day: selectedDate ?? 10,
+    });
   };
 
   const triggerGenerateIdeas = async () => {
@@ -536,7 +641,14 @@ export default function Dashboard() {
                   key={link.name}
                   onClick={() => {
                     setSidebarActive(link.name as "Home" | "My Content" | "Calendar" | "References" | "Settings");
-                    if (link.name === "Home") setActiveTab("Create");
+                    if (link.name === "Home") {
+                      // Fresh start: back to the AI chat / idea generation
+                      setActiveTab("Create");
+                      setSelectedIdeaId(null);
+                      setSelectedIdea(null);
+                      setHeroExitState("visible");
+                      setIsGenerating(false);
+                    }
                     else if (link.name === "Calendar" || link.name === "My Content") {
                       setActiveTab(link.name as "Create" | "Calendar" | "My Content");
                     }
@@ -651,7 +763,7 @@ export default function Dashboard() {
                     >
                       <div className="flex flex-col items-center text-center space-y-1.5 pb-2 pt-24 select-none">
                         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#EFEFEF]">
-                          What&apos;s your next viral hook<span className="text-[#00E5A0]">?</span>
+                          What&apos;s your next viral hook<span className="text-[#10B981]">?</span>
                         </h1>
                         <p className="text-[10px] text-[#6B7C85] tracking-[0.5em] uppercase font-mono font-bold">
                           Clipr AI Content Engine
@@ -760,7 +872,7 @@ export default function Dashboard() {
 
                             {/* Generate button */}
                             <button
-                              className="bg-[#00E5A0] hover:bg-[#12cf90] text-[#070B0D] hover:scale-[1.02] active:scale-[0.98] transition-all text-xs font-bold rounded-full px-4 py-1.5 flex items-center justify-center space-x-1.5 shadow-md"
+                              className="bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] hover:scale-[1.02] active:scale-[0.98] transition-all text-xs font-bold rounded-full px-4 py-1.5 flex items-center justify-center space-x-1.5 shadow-md"
                               onClick={triggerGenerateIdeas}
                               disabled={isGenerating}
                             >
@@ -773,67 +885,65 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  {/* Ideas Feed (Vertical list) — hidden once an idea is selected */}
+                  {/* Ideas Feed (responsive grid, up to 3 cols) — fits all 6 ideas without scrolling, hidden once an idea is selected */}
                   {heroExitState === 'hidden' && !selectedIdeaId && (
-                    <div className="w-full flex-1 flex flex-col items-center justify-start min-h-0 overflow-y-auto px-4 py-6 scrollbar-thin">
+                    <div className="w-full flex-1 flex flex-col items-center justify-center min-h-0 overflow-y-auto px-4 py-6 scrollbar-thin">
                       {ideasError && (
-                        <div className="text-[11px] mb-3 text-amber-400 bg-amber-950/20 border border-amber-500/20 px-3 py-1.5 rounded-lg max-w-[680px] w-full text-center">
+                        <div className="text-[11px] mb-4 text-amber-400 bg-amber-950/20 border border-amber-500/20 px-3 py-1.5 rounded-lg max-w-[1080px] w-full text-center">
                           {ideasError}
                         </div>
                       )}
-                      <div className="w-full max-w-[680px] flex flex-col gap-[16px]">
+                      <div className="w-full max-w-[1080px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {isGenerating ? (
-                          // Render 4 skeleton cards
-                          [1, 2, 3, 4].map((n) => (
+                          // Render 6 skeleton cards
+                          [1, 2, 3, 4, 5, 6].map((n) => (
                             <div
                               key={n}
-                              className="w-full rounded-[20px] p-[24px_28px] border bg-[var(--card-bg)] backdrop-blur-[16px] animate-pulse"
-                              style={{
-                                border: '1px solid var(--card-border)',
-                                boxShadow: '0 0 24px rgba(0, 229, 160, 0.08), inset 0 1px 0 rgba(255,255,255,0.06)',
-                                minHeight: '140px'
-                              }}
+                              className="flex h-full min-h-[160px] flex-col rounded-2xl p-5 border border-[#152226] bg-[#0D1416] animate-pulse"
                             >
-                              <div className="flex justify-between items-start">
-                                <div className="h-4 w-12 bg-white/5 rounded" />
-                                <div className="h-3 w-28 bg-[rgba(0,229,160,0.15)] rounded" />
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="h-5 w-20 bg-white/5 rounded-full" />
+                                <div className="h-5 w-24 bg-[rgba(16,185,129,0.12)] rounded-full" />
                               </div>
-                              <div className="h-6 w-2/3 bg-white/10 rounded mt-4" />
+                              <div className="h-5 w-2/3 bg-white/10 rounded mt-4" />
                               <div className="h-4 w-5/6 bg-white/5 rounded mt-3" />
+                              <div className="h-3 w-16 bg-white/5 rounded mt-auto" />
                             </div>
                           ))
                         ) : (
-                          // Render actual 4 cards
-                          ideas.slice(0, 4).map((idea, idx) => (
+                          // Render actual ideas (up to 6)
+                          ideas.slice(0, 6).map((idea, idx) => (
                             <div
                               key={idea.id}
                               onClick={() => setModalIdea(idea)}
-                              className="w-full rounded-[20px] p-[24px_28px] border bg-[var(--card-bg)] backdrop-blur-[16px] cursor-pointer hover:border-[rgba(0,229,160,0.5)] transition-all duration-300 group opacity-0 translate-y-[24px] animate-card-slide-up"
-                              style={{
-                                border: '1px solid var(--card-border)',
-                                boxShadow: '0 0 24px rgba(0, 229, 160, 0.08), inset 0 1px 0 rgba(255,255,255,0.06)',
-                                animationDelay: `${idx * 80}ms`
-                              }}
+                              className="group flex h-full flex-col rounded-2xl p-5 bg-[#0D1416] border border-[#152226] cursor-pointer hover:border-[#10B981]/50 hover:bg-[#0F181A] transition-all duration-300 opacity-0 translate-y-[24px] animate-card-slide-up shadow-[0_0_24px_rgba(16,185,129,0.06)]"
+                              style={{ animationDelay: `${idx * 80}ms` }}
                             >
                               {/* Card Header Row */}
-                              <div className="flex justify-between items-start">
-                                <span className="text-[11px] border border-[#333333] rounded-full px-2.5 py-0.5 text-[#888888]">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] uppercase tracking-wider font-medium border border-[#152226] bg-[#11191B] rounded-full px-2.5 py-1 text-[#6B7C85] truncate min-w-0">
                                   {idea.vibe || idea.tags[0] || "dark and focused"}
                                 </span>
-                                <span className="text-[12px] uppercase font-semibold tracking-wider text-[rgba(0,229,160,0.6)]">
+                                <span className="text-[9px] uppercase font-bold tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 rounded-full px-2 py-1 shrink-0">
                                   {idea.estimate || "High potential"}
                                 </span>
                               </div>
 
                               {/* Card Title */}
-                              <h3 className="text-[20px] font-bold text-white mt-2 leading-snug">
+                              <h3 className="text-[17px] font-bold text-white mt-3 leading-snug line-clamp-2">
                                 {idea.title}
                               </h3>
 
                               {/* Hook phrase */}
-                              <p className="text-[15px] text-[var(--text-secondary)] mt-2 leading-[1.6] line-clamp-2 italic">
+                              <p className="text-[13px] text-[var(--text-secondary)] mt-2 leading-relaxed line-clamp-2 italic">
                                 &ldquo;{idea.hook}&rdquo;
                               </p>
+
+                              {/* Footer CTA */}
+                              <div className="mt-auto pt-4 flex items-center gap-1 text-[12px] font-semibold text-[#6B7C85] group-hover:text-[#10B981] transition-colors">
+                                <span>View idea</span>
+                                <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                              </div>
                             </div>
                           ))
                         )}
@@ -873,9 +983,18 @@ export default function Dashboard() {
                   transition={{ duration: 0.15 }}
                   className="space-y-6"
                 >
-                  {pendingPostBanner && (
-                    <div className="rounded-xl border border-[#10B981]/40 bg-[#10B981]/10 px-4 py-3 text-sm text-[#EFEFEF]">
-                      Video ready to schedule — use &ldquo;+ Schedule post&rdquo; to add it to your calendar.
+                  {scheduleConfirmation && (
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-[#10B981]/40 bg-[#10B981]/10 px-4 py-3 text-sm text-[#EFEFEF]">
+                      <span className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-[#10B981] shrink-0" />
+                        {scheduleConfirmation}
+                      </span>
+                      <button
+                        onClick={() => setScheduleConfirmation(null)}
+                        className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors shrink-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
                   )}
                   {/* Header row */}
@@ -884,7 +1003,10 @@ export default function Dashboard() {
                       <h2 className="text-base font-semibold text-[#EFEFEF]">Content Calendar</h2>
                       <p className="text-xs text-[#6B7C85]">June 2026</p>
                     </div>
-                    <button className="bg-[#10B981] hover:bg-[#0D9E6E] text-[#070B0D] transition-all text-xs font-semibold rounded-lg px-4 py-2 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                    <button
+                      onClick={() => openScheduleModal()}
+                      className="bg-[#10B981] hover:bg-[#0D9E6E] text-[#070B0D] transition-all text-xs font-semibold rounded-lg px-4 py-2 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                    >
                       + Schedule post
                     </button>
                   </div>
@@ -899,7 +1021,7 @@ export default function Dashboard() {
                       <div className="grid grid-cols-7 gap-1">
                         {Array.from({ length: 30 }).map((_, idx) => {
                           const day = idx + 1;
-                          const posts = MOCK_CALENDAR_POSTS[day] || [];
+                          const posts = calendarPosts[day] || [];
                           const isSelected = selectedDate === day;
 
                           return (
@@ -949,9 +1071,9 @@ export default function Dashboard() {
                             </button>
                           </div>
 
-                          {MOCK_CALENDAR_POSTS[selectedDate] ? (
+                          {calendarPosts[selectedDate] ? (
                             <div className="space-y-3">
-                              {MOCK_CALENDAR_POSTS[selectedDate].map((post, idx) => (
+                              {calendarPosts[selectedDate].map((post, idx) => (
                                 <div key={idx} className="rounded-lg bg-[#070B0D] border border-[#152226] p-3.5 space-y-2">
                                   <div className="flex items-center justify-between">
                                     <span className="text-[9px] text-[#6B7C85] border border-[#152226] px-2 py-0.5 rounded-full flex items-center space-x-1 bg-[#0D1416]">
@@ -1253,10 +1375,10 @@ export default function Dashboard() {
               transition={{ duration: 0.35, ease: "easeOut" }}
               className="relative w-full max-w-[560px] rounded-[20px] p-[32px] border shadow-2xl z-10 overflow-hidden"
               style={{
-                background: 'rgba(20, 20, 20, 0.95)',
+                background: 'rgba(13, 20, 22, 0.96)',
                 backdropFilter: 'blur(16px)',
-                border: '1px solid rgba(0, 229, 160, 0.4)',
-                boxShadow: '0 0 32px rgba(0, 229, 160, 0.12), inset 0 1px 0 rgba(255,255,255,0.06)'
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                boxShadow: '0 0 32px rgba(16, 185, 129, 0.12), inset 0 1px 0 rgba(255,255,255,0.04)'
               }}
             >
               {/* Close Button */}
@@ -1294,10 +1416,140 @@ export default function Dashboard() {
                     handleSelectIdea(modalIdea);
                     setModalIdea(null);
                   }}
-                  className="text-[#00E5A0] font-semibold text-[15px] flex items-center gap-1 hover:opacity-85 transition-opacity"
+                  className="text-[#10B981] font-semibold text-[15px] flex items-center gap-1 hover:opacity-85 transition-opacity"
                   style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   Create storyboard <span className="ml-1">→</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Schedule Modal */}
+      <AnimatePresence>
+        {scheduleOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setScheduleOpen(false)}
+              className="absolute inset-0 bg-black/70 backdrop-blur-[8px]"
+              transition={{ duration: 0.25 }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="relative w-full max-w-[440px] rounded-2xl bg-[#0D1416] border border-[#152226] p-6 z-10 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h2 className="text-lg font-bold text-[#EFEFEF]">Schedule post</h2>
+                  <p className="text-xs text-[#6B7C85] mt-0.5">Pick a day and time on your calendar</p>
+                </div>
+                <button
+                  onClick={() => setScheduleOpen(false)}
+                  className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Title */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85] font-bold">
+                    Title
+                  </label>
+                  <input
+                    value={scheduleTitle}
+                    onChange={(e) => setScheduleTitle(e.target.value)}
+                    placeholder="Video title"
+                    className="w-full bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2.5 text-sm text-[#EFEFEF] outline-none focus:border-[#10B981] transition-colors placeholder:text-[#6B7C85]"
+                  />
+                </div>
+
+                {/* Platform */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85] font-bold">
+                    Platform
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["TikTok", "Instagram", "LinkedIn"] as const).map((plat) => {
+                      const active = schedulePlatform === plat;
+                      return (
+                        <button
+                          key={plat}
+                          onClick={() => setSchedulePlatform(plat)}
+                          className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-all ${
+                            active
+                              ? "border-[#10B981] bg-[#10B981]/10 text-[#EFEFEF]"
+                              : "border-[#152226] bg-[#070B0D] text-[#6B7C85] hover:border-[#1E343A]"
+                          }`}
+                        >
+                          {getPlatformIcon(plat, 14)}
+                          <span>{plat}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Date + Time */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85] font-bold">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      min="2026-06-01"
+                      max="2026-06-30"
+                      value={`2026-06-${String(scheduleDay).padStart(2, "0")}`}
+                      onChange={(e) => {
+                        const d = Number(e.target.value.split("-")[2]);
+                        if (d >= 1 && d <= 30) setScheduleDay(d);
+                      }}
+                      className="w-full bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2.5 text-sm text-[#EFEFEF] outline-none focus:border-[#10B981] transition-colors [color-scheme:dark]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85] font-bold">
+                      Time
+                    </label>
+                    <input
+                      type="time"
+                      value={scheduleTime}
+                      onChange={(e) => setScheduleTime(e.target.value)}
+                      className="w-full bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2.5 text-sm text-[#EFEFEF] outline-none focus:border-[#10B981] transition-colors [color-scheme:dark]"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-[#6B7C85]">
+                  Will post on{" "}
+                  <span className="text-[#EFEFEF] font-medium">June {scheduleDay}, 2026</span> at{" "}
+                  <span className="text-[#EFEFEF] font-medium">{formatTime(scheduleTime)}</span>
+                </p>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => setScheduleOpen(false)}
+                  className="flex-1 py-2.5 rounded-lg border border-[#152226] text-[#6B7C85] text-sm font-medium hover:text-[#EFEFEF] hover:border-[#1E343A] transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSchedule}
+                  className="flex-1 py-2.5 rounded-lg bg-[#10B981] hover:bg-[#0D9E6E] text-[#070B0D] text-sm font-bold transition-all flex items-center justify-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                >
+                  <Check className="w-4 h-4" />
+                  Add to calendar
                 </button>
               </div>
             </motion.div>

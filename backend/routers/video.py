@@ -1,3 +1,4 @@
+import asyncio
 import os
 import uuid
 from pathlib import Path
@@ -24,6 +25,7 @@ from services.editor import (
     get_duration,
     remove_silence,
     segments_from_text,
+    transcode_to_mp3,
     transcribe_audio,
 )
 from services.storage import download_file, local_file_path, upload_file, use_local_storage
@@ -93,17 +95,28 @@ async def upload_clips(files: list[UploadFile] = File(...)):
 
 @router.post("/upload/audio")
 async def upload_audio(file: UploadFile = File(...)):
-    """Upload background audio file, returns audio_file_id."""
+    """Upload background audio, transcode to a clean mp3, returns audio_file_id."""
     audio_id = str(uuid.uuid4())
-    temp_path = os.path.join(TEMP_DIR, f"{audio_id}_audio.mp3")
+    src_ext = os.path.splitext(file.filename or "")[1] or ".bin"
+    src_path = os.path.join(TEMP_DIR, f"{audio_id}_src{src_ext}")
+    mp3_path = os.path.join(TEMP_DIR, f"{audio_id}_audio.mp3")
 
-    async with aiofiles.open(temp_path, "wb") as f:
+    async with aiofiles.open(src_path, "wb") as f:
         content = await file.read()
         await f.write(content)
 
-    remote_path = f"audio/{audio_id}.mp3"
-    url = await upload_file(temp_path, remote_path)
-    os.remove(temp_path)
+    try:
+        # Normalize any uploaded format (m4a/aac/wav/ogg/...) to real mp3 so beat
+        # detection and mixing never choke on a mislabeled file downstream.
+        await asyncio.to_thread(transcode_to_mp3, src_path, mp3_path)
+        remote_path = f"audio/{audio_id}.mp3"
+        url = await upload_file(mp3_path, remote_path)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Audio processing failed: {e}")
+    finally:
+        for p in (src_path, mp3_path):
+            if os.path.exists(p):
+                os.remove(p)
 
     return {"audio_file_id": audio_id, "url": url}
 
@@ -353,6 +366,7 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
         color_grade=request.color_grade,
         platform=request.platform,
         beats_per_clip=request.beats_per_clip,
+        template_id=request.template_id,
     )
 
     return {"job_id": request.job_id, "status": "pending"}

@@ -37,6 +37,8 @@ class VisualScriptResponse(BaseModel):
     scenes: list[Scene]
     music_vibe: str
     color_grade: str
+    caption: str = ""
+    template_id: str = ""  # which style template this storyboard was built from
 
 
 class VisualScriptRequest(BaseModel):
@@ -56,6 +58,7 @@ class BrollRenderRequest(BaseModel):
     color_grade: str = "dark_cinematic"
     platform: str = "TikTok"
     beats_per_clip: int = 2  # how many beats each clip is held for (1 = cut on every beat)
+    template_id: str = ""  # style template driving pacing + caption style
 
 
 class VideoClip(BaseModel):

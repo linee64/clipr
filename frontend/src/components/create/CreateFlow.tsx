@@ -38,38 +38,135 @@ interface CreateFlowProps {
 }
 
 function fallbackVisualScript(idea: CreateFlowIdea): VisualScriptResponse {
+  const isRu = /[А-Яа-яЁё]/.test(`${idea.title} ${idea.hook}`);
+  if (isRu) {
+    return {
+      title: idea.title,
+      platform: idea.platform,
+      music_vibe: "dark ambient",
+      color_grade: "dark_cinematic",
+      caption: `${idea.title}\n\n${idea.hook}\n\n#контент #идея #${(idea.platform || "tiktok").toLowerCase().replace(/\s/g, "")} #тренды #продвижение`,
+      scenes: [
+        {
+          order: 1,
+          phrase: idea.hook.toLowerCase(),
+          film_suggestion: "крупный план рук с продуктом, мягкий свет от окна",
+          duration_seconds: 4,
+          role: "hook",
+        },
+        {
+          order: 2,
+          phrase: "вот с чего всё началось",
+          film_suggestion: "средний план: человек открывает ноутбук в тёмной комнате",
+          duration_seconds: 3,
+          role: "body",
+        },
+        {
+          order: 3,
+          phrase: "никто не верил что выйдет",
+          film_suggestion: "съёмка через плечо: экран с кодом поздно ночью",
+          duration_seconds: 3,
+          role: "body",
+        },
+        {
+          order: 4,
+          phrase: "но ты продолжал каждый день",
+          film_suggestion: "таймлапс рабочего стола, чашки кофе копятся рядом",
+          duration_seconds: 3,
+          role: "body",
+        },
+        {
+          order: 5,
+          phrase: "сначала было только тихо",
+          film_suggestion: "крупный план лица в холодном свете монитора",
+          duration_seconds: 3,
+          role: "body",
+        },
+        {
+          order: 6,
+          phrase: "а потом пошли первые результаты",
+          film_suggestion: "съёмка экрана телефона: уведомления и растущие графики",
+          duration_seconds: 3,
+          role: "body",
+        },
+        {
+          order: 7,
+          phrase: "и вот к чему это привело",
+          film_suggestion: "широкий план: человек встаёт из-за стола, потягивается",
+          duration_seconds: 3,
+          role: "body",
+        },
+        {
+          order: 8,
+          phrase: "просто не останавливайся.",
+          film_suggestion: "финальный кадр продукта на столе, контровой свет",
+          duration_seconds: 4,
+          role: "punch",
+        },
+      ],
+    };
+  }
   return {
     title: idea.title,
     platform: idea.platform,
     music_vibe: "dark ambient",
     color_grade: "dark_cinematic",
+    caption: `${idea.title}\n\n${idea.hook}\n\n#content #idea #${(idea.platform || "tiktok").toLowerCase().replace(/\s/g, "")} #trending #howto`,
     scenes: [
       {
         order: 1,
         phrase: idea.hook.toLowerCase(),
-        film_suggestion: "hands on keyboard",
-        duration_seconds: 3,
+        film_suggestion: "close-up of hands holding the product, soft window light",
+        duration_seconds: 4,
         role: "hook",
       },
       {
         order: 2,
-        phrase: "nobody sees this part",
-        film_suggestion: "screen glow in dark",
+        phrase: "this is where it all started",
+        film_suggestion: "medium shot: someone opens a laptop in a dark room",
         duration_seconds: 3,
         role: "body",
       },
       {
         order: 3,
-        phrase: "just you and the work",
-        film_suggestion: "coffee cup on desk",
+        phrase: "nobody thought it would work",
+        film_suggestion: "over-the-shoulder: code on the screen late at night",
         duration_seconds: 3,
         role: "body",
       },
       {
         order: 4,
-        phrase: "worth it.",
-        film_suggestion: "city lights through window",
-        duration_seconds: 2,
+        phrase: "but you showed up every day",
+        film_suggestion: "timelapse of a desk, coffee cups piling up nearby",
+        duration_seconds: 3,
+        role: "body",
+      },
+      {
+        order: 5,
+        phrase: "at first it was just quiet",
+        film_suggestion: "close-up of a face lit by the cold monitor glow",
+        duration_seconds: 3,
+        role: "body",
+      },
+      {
+        order: 6,
+        phrase: "then the first results came in",
+        film_suggestion: "screen recording: notifications and charts climbing",
+        duration_seconds: 3,
+        role: "body",
+      },
+      {
+        order: 7,
+        phrase: "and here is where it led",
+        film_suggestion: "wide shot: someone stands up from the desk, stretches",
+        duration_seconds: 3,
+        role: "body",
+      },
+      {
+        order: 8,
+        phrase: "just keep going.",
+        film_suggestion: "final hero shot of the product on a desk, rim light",
+        duration_seconds: 4,
         role: "punch",
       },
     ],
@@ -106,10 +203,12 @@ export function CreateFlow({
     setIsLoadingScript(true);
     setScriptError(null);
 
-    const saved = localStorage.getItem(`clipr_storyboard_${idea.title}`);
+    const saved = localStorage.getItem(`clipr_storyboard_v2_${idea.title}`);
     if (saved) {
       try {
-        setVisualScript(JSON.parse(saved) as VisualScriptResponse);
+        const cached = JSON.parse(saved) as VisualScriptResponse;
+        setVisualScript(cached);
+        setSelectedMusicVibe(cached.music_vibe?.split("|")[0]?.trim() || "dark ambient");
         setIsLoadingScript(false);
         return;
       } catch {
@@ -139,7 +238,7 @@ export function CreateFlow({
         niche,
       });
       setVisualScript(data);
-      localStorage.setItem(`clipr_storyboard_${idea.title}`, JSON.stringify(data));
+      localStorage.setItem(`clipr_storyboard_v2_${idea.title}`, JSON.stringify(data));
       setSelectedMusicVibe(data.music_vibe.split("|")[0]?.trim() || "dark ambient");
     } catch (err) {
       setScriptError(
@@ -199,7 +298,7 @@ export function CreateFlow({
         ...prev,
         scenes: prev.scenes.map((s) => (s.order === order ? { ...s, phrase } : s)),
       };
-      localStorage.setItem(`clipr_storyboard_${idea.title}`, JSON.stringify(updated));
+      localStorage.setItem(`clipr_storyboard_v2_${idea.title}`, JSON.stringify(updated));
       return updated;
     });
   };
@@ -253,6 +352,7 @@ export function CreateFlow({
         audio_volume: 0.6,
         color_grade: visualScript.color_grade.split("|")[0]?.trim() || "dark_cinematic",
         platform: outputPlatform,
+        template_id: visualScript.template_id ?? "",
       });
 
       setRenderJobId(jobId);
@@ -291,7 +391,7 @@ export function CreateFlow({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1 text-xs text-[#888888] hover:text-[#EFEFEF] transition-colors"
+          className="flex items-center gap-1 text-xs text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
           Back to ideas
@@ -307,7 +407,7 @@ export function CreateFlow({
           error={scriptError}
           onPhraseEdit={handlePhraseEdit}
           onRegenerate={() => {
-            localStorage.removeItem(`clipr_storyboard_${idea.title}`);
+            localStorage.removeItem(`clipr_storyboard_v2_${idea.title}`);
             fetchStoryboard();
           }}
           onContinue={() => setCurrentStep(3)}
@@ -334,6 +434,9 @@ export function CreateFlow({
           renderStatus={renderStatus}
           renderError={renderError}
           isRendering={isRendering}
+          videoTitle={idea.title}
+          platform={outputPlatform}
+          caption={visualScript?.caption}
           onRetry={handleRetryRender}
           onSchedulePost={() => {
             if (!renderStatus?.output_url) return;

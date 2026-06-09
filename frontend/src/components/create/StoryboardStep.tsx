@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowDown, Camera, Loader2 } from "lucide-react";
+import { ArrowDown, Camera, Clock, Loader2, Music, Palette } from "lucide-react";
 import type { Scene, VisualScriptResponse } from "@/lib/types";
 
 interface StoryboardStepProps {
@@ -13,9 +13,12 @@ interface StoryboardStepProps {
   onContinue: () => void;
 }
 
-function roleBadgeClass(role: string): string {
-  if (role === "hook" || role === "punch") return "text-[#10B981]";
-  return "text-[#888888]";
+// Backend returns option lists like "dark ambient|lo-fi beats|...". Show the first, cleaned.
+function cleanOption(value: string | undefined): string {
+  return (value ?? "").split("|")[0].trim();
+}
+function prettyOption(value: string | undefined): string {
+  return cleanOption(value).replace(/_/g, " ");
 }
 
 export function StoryboardStep({
@@ -37,7 +40,7 @@ export function StoryboardStep({
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         <Loader2 className="w-8 h-8 text-[#10B981] animate-spin" />
-        <p className="text-sm text-[#888888] mt-4">Building your storyboard...</p>
+        <p className="text-sm text-[#6B7C85] mt-4">Building your storyboard...</p>
       </div>
     );
   }
@@ -49,7 +52,7 @@ export function StoryboardStep({
         <button
           type="button"
           onClick={onRegenerate}
-          className="mt-4 px-4 py-2 bg-[#242424] border border-[#333333] text-[#EFEFEF] rounded-lg text-sm"
+          className="mt-4 px-4 py-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg text-sm"
         >
           Try again
         </button>
@@ -61,94 +64,120 @@ export function StoryboardStep({
 
   const scenes = [...visualScript.scenes].sort((a, b) => a.order - b.order);
 
+  const stats = [
+    { icon: Music, label: "Music vibe", value: cleanOption(visualScript.music_vibe) },
+    { icon: Palette, label: "Color grade", value: prettyOption(visualScript.color_grade) },
+    { icon: Clock, label: "Total duration", value: `~${totalDuration}s` },
+  ];
+
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin p-6">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         <h2 className="text-xl font-semibold text-[#EFEFEF]">Your storyboard</h2>
-        <p className="text-sm text-[#888888] mt-1">Film these scenes in order</p>
+        <p className="text-sm text-[#6B7C85] mt-1">Film these scenes in order</p>
 
         <div className="mt-6 space-y-0">
-          {scenes.map((scene: Scene, idx: number) => (
-            <div key={scene.order}>
-              <div className="bg-[#242424] border border-[#333333] rounded-xl p-5">
-                <div className="flex gap-4">
-                  <div className="w-[60%]">
-                    <div className="flex items-center gap-2">
-                      <span className="w-7 h-7 rounded-full bg-[#333333] text-[#EFEFEF] text-sm font-medium flex items-center justify-center">
+          {scenes.map((scene: Scene, idx: number) => {
+            const isAccent = scene.role === "hook" || scene.role === "punch";
+            return (
+              <div key={scene.order}>
+                <div className="bg-[#0D1416] border border-[#152226] rounded-xl p-5 transition-colors hover:border-[#1E343A]">
+                  {/* Header: number + role + duration */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-7 h-7 rounded-full bg-[#152226] text-[#EFEFEF] text-sm font-medium flex items-center justify-center shrink-0">
                         {scene.order}
                       </span>
                       <span
-                        className={`text-xs tracking-widest uppercase font-semibold ${roleBadgeClass(scene.role)}`}
+                        className={`text-[10px] tracking-widest uppercase font-bold px-2 py-0.5 rounded-full border ${
+                          isAccent
+                            ? "text-[#10B981] bg-[#10B981]/10 border-[#10B981]/25"
+                            : "text-[#6B7C85] bg-[#11191B] border-[#152226]"
+                        }`}
                       >
                         {scene.role}
                       </span>
                     </div>
-
-                    {editingOrder === scene.order ? (
-                      <input
-                        autoFocus
-                        value={scene.phrase}
-                        onChange={(e) => onPhraseEdit(scene.order, e.target.value)}
-                        onBlur={() => setEditingOrder(null)}
-                        onKeyDown={(e) => e.key === "Enter" && setEditingOrder(null)}
-                        className="w-full mt-3 text-xl font-semibold text-[#EFEFEF] bg-[#1a1a1a] border border-[#444] rounded-lg px-3 py-2 outline-none focus:border-[#10B981]"
-                      />
-                    ) : (
-                      <p
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setEditingOrder(scene.order)}
-                        onKeyDown={(e) => e.key === "Enter" && setEditingOrder(scene.order)}
-                        className="text-xl font-semibold text-[#EFEFEF] mt-3 cursor-text hover:opacity-80"
-                      >
-                        {scene.phrase}
-                      </p>
-                    )}
-
-                    <p className="text-xs text-[#888888] mt-2">
-                      {scene.duration_seconds} seconds
-                    </p>
+                    <span className="flex items-center gap-1 text-[11px] text-[#6B7C85] font-mono bg-[#070B0D] border border-[#152226] px-2 py-0.5 rounded-full shrink-0">
+                      <Clock className="w-3 h-3" />
+                      {scene.duration_seconds}s
+                    </span>
                   </div>
 
-                  <div className="w-[40%] border-l border-[#333333] pl-4">
-                    <p className="text-xs tracking-widest text-[#888888] uppercase">
-                      What to film
+                  {/* On-screen phrase (editable) */}
+                  {editingOrder === scene.order ? (
+                    <input
+                      autoFocus
+                      value={scene.phrase}
+                      onChange={(e) => onPhraseEdit(scene.order, e.target.value)}
+                      onBlur={() => setEditingOrder(null)}
+                      onKeyDown={(e) => e.key === "Enter" && setEditingOrder(null)}
+                      className="w-full mt-3 text-xl font-semibold text-[#EFEFEF] bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2 outline-none focus:border-[#10B981]"
+                    />
+                  ) : (
+                    <p
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setEditingOrder(scene.order)}
+                      onKeyDown={(e) => e.key === "Enter" && setEditingOrder(scene.order)}
+                      className="text-xl font-semibold text-[#EFEFEF] mt-3 cursor-text hover:opacity-80"
+                      title="Click to edit the on-screen text"
+                    >
+                      {scene.phrase}
                     </p>
-                    <p className="text-sm text-[#EFEFEF] mt-1">{scene.film_suggestion}</p>
-                    <Camera className="w-4 h-4 text-[#888888] mt-2" />
+                  )}
+
+                  {/* What to film panel */}
+                  <div className="mt-4 rounded-lg bg-[#070B0D] border border-[#152226] p-3.5">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Camera className="w-3.5 h-3.5 text-[#10B981]" />
+                      <span className="text-[10px] tracking-widest text-[#6B7C85] uppercase font-bold">
+                        What to film
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#EFEFEF] leading-relaxed">
+                      {scene.film_suggestion}
+                    </p>
                   </div>
                 </div>
+
+                {idx < scenes.length - 1 && (
+                  <div className="flex justify-center py-2">
+                    <ArrowDown className="w-4 h-4 text-[#1E343A]" />
+                  </div>
+                )}
               </div>
-
-              {idx < scenes.length - 1 && (
-                <div className="flex justify-center py-2">
-                  <ArrowDown className="w-4 h-4 text-[#333333]" />
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-4 text-sm">
-          <div>
-            <span className="text-xs text-[#888888]">Music vibe: </span>
-            <span className="text-[#EFEFEF]">{visualScript.music_vibe}</span>
-          </div>
-          <div>
-            <span className="text-xs text-[#888888]">Color grade: </span>
-            <span className="text-[#EFEFEF]">{visualScript.color_grade}</span>
-          </div>
-          <div>
-            <span className="text-xs text-[#888888]">Total duration: </span>
-            <span className="text-[#EFEFEF]">~{totalDuration} seconds</span>
-          </div>
+        {/* Production details */}
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="flex items-center gap-3 rounded-xl bg-[#0D1416] border border-[#152226] px-4 py-3"
+            >
+              <div className="w-8 h-8 rounded-lg bg-[#11191B] border border-[#152226] flex items-center justify-center text-[#10B981] shrink-0">
+                <stat.icon className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wider text-[#6B7C85] font-mono">
+                  {stat.label}
+                </p>
+                <p className="text-sm text-[#EFEFEF] font-medium truncate capitalize">
+                  {stat.value}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="mt-6 flex gap-3">
           <button
             type="button"
             onClick={onRegenerate}
-            className="flex-1 py-3 bg-[#242424] border border-[#333333] text-[#EFEFEF] rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition-colors"
+            className="flex-1 py-3 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg text-sm font-medium hover:bg-[#11191B] transition-colors"
           >
             Regenerate storyboard
           </button>

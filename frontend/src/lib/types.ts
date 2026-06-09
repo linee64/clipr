@@ -40,6 +40,8 @@ export interface VisualScriptResponse {
   scenes: Scene[];
   music_vibe: string;
   color_grade: string;
+  caption?: string;
+  template_id?: string;
 }
 
 export interface BrollRenderRequest {
@@ -50,6 +52,7 @@ export interface BrollRenderRequest {
   audio_volume: number;
   color_grade: string;
   platform: string;
+  template_id?: string;
 }
 
 export interface RenderStatus {
