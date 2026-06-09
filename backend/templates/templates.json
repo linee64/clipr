@@ -268,8 +268,7 @@
     "id": "ref-and-no-excuses-focusmode-lockedin-growthmindset-mindsetshift-selfgrowth",
     "label": "Ref: And no excuses !!#focusmode #lockedin #growthmindset #mindsetshift #selfgrowth",
     "platforms": [
-      "TikTok",
-      "Reels"
+      "all"
     ],
     "scene_count": [
       5,
@@ -289,7 +288,10 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
+    "caption_font": "Verdana",
+    "caption_size": 68,
     "color_grade": "moody",
+    "grade_filter": "eq=contrast=1.05:brightness=0.004:saturation=0.91,colorbalance=rm=0.027:bm=-0.027",
     "music_vibe": "lo-fi beats",
     "structure": [
       "hook",
@@ -308,6 +310,7 @@
     ],
     "source": "extracted",
     "ref": "And no excuses !!#focusmode #lockedin #growthmindset #mindsetshift #selfgrowth",
+    "preview_file": "And no excuses !!#focusmode #lockedin #growthmindset #mindsetshift #selfgrowth.mp4",
     "measured": {
       "duration": 7.38,
       "cuts": 6,
@@ -315,6 +318,8 @@
       "bpm": 117.5,
       "brightness": 60.1,
       "saturation": 6.6,
+      "u": 127.4,
+      "v": 132.8,
       "caption_density": null
     }
   },
@@ -322,8 +327,7 @@
     "id": "ref-aqo7vko2ichdfsv4hlm3npdovogvzvonkusxlttmux2oa4u5bmo7fsmctkpwxzioqg00e-xdrh4gutmwagtyroc-v31-0lau",
     "label": "Ref: AQO7VKO2IcHdfSV4hLm3npdOvOgvZvonKUSxltTmuX2OA4U5Bmo7FSMctkPWXZIoQg00E_Xdrh4GuTmWaGtYRoc-V31-0lAu",
     "platforms": [
-      "TikTok",
-      "Reels"
+      "all"
     ],
     "scene_count": [
       5,
@@ -345,7 +349,10 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_size": 80,
     "color_grade": "dark_cinematic",
+    "grade_filter": "eq=contrast=1.05:brightness=0.027:saturation=0.92",
     "music_vibe": "energetic / trap",
     "structure": [
       "hook",
@@ -364,6 +371,7 @@
     ],
     "source": "extracted",
     "ref": "AQO7VKO2IcHdfSV4hLm3npdOvOgvZvonKUSxltTmuX2OA4U5Bmo7FSMctkPWXZIoQg00E_Xdrh4GuTmWaGtYRoc-V31-0lAu",
+    "preview_file": "AQO7VKO2IcHdfSV4hLm3npdOvOgvZvonKUSxltTmuX2OA4U5Bmo7FSMctkPWXZIoQg00E_Xdrh4GuTmWaGtYRoc-V31-0lAu.mp4",
     "measured": {
       "duration": 8.96,
       "cuts": 12,
@@ -371,6 +379,8 @@
       "bpm": 129.2,
       "brightness": 71.4,
       "saturation": 7.9,
+      "u": 127.6,
+      "v": 127.7,
       "caption_density": null
     }
   },
@@ -378,8 +388,7 @@
     "id": "ref-came-from-nothing-motivation-motivational-entrepreneur-fyp-reels",
     "label": "Ref: came from nothing  #motivation #motivational #entrepreneur #fyp #reels",
     "platforms": [
-      "TikTok",
-      "Reels"
+      "all"
     ],
     "scene_count": [
       5,
@@ -399,7 +408,10 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
+    "caption_font": "Verdana",
+    "caption_size": 60,
     "color_grade": "moody",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.034:saturation=0.88,vignette=PI/6",
     "music_vibe": "lo-fi beats",
     "structure": [
       "hook",
@@ -418,6 +430,7 @@
     ],
     "source": "extracted",
     "ref": "came from nothing  #motivation #motivational #entrepreneur #fyp #reels",
+    "preview_file": "came from nothing  #motivation #motivational #entrepreneur #fyp #reels.mp4",
     "measured": {
       "duration": 12.12,
       "cuts": 0,
@@ -425,6 +438,8 @@
       "bpm": 99.4,
       "brightness": 41.1,
       "saturation": 4.1,
+      "u": 128.1,
+      "v": 128.2,
       "caption_density": null
     }
   },
@@ -432,8 +447,7 @@
     "id": "ref-ease-is-a-greater-threat-to-progress-than-hardship-find-me-on-tiktok-herstudymemoir",
     "label": "Ref: Ease is a greater threat to progress than hardship.••Find me on TikTok @herstudymemoir ••_______",
     "platforms": [
-      "TikTok",
-      "Reels"
+      "all"
     ],
     "scene_count": [
       5,
@@ -455,7 +469,10 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
+    "caption_font": "Trebuchet MS",
+    "caption_size": 80,
     "color_grade": "moody",
+    "grade_filter": "eq=contrast=1.05:brightness=0.021:saturation=0.96,colorbalance=rm=0.055:bm=-0.055",
     "music_vibe": "lo-fi beats",
     "structure": [
       "hook",
@@ -474,6 +491,7 @@
     ],
     "source": "extracted",
     "ref": "Ease is a greater threat to progress than hardship.••Find me on TikTok @herstudymemoir ••_______",
+    "preview_file": "Ease is a greater threat to progress than hardship.••Find me on TikTok @herstudymemoir ••_______.mp4",
     "measured": {
       "duration": 17.83,
       "cuts": 37,
@@ -481,6 +499,8 @@
       "bpm": 112.3,
       "brightness": 68.5,
       "saturation": 13.7,
+      "u": 123.6,
+      "v": 134.7,
       "caption_density": null
     }
   },
@@ -488,8 +508,7 @@
     "id": "ref-i-don-t-care-adayinlife-of-follow-for-more-fyp-viralreels-aestheticreels-trendi",
     "label": "Ref: I don’t care. @adayinlife_of 🌻 follow for more........#fypシ #viralreels #aestheticreels #trendi",
     "platforms": [
-      "TikTok",
-      "Reels"
+      "all"
     ],
     "scene_count": [
       5,
@@ -509,7 +528,10 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
+    "caption_font": "Arial Black",
+    "caption_size": 60,
     "color_grade": "dark_cinematic",
+    "grade_filter": "eq=contrast=1.05:brightness=0.029:saturation=0.93,colorbalance=rm=0.029:bm=-0.029",
     "music_vibe": "lo-fi beats",
     "structure": [
       "hook",
@@ -528,6 +550,7 @@
     ],
     "source": "extracted",
     "ref": "I don’t care. @adayinlife_of 🌻 follow for more........#fypシ #viralreels #aestheticreels #trendi",
+    "preview_file": "I don’t care. @adayinlife_of 🌻 follow for more........#fypシ #viralreels #aestheticreels #trendi.mp4",
     "measured": {
       "duration": 12.54,
       "cuts": 0,
@@ -535,6 +558,8 @@
       "bpm": 107.7,
       "brightness": 72.3,
       "saturation": 10.2,
+      "u": 123.6,
+      "v": 129.3,
       "caption_density": null
     }
   },
@@ -542,8 +567,7 @@
     "id": "ref-it-s-okay-to-have-off-days-we-aren-t-robots-the-9-to-5-is-draining-and-some-nights-you-just",
     "label": "Ref: It’s okay to have off-days. We aren’t robots. ☕️The 9-to-5 is draining, and some nights you just",
     "platforms": [
-      "TikTok",
-      "Reels"
+      "all"
     ],
     "scene_count": [
       5,
@@ -563,7 +587,10 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_size": 60,
     "color_grade": "moody",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.034:saturation=0.89,colorbalance=rm=0.031:bm=-0.031,vignette=PI/6",
     "music_vibe": "dark ambient",
     "structure": [
       "hook",
@@ -582,6 +609,7 @@
     ],
     "source": "extracted",
     "ref": "It’s okay to have off-days. We aren’t robots. ☕️The 9-to-5 is draining, and some nights you just",
+    "preview_file": "It’s okay to have off-days. We aren’t robots. ☕️The 9-to-5 is draining, and some nights you just.mp4",
     "measured": {
       "duration": 6.38,
       "cuts": 0,
@@ -589,6 +617,8 @@
       "bpm": 69.8,
       "brightness": 41.1,
       "saturation": 4.6,
+      "u": 125.2,
+      "v": 131.4,
       "caption_density": null
     }
   },
@@ -596,8 +626,7 @@
     "id": "ref-it-s-you-versus-you",
     "label": "Ref: It’s you versus you.",
     "platforms": [
-      "TikTok",
-      "Reels"
+      "all"
     ],
     "scene_count": [
       5,
@@ -617,7 +646,10 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_size": 60,
     "color_grade": "moody",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.038:saturation=0.89,colorbalance=rm=0.026:bm=-0.026,vignette=PI/6",
     "music_vibe": "energetic / trap",
     "structure": [
       "hook",
@@ -636,6 +668,7 @@
     ],
     "source": "extracted",
     "ref": "It’s you versus you.",
+    "preview_file": "It’s you versus you..mp4",
     "measured": {
       "duration": 7.29,
       "cuts": 0,
@@ -643,6 +676,8 @@
       "bpm": 136.0,
       "brightness": 38.8,
       "saturation": 4.5,
+      "u": 125.8,
+      "v": 131.0,
       "caption_density": null
     }
   },
@@ -650,8 +685,7 @@
     "id": "ref-katanya-break-the-pattern-today-or-the-loop-will-repeat-tomorrow-editing-davinciresolve-v",
     "label": "Ref: Katanya, Break the pattern today, or the loop will repeat tomorrow.#editing #davinciresolve #v",
     "platforms": [
-      "TikTok",
-      "Reels"
+      "all"
     ],
     "scene_count": [
       5,
@@ -671,7 +705,10 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_size": 68,
     "color_grade": "moody",
+    "grade_filter": "eq=contrast=1.05:brightness=0.016:saturation=0.92,colorbalance=rm=0.051:bm=-0.051",
     "music_vibe": "lo-fi beats",
     "structure": [
       "hook",
@@ -690,6 +727,7 @@
     ],
     "source": "extracted",
     "ref": "Katanya, Break the pattern today, or the loop will repeat tomorrow.#editing #davinciresolve #v",
+    "preview_file": "Katanya, Break the pattern today, or the loop will repeat tomorrow.#editing #davinciresolve #v.mp4",
     "measured": {
       "duration": 12.47,
       "cuts": 14,
@@ -697,6 +735,8 @@
       "bpm": 117.5,
       "brightness": 65.9,
       "saturation": 8.5,
+      "u": 123.2,
+      "v": 133.3,
       "caption_density": null
     }
   },
@@ -704,8 +744,7 @@
     "id": "ref-locked-in",
     "label": "Ref: Locked in",
     "platforms": [
-      "TikTok",
-      "Reels"
+      "all"
     ],
     "scene_count": [
       5,
@@ -725,7 +764,10 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
+    "caption_font": "Trebuchet MS",
+    "caption_size": 60,
     "color_grade": "moody",
+    "grade_filter": "eq=contrast=1.05:brightness=0.012:saturation=0.89",
     "music_vibe": "energetic / trap",
     "structure": [
       "hook",
@@ -744,6 +786,7 @@
     ],
     "source": "extracted",
     "ref": "Locked in",
+    "preview_file": "Locked in.mp4",
     "measured": {
       "duration": 13.74,
       "cuts": 7,
@@ -751,6 +794,8 @@
       "bpm": 184.6,
       "brightness": 63.9,
       "saturation": 5.1,
+      "u": 129.6,
+      "v": 129.3,
       "caption_density": null
     }
   },
@@ -758,8 +803,7 @@
     "id": "ref-study-forgirls-selfgrowth-education",
     "label": "Ref: 📚✨...#study #forgirls #selfgrowth #education",
     "platforms": [
-      "TikTok",
-      "Reels"
+      "all"
     ],
     "scene_count": [
       5,
@@ -779,7 +823,10 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_size": 60,
     "color_grade": "moody",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.025:saturation=0.87,colorbalance=rm=0.011:bm=-0.011",
     "music_vibe": "lo-fi beats",
     "structure": [
       "hook",
@@ -798,6 +845,7 @@
     ],
     "source": "extracted",
     "ref": "📚✨...#study #forgirls #selfgrowth #education",
+    "preview_file": "📚✨...#study #forgirls #selfgrowth #education.mp4",
     "measured": {
       "duration": 11.96,
       "cuts": 0,
@@ -805,6 +853,8 @@
       "bpm": 95.7,
       "brightness": 45.5,
       "saturation": 2.5,
+      "u": 126.9,
+      "v": 129.2,
       "caption_density": null
     }
   }

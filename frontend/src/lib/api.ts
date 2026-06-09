@@ -3,6 +3,7 @@ import type {
   IdeaRequest,
   IdeasResponse,
   RenderStatus,
+  TemplateSampleResponse,
   VisualScriptRequest,
   VisualScriptResponse,
 } from "./types";
@@ -62,6 +63,17 @@ export async function startBrollRender(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+  return parseJson(res);
+}
+
+export async function sampleTemplates(
+  platform: string,
+  exclude: string[] = [],
+  count = 3
+): Promise<TemplateSampleResponse> {
+  const params = new URLSearchParams({ platform, count: String(count) });
+  if (exclude.length) params.set("exclude", exclude.join(","));
+  const res = await fetch(`${API_BASE}/api/templates/sample?${params.toString()}`);
   return parseJson(res);
 }
 

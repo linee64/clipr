@@ -48,7 +48,7 @@ export function RenderStep({
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin p-6">
-      <div className="max-w-lg mx-auto">
+      <div className={`${isDone ? "max-w-4xl" : "max-w-lg"} mx-auto`}>
         {isRendering && !isDone && !isError && (
           <div className="bg-[#0D1416] border border-[#152226] rounded-xl p-8">
             <div className="flex flex-col items-center text-center">
@@ -112,68 +112,74 @@ export function RenderStep({
 
         {isDone && renderStatus && (
           <div className="bg-[#0D1416] border border-[#152226] rounded-xl p-6 sm:p-8">
-            {/* Header */}
-            <div className="flex flex-col items-center text-center">
-              <div className="w-10 h-10 rounded-full bg-[#10B981]/10 border border-[#10B981]/25 flex items-center justify-center">
-                <Check className="w-5 h-5 text-[#10B981]" />
+            <div className="grid md:grid-cols-[260px_1fr] gap-6 lg:gap-8 items-stretch">
+              {/* Left: video */}
+              <div className="flex justify-center md:justify-start">
+                <div className="aspect-[9/16] w-[260px] max-w-full bg-[#070B0D] rounded-xl border border-[#152226] flex items-center justify-center overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.45)]">
+                  {renderStatus.output_url ? (
+                    <video
+                      src={resolveBackendUrl(renderStatus.output_url)}
+                      className="w-full h-full object-cover"
+                      controls
+                      playsInline
+                    />
+                  ) : (
+                    <span className="text-[#6B7C85] text-xs">Preview</span>
+                  )}
+                </div>
               </div>
-              <p className="text-xl font-semibold text-[#EFEFEF] mt-4">Your video is ready</p>
-              <p className="text-sm text-[#6B7C85] mt-1">
-                Review it, then schedule it to your calendar
-              </p>
-            </div>
 
-            {/* Centered video preview */}
-            <div className="mt-6 flex justify-center">
-              <div className="aspect-[9/16] w-[230px] max-w-full bg-[#070B0D] rounded-xl border border-[#152226] flex items-center justify-center overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.45)]">
-                {renderStatus.output_url ? (
-                  <video
-                    src={resolveBackendUrl(renderStatus.output_url)}
-                    className="w-full h-full object-cover"
-                    controls
-                    playsInline
-                  />
-                ) : (
-                  <span className="text-[#6B7C85] text-xs">Preview</span>
-                )}
+              {/* Right: details + actions */}
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#10B981]/10 border border-[#10B981]/25 flex items-center justify-center shrink-0">
+                    <Check className="w-5 h-5 text-[#10B981]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xl font-semibold text-[#EFEFEF]">Your video is ready</p>
+                    <p className="text-sm text-[#6B7C85] mt-0.5">
+                      Review it, then schedule it to your calendar
+                    </p>
+                  </div>
+                </div>
+
+                {/* Caption (ready to post) */}
+                <div className="mt-6 flex-1 rounded-lg bg-[#070B0D] border border-[#152226] p-4 text-left">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[10px] uppercase tracking-wider text-[#6B7C85] font-mono">
+                      Caption
+                    </span>
+                    {platform && (
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-2 py-0.5 rounded-full">
+                        {platform}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-[#EFEFEF] leading-relaxed whitespace-pre-line">
+                    {captionText}
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="mt-6 flex flex-col sm:flex-row gap-2.5">
+                  <a
+                    href={resolveBackendUrl(renderStatus.output_url)}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="sm:flex-1 text-center bg-[#11191B] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm hover:bg-[#152226] transition-colors"
+                  >
+                    Download
+                  </a>
+                  <button
+                    type="button"
+                    onClick={onSchedulePost}
+                    className="sm:flex-1 bg-[#10B981] text-white rounded-lg py-3 text-sm font-medium hover:bg-[#12cf90] transition-colors"
+                  >
+                    Schedule &amp; post →
+                  </button>
+                </div>
               </div>
-            </div>
-
-            {/* Caption (ready to post) */}
-            <div className="mt-6 rounded-lg bg-[#070B0D] border border-[#152226] p-4 text-left">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-[10px] uppercase tracking-wider text-[#6B7C85] font-mono">
-                  Caption
-                </span>
-                {platform && (
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-2 py-0.5 rounded-full">
-                    {platform}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-[#EFEFEF] leading-relaxed whitespace-pre-line">
-                {captionText}
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="mt-6 space-y-2.5">
-              <a
-                href={resolveBackendUrl(renderStatus.output_url)}
-                download
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full text-center bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm hover:bg-[#11191B] transition-colors"
-              >
-                Download
-              </a>
-              <button
-                type="button"
-                onClick={onSchedulePost}
-                className="w-full bg-[#10B981] text-white rounded-lg py-3 text-sm font-medium hover:bg-[#12cf90] transition-colors"
-              >
-                Schedule & post →
-              </button>
             </div>
           </div>
         )}

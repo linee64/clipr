@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import ideas, scripts, video
+from routers import ideas, scripts, templates, video
 
 app = FastAPI(title="Clipr API", version="1.0.0")
 
@@ -14,6 +14,7 @@ app.add_middleware(
 
 app.include_router(ideas.router)
 app.include_router(scripts.router)
+app.include_router(templates.router)
 app.include_router(video.router)
 
 

@@ -15,8 +15,7 @@ interface UploadBySlotStepProps {
   onClipReplace: (sceneOrder: number, file: File) => void;
   onAudioSelect: (file: File) => void;
   onMusicVibeSelect: (vibe: string) => void;
-  onStartRender: () => void;
-  isStartingRender: boolean;
+  onContinue: () => void;
 }
 
 export function UploadBySlotStep({
@@ -28,8 +27,7 @@ export function UploadBySlotStep({
   onClipReplace,
   onAudioSelect,
   onMusicVibeSelect,
-  onStartRender,
-  isStartingRender,
+  onContinue,
 }: UploadBySlotStepProps) {
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -38,7 +36,7 @@ export function UploadBySlotStep({
   const uploadedCount = Object.keys(uploadedClips).length;
   const totalScenes = scenes.length;
   const allClipsUploaded = uploadedCount === totalScenes;
-  const canRender = allClipsUploaded && audioFile !== null;
+  const canContinue = allClipsUploaded && audioFile !== null;
 
   const handleFile = (sceneOrder: number, file: File, isReplace: boolean) => {
     if (isReplace) onClipReplace(sceneOrder, file);
@@ -195,17 +193,15 @@ export function UploadBySlotStep({
 
         <button
           type="button"
-          onClick={onStartRender}
-          disabled={!canRender || isStartingRender}
+          onClick={onContinue}
+          disabled={!canContinue}
           className={`w-full mt-6 py-3 rounded-lg text-sm font-medium transition-colors ${
-            canRender && !isStartingRender
+            canContinue
               ? "bg-[#10B981] text-white hover:bg-[#12cf90]"
               : "bg-[#152226] text-[#3A4A50] cursor-not-allowed"
           }`}
         >
-          {isStartingRender
-            ? "Starting..."
-            : `Start render → (${uploadedCount} of ${totalScenes} clips uploaded)`}
+          {`Continue to styles → (${uploadedCount} of ${totalScenes} clips uploaded)`}
         </button>
       </div>
     </div>

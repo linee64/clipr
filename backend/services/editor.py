@@ -460,12 +460,14 @@ def _ass_time(seconds: float) -> str:
     return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
 
 
-def _ass_style_line(style: str) -> str:
+def _ass_style_line(style: str, font: str = "", fontsize=None) -> str:
     chosen = ASS_STYLES.get(style, ASS_STYLES["tiktok_bold"])
+    fontname = font or chosen["Fontname"]
+    size = str(int(fontsize)) if fontsize else chosen["Fontsize"]
     return (
         f"Style: {chosen['Name']},"
-        f"{chosen['Fontname']},"
-        f"{chosen['Fontsize']},"
+        f"{fontname},"
+        f"{size},"
         f"{chosen['PrimaryColour']},"
         f"{chosen['SecondaryColour']},"
         f"{chosen['OutlineColour']},"
@@ -485,7 +487,9 @@ def _ass_style_line(style: str) -> str:
     )
 
 
-def _write_ass_header(f, style: str, play_w: int = 1080, play_h: int = 1920) -> None:
+def _write_ass_header(
+    f, style: str, play_w: int = 1080, play_h: int = 1920, font: str = "", fontsize=None
+) -> None:
     f.write("[Script Info]\n")
     f.write("ScriptType: v4.00+\n")
     # PlayRes MUST match the rendered frame, otherwise libass scales X and Y by
@@ -499,7 +503,7 @@ def _write_ass_header(f, style: str, play_w: int = 1080, play_h: int = 1920) -> 
         "ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
         "Alignment, MarginL, MarginR, MarginV, Encoding\n"
     )
-    f.write(_ass_style_line(style) + "\n\n")
+    f.write(_ass_style_line(style, font, fontsize) + "\n\n")
     f.write("[Events]\n")
     f.write(
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
@@ -511,6 +515,8 @@ def generate_ass_simple(
     output_path: str,
     style: str = "tiktok_bold",
     resolution: str = "1080:1920",
+    font: str = "",
+    fontsize=None,
 ):
     """
     Generate .ass subtitle file with advanced styling.
@@ -519,13 +525,16 @@ def generate_ass_simple(
     - tiktok_bold: large bold white text, black outline, bottom center
     - plaque: white text on dark semi-transparent background plaque
     - center_caps: uppercase, center screen, thick outline, aggressive
+
+    font / fontsize override the style's defaults so each template can have its own
+    caption look.
     """
     try:
         play_w, play_h = (int(float(x)) for x in resolution.split(":"))
     except (ValueError, TypeError):
         play_w, play_h = 1080, 1920
     with open(output_path, "w", encoding="utf-8") as f:
-        _write_ass_header(f, style, play_w, play_h)
+        _write_ass_header(f, style, play_w, play_h, font, fontsize)
         for seg in segments:
             text = seg["text"].strip()
             if style == "center_caps":
@@ -618,9 +627,14 @@ def generate_ass_karaoke(
     output_path: str,
     style: str = "karaoke",
     resolution: str = "1080:1920",
+    font: str = "",
+    fontsize=None,
 ):
     """Write an .ass where each scene's phrase reveals word-by-word, in time with
-    the beat, the newest word highlighted in mint — a montage caption look."""
+    the beat, the newest word highlighted in mint — a montage caption look.
+
+    font / fontsize override the style defaults so each template's captions differ.
+    """
     try:
         play_w, play_h = (int(float(x)) for x in resolution.split(":"))
     except (ValueError, TypeError):
@@ -628,7 +642,7 @@ def generate_ass_karaoke(
 
     beats = sorted(b for b in (beat_times or []) if b is not None and b >= 0)
     with open(output_path, "w", encoding="utf-8") as f:
-        _write_ass_header(f, style, play_w, play_h)
+        _write_ass_header(f, style, play_w, play_h, font, fontsize)
         for scene in scenes_timed:
             phrase = str(scene.get("phrase", "")).strip()
             if not phrase:
@@ -1262,8 +1276,14 @@ def extract_montage_cut(
     except ValueError:
         w, h = "1080", "1920"
 
-    grade_f = COLOR_GRADES.get(grade, COLOR_GRADES["dark_cinematic"])
-    vf_parts = [grade_f]
+    # `grade` may be a full ffmpeg filter string (per-template, tone-matched) or a
+    # preset name from COLOR_GRADES.
+    gf = grade or ""
+    if gf and "=" not in gf:
+        if gf not in COLOR_GRADES:  # typo / unknown name -> surface it, don't silently misgrade
+            print(f"[grade] unknown grade '{gf}', falling back to dark_cinematic")
+        gf = COLOR_GRADES.get(gf, COLOR_GRADES["dark_cinematic"])
+    vf_parts = [gf] if gf else []
 
     z = max(1.0, float(zoom))
     if z > 1.001:

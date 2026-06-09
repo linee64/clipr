@@ -2,7 +2,7 @@
 
 import { Check } from "lucide-react";
 
-export type FlowStep = 1 | 2 | 3 | 4 | 5;
+export type FlowStep = 1 | 2 | 3 | 4 | 5 | 6;
 
 interface StepIndicatorProps {
   currentStep: FlowStep;
@@ -12,8 +12,9 @@ const STEPS = [
   { num: 1, label: "Idea" },
   { num: 2, label: "Storyboard" },
   { num: 3, label: "Upload" },
-  { num: 4, label: "Render" },
-  { num: 5, label: "Post" },
+  { num: 4, label: "Style" },
+  { num: 5, label: "Render" },
+  { num: 6, label: "Post" },
 ] as const;
 
 export function StepIndicator({ currentStep }: StepIndicatorProps) {

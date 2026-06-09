@@ -69,3 +69,28 @@ export interface UploadedClipSlot {
   clip_id?: string;
   previewUrl?: string;
 }
+
+export interface TemplateOption {
+  id: string;
+  label: string;
+  caption_style: string;
+  color_grade: string;
+  music_vibe: string;
+  pacing?: {
+    target_cut_len?: number;
+    max_cuts_per_scene?: number;
+    zooms?: number[];
+  };
+  measured?: {
+    duration?: number;
+    cuts?: number;
+    bpm?: number;
+    [key: string]: unknown;
+  };
+  preview_url: string;
+}
+
+export interface TemplateSampleResponse {
+  templates: TemplateOption[];
+  total: number;
+}

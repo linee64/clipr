@@ -18,6 +18,7 @@ re-processes.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -36,10 +37,32 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 from services.editor import _run, get_duration  # noqa: E402  (needs sys.path first)
+from services.templates import CAPTION_FONTS  # noqa: E402
 
 REF_DIR = BACKEND_DIR / "reference_videos"
 TEMPLATES_PATH = BACKEND_DIR / "templates" / "templates.json"
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".webm", ".mkv", ".avi"}
+
+def _build_grade_filter(yavg, satavg, uavg, vavg):
+    """An ffmpeg filter that roughly matches the reference's tone (brightness /
+    saturation / warm-cool). Returns None when brightness wasn't measured so the
+    caller falls back to a preset grade."""
+    if yavg is None:
+        return None
+    # Calibrated to the real spread of short-form aesthetic refs (often dark, low-sat):
+    # brightness centered ~58 luma so dark/bright refs diverge instead of all pinning
+    # to the floor; mild saturation; warmth (V-U) is the main differentiator.
+    sat = max(0.82, min(1.15, 0.85 + (satavg if satavg else 8) / 120.0))
+    bright = max(-0.05, min(0.05, (yavg - 58) / 500.0))
+    parts = [f"eq=contrast=1.05:brightness={bright:.3f}:saturation={sat:.2f}"]
+    if uavg is not None and vavg is not None:
+        warm = (vavg - 128) - (uavg - 128)  # >0 warm (red), <0 cool (blue)
+        shift = max(-0.07, min(0.07, warm * 0.005))
+        if abs(shift) >= 0.008:
+            parts.append(f"colorbalance=rm={shift:.3f}:bm={-shift:.3f}")
+    if yavg < 45:  # only genuinely dark refs get a (light) vignette
+        parts.append("vignette=PI/6")
+    return ",".join(parts)
 
 
 def _slug(name: str) -> str:
@@ -95,14 +118,19 @@ def measure_color(path: str) -> dict:
             text=True,
         )
         text = (res.stderr or "") + (res.stdout or "")
-        yavg = [float(x) for x in re.findall(r"signalstats\.YAVG=([\d.]+)", text)]
-        satavg = [float(x) for x in re.findall(r"signalstats\.SATAVG=([\d.]+)", text)]
+
+        def avg(tag):
+            vals = [float(x) for x in re.findall(rf"signalstats\.{tag}=([\d.]+)", text)]
+            return round(sum(vals) / len(vals), 1) if vals else None
+
         return {
-            "brightness": round(sum(yavg) / len(yavg), 1) if yavg else None,
-            "saturation": round(sum(satavg) / len(satavg), 1) if satavg else None,
+            "brightness": avg("YAVG"),   # 0-255 luma
+            "saturation": avg("SATAVG"),
+            "u": avg("UAVG"),            # ~128 neutral; >128 cool/blue
+            "v": avg("VAVG"),            # ~128 neutral; >128 warm/red
         }
     except Exception:
-        return {"brightness": None, "saturation": None}
+        return {"brightness": None, "saturation": None, "u": None, "v": None}
 
 
 def measure_bpm(path: str) -> float | None:
@@ -220,10 +248,20 @@ def signals_to_template(name: str, signals: dict) -> dict:
     else:
         music_vibe = "dark ambient"
 
+    uavg, vavg = signals.get("u"), signals.get("v")
+    # tone-matched grade built from the reference's real colors + a distinct caption
+    # font/size per reference so different picks visibly differ
+    grade_filter = _build_grade_filter(brightness, saturation, uavg, vavg)
+    fi = int(hashlib.md5(name.encode("utf-8")).hexdigest(), 16)
+    caption_font = CAPTION_FONTS[fi % len(CAPTION_FONTS)]
+    caption_size = 80 if target_cut_len < 0.7 else 68 if target_cut_len <= 1.1 else 60
+
     return {
         "id": f"ref-{_slug(name)}",
         "label": f"Ref: {name}",
-        "platforms": ["TikTok", "Reels"],
+        # a montage style (pacing/captions/grade) is orientation-agnostic, so it
+        # applies to any platform; resolution is handled separately at render time
+        "platforms": ["all"],
         "scene_count": scene_count,
         "pacing": {
             "target_cut_len": target_cut_len,
@@ -232,7 +270,10 @@ def signals_to_template(name: str, signals: dict) -> dict:
         },
         "phrase": phrase,
         "caption_style": caption_style,
+        "caption_font": caption_font,
+        "caption_size": caption_size,
         "color_grade": grade,
+        "grade_filter": grade_filter,
         "music_vibe": music_vibe,
         "structure": ["hook", "body", "body", "body", "punch"],
         "shots": [
@@ -245,6 +286,7 @@ def signals_to_template(name: str, signals: dict) -> dict:
         ],
         "source": "extracted",
         "ref": name,
+        "preview_file": signals.get("preview_file"),
         "measured": {
             "duration": round(duration, 2),
             "cuts": signals.get("cuts"),
@@ -252,6 +294,8 @@ def signals_to_template(name: str, signals: dict) -> dict:
             "bpm": bpm,
             "brightness": brightness,
             "saturation": saturation,
+            "u": uavg,
+            "v": vavg,
             "caption_density": cap_density,
         },
     }
@@ -259,7 +303,7 @@ def signals_to_template(name: str, signals: dict) -> dict:
 
 def extract_one(path: Path, use_ocr: bool) -> dict:
     duration = get_duration(str(path))
-    signals = {"duration": duration}
+    signals = {"duration": duration, "preview_file": path.name}
     signals.update(measure_cuts(str(path), duration))
     signals.update(measure_color(str(path)))
     signals["bpm"] = measure_bpm(str(path))

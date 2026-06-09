@@ -14,6 +14,7 @@ import type { RenderStatus, Scene, UploadedClipSlot, VisualScriptResponse } from
 import { StepIndicator, type FlowStep } from "./StepIndicator";
 import { StoryboardStep } from "./StoryboardStep";
 import { UploadBySlotStep } from "./UploadBySlotStep";
+import { TemplatePickStep } from "./TemplatePickStep";
 import { RenderStep } from "./RenderStep";
 
 export interface CreateFlowIdea {
@@ -190,6 +191,7 @@ export function CreateFlow({
     audio_file_id?: string;
   } | null>(null);
   const [selectedMusicVibe, setSelectedMusicVibe] = useState("dark ambient");
+  const [chosenTemplateId, setChosenTemplateId] = useState<string | null>(null);
 
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [renderStatus, setRenderStatus] = useState<RenderStatus | null>(null);
@@ -263,7 +265,7 @@ export function CreateFlow({
         const status = await getRenderStatus(renderJobId);
         setRenderStatus(status);
         if (status.status === "done") {
-          setCurrentStep(5);
+          setCurrentStep(6);
         }
         if (status.status === "done" || status.status === "error") {
           if (pollingRef.current) {
@@ -318,7 +320,7 @@ export function CreateFlow({
     setIsStartingRender(true);
     setRenderError(null);
     setRenderStatus(null);
-    setCurrentStep(4);
+    setCurrentStep(5);
 
     try {
       const clipIds: string[] = [];
@@ -352,7 +354,7 @@ export function CreateFlow({
         audio_volume: 0.6,
         color_grade: visualScript.color_grade.split("|")[0]?.trim() || "dark_cinematic",
         platform: outputPlatform,
-        template_id: visualScript.template_id ?? "",
+        template_id: chosenTemplateId || visualScript.template_id || "",
       });
 
       setRenderJobId(jobId);
@@ -366,7 +368,7 @@ export function CreateFlow({
       });
     } catch (err) {
       setRenderError(err instanceof Error ? err.message : "Render failed to start");
-      setCurrentStep(3);
+      setCurrentStep(4);
     } finally {
       setIsStartingRender(false);
     }
@@ -376,7 +378,7 @@ export function CreateFlow({
     setRenderJobId(null);
     setRenderStatus(null);
     setRenderError(null);
-    setCurrentStep(3);
+    setCurrentStep(4);
   };
 
   const isRendering =
@@ -424,12 +426,22 @@ export function CreateFlow({
           onClipReplace={handleClipUpload}
           onAudioSelect={(file) => setAudioFile({ file })}
           onMusicVibeSelect={setSelectedMusicVibe}
-          onStartRender={handleStartRender}
+          onContinue={() => setCurrentStep(4)}
+        />
+      )}
+
+      {currentStep === 4 && (
+        <TemplatePickStep
+          platform={outputPlatform}
+          selectedTemplateId={chosenTemplateId}
+          onSelect={(id) => setChosenTemplateId(id || null)}
+          onRender={handleStartRender}
+          onBack={() => setCurrentStep(3)}
           isStartingRender={isStartingRender}
         />
       )}
 
-      {(currentStep === 4 || currentStep === 5) && (
+      {(currentStep === 5 || currentStep === 6) && (
         <RenderStep
           renderStatus={renderStatus}
           renderError={renderError}

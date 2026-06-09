@@ -6,12 +6,28 @@ storyboard generator and the montage worker can rotate among distinct looks
 instead of producing the same edit every time. New templates are appended by the
 reference-video extractor (scripts/build_templates.py)."""
 
+import hashlib
 import json
 import random
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_PATH = BACKEND_DIR / "templates" / "templates.json"
+
+# Distinctive caption fonts, each template gets a different one so the picked style
+# visibly changes the subtitle look. Chosen from the msttcorefonts family so they
+# exist on Windows (dev) AND on a Linux render host that has msttcorefonts installed.
+# NOTE for prod: on a bare Linux image WITHOUT msttcorefonts, libass substitutes a
+# single default face for all of these — captions still render, but the per-template
+# font variety is lost. Install msttcorefonts (or bundle the .ttf files + fontsdir)
+# on the render host to keep the variety.
+CAPTION_FONTS = [
+    "Impact",
+    "Arial Black",
+    "Verdana",
+    "Trebuchet MS",
+    "Georgia",
+]
 
 # Fallback used when no template is selected or an id is unknown. Matches the
 # pipeline's built-in defaults so behavior is unchanged without a template.
@@ -99,3 +115,22 @@ def pacing_of(template: dict) -> dict:
 
 def caption_style_of(template: dict) -> str:
     return (template or {}).get("caption_style") or DEFAULT_TEMPLATE["caption_style"]
+
+
+def caption_font_of(template: dict) -> str:
+    """Template's caption font, or a stable per-template choice so every template
+    (incl. seeds, which don't set one) gets a visibly different font."""
+    t = template or {}
+    if t.get("caption_font"):
+        return t["caption_font"]
+    key = (t.get("id") or t.get("label") or "default").encode("utf-8")
+    return CAPTION_FONTS[int(hashlib.md5(key).hexdigest(), 16) % len(CAPTION_FONTS)]
+
+
+def caption_size_of(template: dict):
+    """Template's caption size, or one derived from pace (faster cut = bigger text)."""
+    t = template or {}
+    if t.get("caption_size"):
+        return int(t["caption_size"])
+    tcl = (t.get("pacing") or {}).get("target_cut_len", 0.9)
+    return 80 if tcl < 0.7 else 68 if tcl <= 1.1 else 60
