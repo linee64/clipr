@@ -19,10 +19,8 @@ export const metadata: Metadata = {
   description:
     "Clipr turns your idea into a ready-to-post Reel or TikTok — script, references, calendar, and auto-posting. All in one visual flow.",
   metadataBase: new URL("https://clipr.ai"),
-  icons: {
-    icon: "/Clipr-logo.png",
-    apple: "/Clipr-logo.png",
-  },
+  // Tab icon comes from the file-convention icons in src/app (favicon.ico,
+  // icon.png, apple-icon.png), all generated from the logo.
   openGraph: {
     title: "Clipr — Your content team. Minus the team.",
     description: "Turns an idea into a full video content workflow: script, references, calendar, and auto-posting.",
