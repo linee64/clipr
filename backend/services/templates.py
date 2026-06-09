@@ -23,14 +23,16 @@ TEMPLATES_PATH = BACKEND_DIR / "templates" / "templates.json"
 # NOTE (prod): a bare Linux image WITHOUT msttcorefonts substitutes one default face
 # for all of these — captions still render but the variety is lost; install
 # msttcorefonts (or bundle .ttf + fontsdir) on the render host.
+# Each pair is intentionally HARMONIOUS — base + emphasis share a vibe (clean sans +
+# heavier sans, or a classic serif + bold sans) — and sits in a normal short-form
+# position (lower third = alignment 2 + marginV; or centered = alignment 5). No mono,
+# no Comic Sans, no top placement: those read as "off" vs real references.
 CAPTION_PRESETS = [
-    {"font": "Impact", "emphasis_font": "Georgia", "uppercase": True, "italic": False, "alignment": 2, "outline": 4, "marginv": 300},
-    {"font": "Verdana", "emphasis_font": "Impact", "uppercase": False, "italic": False, "alignment": 5, "outline": 3, "marginv": 0},
-    {"font": "Georgia", "emphasis_font": "Impact", "uppercase": False, "italic": True, "alignment": 8, "outline": 3, "marginv": 260},
-    {"font": "Arial Black", "emphasis_font": "Comic Sans MS", "uppercase": False, "italic": False, "alignment": 2, "outline": 3, "marginv": 340},
-    {"font": "Trebuchet MS", "emphasis_font": "Georgia", "uppercase": True, "italic": False, "alignment": 5, "outline": 3, "marginv": 0},
-    {"font": "Times New Roman", "emphasis_font": "Impact", "uppercase": False, "italic": True, "alignment": 2, "outline": 3, "marginv": 300},
-    {"font": "Courier New", "emphasis_font": "Arial Black", "uppercase": True, "italic": False, "alignment": 5, "outline": 3, "marginv": 0},
+    {"font": "Verdana", "emphasis_font": "Arial Black", "uppercase": False, "italic": False, "alignment": 2, "outline": 3, "marginv": 300},
+    {"font": "Impact", "emphasis_font": "Arial Black", "uppercase": True, "italic": False, "alignment": 2, "outline": 4, "marginv": 300},
+    {"font": "Impact", "emphasis_font": "Impact", "uppercase": True, "italic": False, "alignment": 5, "outline": 4, "marginv": 0},
+    {"font": "Georgia", "emphasis_font": "Arial Black", "uppercase": False, "italic": False, "alignment": 2, "outline": 3, "marginv": 300},
+    {"font": "Trebuchet MS", "emphasis_font": "Georgia", "uppercase": False, "italic": False, "alignment": 5, "outline": 3, "marginv": 0},
 ]
 
 # Fallback used when no template is selected or an id is unknown. Matches the

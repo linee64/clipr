@@ -77,6 +77,11 @@ export async function sampleTemplates(
   return parseJson(res);
 }
 
+export async function listReferences(): Promise<TemplateSampleResponse> {
+  const res = await fetch(`${API_BASE}/api/templates/all`);
+  return parseJson(res);
+}
+
 export async function getRenderStatus(jobId: string): Promise<RenderStatus> {
   const res = await fetch(`${API_BASE}/api/video/render/${jobId}`);
   return parseJson(res);

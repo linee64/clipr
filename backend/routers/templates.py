@@ -56,6 +56,13 @@ def _previewable(platform: str = "") -> list:
     return [t for t in load_templates() if _has_preview(t) and _platform_ok(t, platform)]
 
 
+@router.get("/all")
+async def all_templates(platform: str = ""):
+    """All reference-backed templates (for the References tab)."""
+    pool = _previewable(platform)
+    return {"templates": [_public(t) for t in pool], "total": len(pool)}
+
+
 @router.get("/sample")
 async def sample_templates(platform: str = "", count: int = 3, exclude: str = ""):
     """Return up to `count` random preview-able templates, skipping `exclude` ids.

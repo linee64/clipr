@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { CreateFlow } from "@/components/create/CreateFlow";
+import { listReferences, resolveBackendUrl } from "@/lib/api";
+import type { TemplateOption } from "@/lib/types";
 
 // ----------------------------------------------------
 // MOCK DATA & CONFIG
@@ -267,8 +269,19 @@ const TRENDS_DATA = [
 ];
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"Create" | "Calendar" | "My Content">("Create");
+  const [activeTab, setActiveTab] = useState<"Create" | "Calendar" | "My Content" | "References">("Create");
   const [sidebarActive, setSidebarActive] = useState<"Home" | "My Content" | "Calendar" | "References" | "Settings">("Home");
+  const [references, setReferences] = useState<TemplateOption[]>([]);
+  const [refsLoading, setRefsLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== "References" || references.length > 0 || refsLoading) return;
+    setRefsLoading(true);
+    listReferences()
+      .then((d) => setReferences(d.templates))
+      .catch(() => setReferences([]))
+      .finally(() => setRefsLoading(false));
+  }, [activeTab, references.length, refsLoading]);
 
   // Onboarding & DNA States
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(true);
@@ -653,8 +666,8 @@ export default function Dashboard() {
                       setHeroExitState("visible");
                       setIsGenerating(false);
                     }
-                    else if (link.name === "Calendar" || link.name === "My Content") {
-                      setActiveTab(link.name as "Create" | "Calendar" | "My Content");
+                    else if (link.name === "Calendar" || link.name === "My Content" || link.name === "References") {
+                      setActiveTab(link.name as "Create" | "Calendar" | "My Content" | "References");
                     }
                   }}
                   className={`w-full flex items-center justify-between px-4 py-2.5 rounded-[10px] text-[14px] font-normal transition-all duration-200 border ${isActive
@@ -1216,6 +1229,88 @@ export default function Dashboard() {
                       </div>
                     ))}
                   </div>
+                </motion.div>
+              )}
+
+              {/* ----------------------------------------------------
+                TAB 4: REFERENCES
+               ---------------------------------------------------- */}
+              {activeTab === "References" && (
+                <motion.div
+                  key="references-tab"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center justify-between border-b border-[#152226] pb-4">
+                    <div>
+                      <h2 className="text-lg font-semibold text-[#EFEFEF]">References</h2>
+                      <p className="text-xs text-[#6B7C85] mt-0.5">
+                        The clips your video styles are learned from
+                      </p>
+                    </div>
+                    <span className="text-xs text-[#6B7C85] font-mono">
+                      Total: {references.length}
+                    </span>
+                  </div>
+
+                  {refsLoading ? (
+                    <div className="flex items-center justify-center py-16 text-[#6B7C85] text-sm">
+                      Loading references…
+                    </div>
+                  ) : references.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <Bookmark className="w-8 h-8 text-[#1E343A]" />
+                      <p className="text-sm text-[#6B7C85] mt-3">No references yet.</p>
+                      <p className="text-xs text-[#6B7C85] mt-1">
+                        Drop videos in backend/reference_videos and run the template extractor.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {references.map((ref) => (
+                        <div
+                          key={ref.id}
+                          className="rounded-xl bg-[#0D1416] border border-[#152226] overflow-hidden hover:border-[#1E343A] transition-colors"
+                        >
+                          <div className="aspect-[9/16] bg-[#070B0D]">
+                            {ref.preview_url ? (
+                              <video
+                                src={resolveBackendUrl(ref.preview_url)}
+                                className="w-full h-full object-cover"
+                                muted
+                                loop
+                                autoPlay
+                                playsInline
+                                preload="metadata"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Film className="w-6 h-6 text-[#1E343A]" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-3">
+                            <p className="text-[11px] text-[#EFEFEF] line-clamp-2 leading-snug">
+                              {(ref.label || "Reference").replace(/^Ref:\s*/, "")}
+                            </p>
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              <span className="text-[9px] uppercase tracking-wider font-semibold text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-1.5 py-0.5 rounded-full">
+                                {(ref.color_grade || "").replace(/_/g, " ")}
+                              </span>
+                              {ref.measured?.bpm != null && (
+                                <span className="text-[9px] text-[#6B7C85] bg-[#070B0D] border border-[#152226] px-1.5 py-0.5 rounded-full font-mono">
+                                  {Math.round(ref.measured.bpm)} bpm
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               )}
 
