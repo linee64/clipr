@@ -36,10 +36,10 @@ COPY backend/ .
 # get the container OOM-killed mid-render (which would wipe the job -> "Job not found").
 ENV FFMPEG_THREADS=2
 
-# Render the video frame at 720x1280 instead of 1080x1920 — ~half the encode memory
-# so the render fits a small instance. Captions are still authored at full res and
-# scaled down by libass, so they look identical. Raise/remove on a roomier instance.
-ENV RENDER_LONG_EDGE=1280
+# Render the video frame smaller than 1080x1920 to cut encode memory on a small
+# instance (960 -> 540x960). Captions are still authored at full res and scaled down
+# by libass, so they look identical. Raise to 1280/1920 (or remove) on a roomier box.
+ENV RENDER_LONG_EDGE=960
 
 ENV PORT=8000
 EXPOSE 8000

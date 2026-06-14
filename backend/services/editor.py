@@ -260,24 +260,16 @@ def concatenate_clips(clip_paths: list[str], output_path: str):
         for path in clip_paths:
             f.write(f"file '{os.path.abspath(path)}'\n")
 
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-f",
-        "concat",
-        "-safe",
-        "0",
-        "-i",
-        list_file,
-        "-c:v",
-        "libx264",
-        "-c:a",
-        "aac",
-        "-preset",
-        "fast",
-        output_path,
-    ]
-    _run(cmd)
+    base = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_file]
+    try:
+        # The cuts and intro cards are all normalized to identical codec params (see
+        # extract_montage_cut / _card_bg_command), so a stream copy usually works and
+        # skips a full-montage re-encode — the render's single biggest memory + time
+        # cost (and the step that was OOM-killing small instances).
+        _run(base + ["-c", "copy", "-movflags", "+faststart", output_path])
+    except Exception:
+        # Params didn't line up exactly for a copy -> fall back to a real re-encode.
+        _run(base + ["-c:v", "libx264", "-c:a", "aac", "-preset", "veryfast", output_path])
 
 
 def add_background_audio(
@@ -1376,15 +1368,17 @@ def burn_subtitles_ass(
             "ffmpeg", "-y", "-i", vbase,
             "-filter_complex", fc,
             "-map", "[vout]", "-map", "0:a?",
+            "-c:v", "libx264", "-preset", "veryfast",
             "-c:a", "copy", obase,
         ]
     else:
-        cmd = ["ffmpeg", "-y", "-i", vbase, "-vf", f"ass={ass_opt}", "-c:a", "copy", obase]
-    cmd = [_tool(cmd[0])] + cmd[1:]
-    try:
-        subprocess.run(cmd, check=True, capture_output=True, cwd=work_dir)
-    except FileNotFoundError as e:
-        raise RuntimeError(_FFMPEG_HINT) from e
+        cmd = ["ffmpeg", "-y", "-i", vbase, "-vf", f"ass={ass_opt}",
+               "-c:v", "libx264", "-preset", "veryfast", "-c:a", "copy", obase]
+    # Route through _run so this full-frame re-encode also gets the FFMPEG_THREADS cap
+    # (it was bypassing it before, defaulting to x264 'medium' on all cores — heavy on
+    # memory). cwd=work_dir keeps the ass/font basenames resolvable; _run maps the tool
+    # path and surfaces a clear error tail on failure.
+    _run(cmd, cwd=work_dir)
     return output_path
 
 
