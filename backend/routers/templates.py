@@ -13,6 +13,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
+from services.storage import use_local_storage
 from services.templates import load_templates
 
 router = APIRouter(prefix="/api/templates", tags=["templates"])
@@ -26,17 +27,48 @@ def _platform_ok(t: dict, platform: str) -> bool:
     return (not plats) or ("all" in plats) or (not platform) or (platform in plats)
 
 
+def _ref_bucket_url(template_id: str) -> str:
+    """Public URL for this template's reference video in the storage bucket.
+
+    On a deploy the `reference_videos/*.mp4` aren't shipped (they're not in git),
+    so the preview is served from storage at `references/<id>.mp4` (seeded once
+    from a machine that has the files), mirroring how template tracks work.
+    """
+    if not template_id:
+        return ""
+    remote = f"references/{template_id}.mp4"
+    if use_local_storage():
+        return f"/api/video/files/{remote}"
+    try:
+        from services.storage import BUCKET, _get_supabase
+
+        return _get_supabase().storage.from_(BUCKET).get_public_url(remote)
+    except Exception:
+        return ""
+
+
 def _has_preview(t: dict) -> bool:
     preview = t.get("preview_file")
-    return bool(preview) and (REF_DIR / preview).is_file()
+    if not preview:
+        return False
+    # Local file present (dev) OR a storage bucket to serve it from (deploy).
+    return (REF_DIR / preview).is_file() or not use_local_storage()
+
+
+def _preview_url(t: dict) -> str:
+    """Where the frontend should load this reference video from.
+
+    Prefer the on-disk file via the API (dev); fall back to the storage bucket
+    when the file isn't shipped (deploy). Local filenames have spaces / '#' /
+    emoji, so they're URL-encoded (else the browser treats '#' as a fragment).
+    """
+    preview = t.get("preview_file") or ""
+    if preview and (REF_DIR / preview).is_file():
+        return f"/api/templates/preview/{quote(preview, safe='')}"
+    return _ref_bucket_url(t.get("id") or "")
 
 
 def _public(t: dict) -> dict:
-    preview = t.get("preview_file") or ""
-    # Only expose a preview URL when the file actually exists, so a stale entry
-    # shows the frontend placeholder instead of a broken <video>. Filenames have
-    # spaces / '#' / emoji, so they must be URL-encoded (else the browser treats
-    # '#' as a fragment and never reaches the server).
     return {
         "id": t.get("id"),
         "label": t.get("label"),
@@ -53,9 +85,7 @@ def _public(t: dict) -> dict:
         "wip": bool(t.get("wip")),
         "pacing": t.get("pacing"),
         "measured": t.get("measured"),
-        "preview_url": (
-            f"/api/templates/preview/{quote(preview, safe='')}" if _has_preview(t) else ""
-        ),
+        "preview_url": _preview_url(t) if _has_preview(t) else "",
     }
 
 
