@@ -1,0 +1,15 @@
+# Build context = repo root. Keep it small and backend-only.
+frontend/
+**/node_modules/
+.next/
+out/
+.git/
+.vercel/
+**/__pycache__/
+*.pyc
+backend/temp/
+backend/tools/
+backend/.env
+backend/.env.*
+backend/assets/tracks/*.mp3
+.DS_Store
