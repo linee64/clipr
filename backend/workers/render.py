@@ -42,7 +42,10 @@ from services.templates import (
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 TEMP_DIR = str(BACKEND_DIR / "temp")
-render_jobs: dict = {}
+# Shared, restart-safe job store (mirrored to storage by a heartbeat). Kept under
+# the old name so existing imports (`from workers.render import render_jobs`) and
+# all the `render_jobs[job_id][...] = ...` updates keep working unchanged.
+from services.jobstore import jobs as render_jobs  # noqa: E402
 
 
 async def run_render_job(

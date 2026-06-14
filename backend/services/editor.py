@@ -57,9 +57,20 @@ def _tool(name: str) -> str:
     return name
 
 
+_FFMPEG_THREADS = (os.environ.get("FFMPEG_THREADS") or "").strip()
+
+
 def _run(cmd: list[str], **kwargs):
     if cmd:
         cmd = [_tool(cmd[0])] + cmd[1:]
+        # Constrained deploys: cap ffmpeg's worker threads so a render can't fan a
+        # heavy encode across every core at once and get OOM-killed (which wipes the
+        # in-memory job and surfaces as "Job not found"). Opt-in via FFMPEG_THREADS
+        # (set in the Docker image); unset -> ffmpeg's default, so local dev is
+        # unchanged. Only real processing commands (those with an input) are capped.
+        base = os.path.basename(cmd[0]).lower()
+        if _FFMPEG_THREADS and base.startswith("ffmpeg") and "-i" in cmd and "-threads" not in cmd:
+            cmd = [cmd[0], "-threads", _FFMPEG_THREADS] + cmd[1:]
     # In text mode, decode as UTF-8 (ffmpeg's output encoding) rather than the
     # Windows locale (cp1251). Otherwise ffmpeg echoing a filename with emoji or
     # non-Latin chars makes the subprocess reader thread raise UnicodeDecodeError,
@@ -1477,7 +1488,10 @@ def detect_beats(audio_path: str) -> list[float]:
     """Analyze audio file and return timestamps (in seconds) of beat hits."""
     import librosa
 
-    y, sr = librosa.load(audio_path, sr=None)
+    # 22.05 kHz mono is librosa's standard rate for beat tracking — accurate, and a
+    # fraction of the memory of loading at the file's native (often 44.1 kHz stereo)
+    # rate, which matters on a memory-constrained deploy.
+    y, sr = librosa.load(audio_path, sr=22050, mono=True)
     _, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
     beat_times = librosa.frames_to_time(beat_frames, sr=sr).tolist()
     return beat_times
@@ -1492,7 +1506,7 @@ def detect_hook_offset(audio_path: str) -> float:
         import librosa
         import numpy as np
 
-        y, sr = librosa.load(audio_path, sr=None, mono=True)
+        y, sr = librosa.load(audio_path, sr=22050, mono=True)
         if y is None or len(y) == 0:
             return 0.0
         dur = len(y) / sr

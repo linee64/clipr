@@ -32,6 +32,10 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Backend code (assets/fonts, templates, routers, services, workers, …).
 COPY backend/ .
 
+# Cap ffmpeg threads so a render's encodes don't spike memory across every core and
+# get the container OOM-killed mid-render (which would wipe the job -> "Job not found").
+ENV FFMPEG_THREADS=2
+
 ENV PORT=8000
 EXPOSE 8000
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

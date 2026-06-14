@@ -28,6 +28,7 @@ from services.editor import (
     transcode_to_mp3,
     transcribe_audio,
 )
+from services import jobstore
 from services.storage import download_file, local_file_path, upload_file, use_local_storage
 from services.tracks import ensure_track_seeded, get_tracks_with_urls
 from workers.render import render_jobs, run_broll_render, run_render_job
@@ -202,6 +203,7 @@ async def beat_sync(request: BeatSyncRequest, background_tasks: BackgroundTasks)
         "description": "",
         "error": "",
     }
+    jobstore.start_heartbeat(request.job_id)
 
     async def run():
         try:
@@ -305,6 +307,7 @@ async def apply_subtitles(request: SubtitleStyleRequest, background_tasks: Backg
         "description": "",
         "error": "",
     }
+    jobstore.start_heartbeat(request.job_id)
 
     async def run():
         try:
@@ -367,6 +370,7 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
         "description": "",
         "error": "",
     }
+    jobstore.start_heartbeat(request.job_id)
 
     background_tasks.add_task(
         run_broll_render,
@@ -395,6 +399,7 @@ async def start_render(request: RenderRequest, background_tasks: BackgroundTasks
         "description": "",
         "error": "",
     }
+    jobstore.start_heartbeat(request.job_id)
 
     background_tasks.add_task(
         run_render_job,
@@ -414,15 +419,28 @@ async def start_render(request: RenderRequest, background_tasks: BackgroundTasks
 @router.get("/render/{job_id}", response_model=RenderStatus)
 async def get_render_status(job_id: str):
     """Poll render job status — frontend polls this every 3 seconds."""
-    if job_id not in render_jobs:
+    job = render_jobs.get(job_id)
+    if job is None:
+        # In-memory copy gone (e.g. the render process restarted mid-render). Fall
+        # back to the durable mirror so a poll survives a restart instead of 404-ing
+        # forever as "Job not found".
+        job = await jobstore.read_remote(job_id)
+    if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    job = render_jobs[job_id]
+    status = job.get("status", "")
+    error = job.get("error", "")
+    if jobstore.is_stale(job):
+        # Heartbeat went cold while still "processing" -> the worker died mid-render
+        # (almost always out of memory). Surface a clear reason, not a stuck bar.
+        status = "error"
+        error = jobstore.INTERRUPTED_MSG
+
     return RenderStatus(
         job_id=job_id,
-        status=job["status"],
-        progress=job["progress"],
-        output_url=job["output_url"],
-        description=job["description"],
-        error=job["error"],
+        status=status,
+        progress=job.get("progress", 0),
+        output_url=job.get("output_url", ""),
+        description=job.get("description", ""),
+        error=error,
     )

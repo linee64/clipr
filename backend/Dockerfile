@@ -35,6 +35,10 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # App code (assets/fonts, templates, routers, services, workers, …).
 COPY . .
 
+# Cap ffmpeg threads so a render's encodes don't spike memory across every core and
+# get the container OOM-killed mid-render (which would wipe the job -> "Job not found").
+ENV FFMPEG_THREADS=2
+
 # Railway injects $PORT at runtime; default 8000 for plain `docker run`.
 ENV PORT=8000
 EXPOSE 8000
