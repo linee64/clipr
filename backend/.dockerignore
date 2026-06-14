@@ -1,0 +1,15 @@
+# Scratch render output (recreated at runtime)
+temp/
+# Windows-only bundled ffmpeg — the image installs Linux ffmpeg via apt
+tools/
+# Python caches
+**/__pycache__/
+*.pyc
+# Secrets & local env
+.env
+.env.*
+# Copyrighted music kept out of the image (seed to the storage bucket instead)
+assets/tracks/*.mp3
+# VCS / editor noise
+.git/
+.DS_Store
