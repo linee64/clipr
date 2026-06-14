@@ -29,6 +29,7 @@ from services.editor import (
     transcribe_audio,
 )
 from services.storage import download_file, local_file_path, upload_file, use_local_storage
+from services.tracks import ensure_track_seeded, get_tracks_with_urls
 from workers.render import render_jobs, run_broll_render, run_render_job
 
 router = APIRouter(prefix="/api/video", tags=["video"])
@@ -119,6 +120,12 @@ async def upload_audio(file: UploadFile = File(...)):
                 os.remove(p)
 
     return {"audio_file_id": audio_id, "url": url}
+
+
+@router.get("/tracks")
+async def list_tracks():
+    """Built-in template tracks for creators without their own music."""
+    return {"tracks": await get_tracks_with_urls()}
 
 
 @router.post("/silence/detect")
@@ -348,6 +355,11 @@ async def apply_subtitles(request: SubtitleStyleRequest, background_tasks: Backg
 @router.post("/broll-render")
 async def broll_render(request: BrollRenderRequest, background_tasks: BackgroundTasks):
     """Full aesthetic b-roll render: clips + phrases + music → graded video with text."""
+    # If a template track was picked, make sure it's in storage before the
+    # worker tries to download audio/<id>.mp3.
+    if request.audio_file_id:
+        await ensure_track_seeded(request.audio_file_id)
+
     render_jobs[request.job_id] = {
         "status": "pending",
         "progress": 0,
@@ -367,6 +379,7 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
         platform=request.platform,
         beats_per_clip=request.beats_per_clip,
         template_id=request.template_id,
+        music_start=request.music_start,
     )
 
     return {"job_id": request.job_id, "status": "pending"}

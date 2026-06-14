@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowDown, Camera, Clock, Loader2, Music, Palette } from "lucide-react";
+import { ArrowDown, Camera, ChevronLeft, Clock, Loader2, Music, Palette } from "lucide-react";
 import type { Scene, VisualScriptResponse } from "@/lib/types";
 
 interface StoryboardStepProps {
@@ -11,6 +11,7 @@ interface StoryboardStepProps {
   onPhraseEdit: (order: number, phrase: string) => void;
   onRegenerate: () => void;
   onContinue: () => void;
+  onBack: () => void;
 }
 
 // Backend returns option lists like "dark ambient|lo-fi beats|...". Show the first, cleaned.
@@ -28,6 +29,7 @@ export function StoryboardStep({
   onPhraseEdit,
   onRegenerate,
   onContinue,
+  onBack,
 }: StoryboardStepProps) {
   const [editingOrder, setEditingOrder] = useState<number | null>(null);
 
@@ -71,7 +73,7 @@ export function StoryboardStep({
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin p-6">
+    <div className="w-full p-6">
       <div className="max-w-3xl mx-auto">
         <h2 className="text-xl font-semibold text-[#EFEFEF]">Your storyboard</h2>
         <p className="text-sm text-[#6B7C85] mt-1">Film these scenes in order</p>
@@ -174,6 +176,14 @@ export function StoryboardStep({
         </div>
 
         <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center justify-center gap-1.5 py-3 px-4 bg-[#0D1416] border border-[#152226] text-[#6B7C85] rounded-lg text-sm hover:text-[#EFEFEF] transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back
+          </button>
           <button
             type="button"
             onClick={onRegenerate}

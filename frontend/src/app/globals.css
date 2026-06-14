@@ -404,3 +404,20 @@ body {
   animation: scriptSpinner 0.7s linear infinite;
 }
 
+/* Video players use object-fit: cover to fill their 9:16 preview box. Browsers keep
+   that object-fit in native fullscreen, which crops/zooms a portrait (9:16) clip to
+   cover a landscape screen — making it look horizontal. Force the whole frame to show
+   (letterboxed, phone-shaped) whenever a video is fullscreen. */
+video:fullscreen {
+  object-fit: contain !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: #000;
+}
+video:-webkit-full-screen {
+  object-fit: contain !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: #000;
+}
+

@@ -48,3 +48,6 @@ backend/reference_videos/
 
 # claude code machine-local settings
 .claude/settings.local.json
+
+# copyrighted music tracks (kept locally, seeded to storage at runtime)
+backend/assets/tracks/*.mp3

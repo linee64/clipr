@@ -12,16 +12,18 @@ import {
   Settings,
   Search,
   Bell,
-  Play,
   CalendarRange,
   Edit2,
-  MoreVertical,
+  Download,
+  Trash2,
   X,
   Check,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft
 } from "lucide-react";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { CreateFlow } from "@/components/create/CreateFlow";
+import type { FlowStep } from "@/components/create/StepIndicator";
 import { API_BASE, listReferences, resolveBackendUrl } from "@/lib/api";
 import type { TemplateOption } from "@/lib/types";
 
@@ -245,21 +247,6 @@ const MOCK_CALENDAR_POSTS: Record<number, { platform: "TikTok" | "LinkedIn" | "I
   22: [{ platform: "Instagram", title: "The raw truth about SaaS valuations", time: "06:00 PM", status: "Scheduled" }]
 };
 
-const UPCOMING_POSTS_LIST = [
-  { id: "up-1", title: "How we hit $10k MRR in 30 days", platform: "Instagram", time: "June 10th · 09:00 AM", status: "Scheduled" },
-  { id: "up-2", title: "Why I hate traditional project management", platform: "TikTok", time: "June 14th · 11:30 AM", status: "Scheduled" },
-  { id: "up-3", title: "3 productivity hacks that work", platform: "LinkedIn", time: "June 18th · 01:00 PM", status: "Scheduled" }
-];
-
-const MOCK_CONTENT_ITEMS = [
-  { id: "c-1", title: "3 mistakes that kill employee onboarding", platform: "LinkedIn", status: "PUBLISHED", date: "May 28, 2026" },
-  { id: "c-2", title: "Why I almost lost my first hire", platform: "TikTok", status: "PUBLISHED", date: "May 25, 2026" },
-  { id: "c-3", title: "The 5-minute onboarding checklist", platform: "Reels", status: "SCHEDULED", date: "June 10, 2026" },
-  { id: "c-4", title: "Slack is destroying your productivity", platform: "TikTok", status: "DRAFT", date: "Saved 2 hrs ago" },
-  { id: "c-5", title: "The SaaS playbook for 2026", platform: "LinkedIn", status: "DRAFT", date: "Saved 1 day ago" },
-  { id: "c-6", title: "Why we built Clipr in a week", platform: "Reels", status: "PUBLISHED", date: "May 20, 2026" }
-];
-
 const TRENDS_DATA = [
   { id: "t-1", source: "REDDIT", title: "Founders moving from Slack to Discord", time: "2h ago" },
   { id: "t-2", source: "GOOGLE TRENDS", title: "AI HR automation tools search spike", time: "3h ago" },
@@ -268,8 +255,20 @@ const TRENDS_DATA = [
   { id: "t-5", source: "GOOGLE TRENDS", title: "Short-form video hook formulas", time: "12h ago" }
 ];
 
+interface SavedVideo {
+  id: string;
+  title: string;
+  output_url: string;
+  platform: string;
+  caption?: string;
+  date: string;
+  createdAt?: number;
+}
+
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"Create" | "Calendar" | "My Content" | "References">("Create");
+  const [activeTab, setActiveTab] = useState<"Create" | "Calendar" | "My Content" | "References" | "Settings">("Create");
+  const [savedContent, setSavedContent] = useState<SavedVideo[]>([]);
+  const [dnaInfo, setDnaInfo] = useState<{ product?: string; audience?: string; tone?: string; platform?: string }>({});
   const [sidebarActive, setSidebarActive] = useState<"Home" | "My Content" | "Calendar" | "References" | "Settings">("Home");
   const [references, setReferences] = useState<TemplateOption[]>([]);
   const [refsLoading, setRefsLoading] = useState(false);
@@ -289,6 +288,39 @@ export default function Dashboard() {
       .finally(() => setRefsLoading(false));
   }, [activeTab, references.length, refsLoading]);
 
+  // Load the videos Clipr has rendered (persisted by the create flow on render done).
+  // Re-read each time the tab opens so freshly-rendered videos show up.
+  useEffect(() => {
+    if (activeTab !== "My Content") return;
+    try {
+      setSavedContent(JSON.parse(localStorage.getItem("clipr_content") || "[]"));
+    } catch {
+      setSavedContent([]);
+    }
+  }, [activeTab]);
+
+  // Load the saved brand DNA (from onboarding) for the Settings tab.
+  useEffect(() => {
+    if (activeTab !== "Settings") return;
+    try {
+      setDnaInfo(JSON.parse(localStorage.getItem("clipr_dna") || "{}"));
+    } catch {
+      setDnaInfo({});
+    }
+  }, [activeTab]);
+
+  const deleteSavedVideo = (id: string) => {
+    setSavedContent((prev) => {
+      const next = prev.filter((v) => v.id !== id);
+      try {
+        localStorage.setItem("clipr_content", JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
   // Onboarding & DNA States
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(true);
   const [isLoadingOnboarding, setIsLoadingOnboarding] = useState<boolean>(true);
@@ -303,20 +335,23 @@ export default function Dashboard() {
   const [selectedIdea, setSelectedIdea] = useState<IdeaCard | null>(null);
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<number | null>(10);
-  const [showCalendarPanel, setShowCalendarPanel] = useState(true);
+  const [, setShowCalendarPanel] = useState(true);
   const [ideasError, setIdeasError] = useState<string | null>(null);
 
   // Scheduling
-  const [calendarPosts, setCalendarPosts] = useState(MOCK_CALENDAR_POSTS);
+  // Calendar/scheduling is shelved (Calendar tab is "coming soon"); the schedule
+  // modal stays wired but the displayed values aren't read anywhere, so keep only
+  // the setters to satisfy the no-unused-vars rule.
+  const [, setCalendarPosts] = useState(MOCK_CALENDAR_POSTS);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleTitle, setScheduleTitle] = useState("");
   const [schedulePlatform, setSchedulePlatform] = useState<"TikTok" | "LinkedIn" | "Instagram">("TikTok");
   const [scheduleDay, setScheduleDay] = useState<number>(10);
   const [scheduleTime, setScheduleTime] = useState("09:00");
-  const [scheduleConfirmation, setScheduleConfirmation] = useState<string | null>(null);
+  const [, setScheduleConfirmation] = useState<string | null>(null);
+  // Lets the schedule modal jump the still-mounted create flow back to a step.
+  const [flowJumpStep, setFlowJumpStep] = useState<FlowStep | null>(null);
 
-  // Filters
-  const [contentFilter, setContentFilter] = useState<"All" | "Drafts" | "Scheduled" | "Published">("All");
 
   // Voice Edit profile
   const [isEditingVoice, setIsEditingVoice] = useState(false);
@@ -461,13 +496,21 @@ export default function Dashboard() {
     outputUrl: string;
     platform: string;
   }) => {
-    setSelectedIdeaId(null);
-    setSelectedIdea(null);
+    // Keep the create flow mounted underneath the modal so its "back to
+    // reference / subtitles" buttons can return without losing progress.
     openScheduleModal({
       title: payload.title,
       platform: payload.platform,
       day: selectedDate ?? 10,
     });
+  };
+
+  // From the schedule modal: close it and jump the still-mounted flow to a step.
+  const jumpFlowToStep = (step: FlowStep) => {
+    setScheduleOpen(false);
+    setActiveTab("Create");
+    setSidebarActive("Home");
+    setFlowJumpStep(step);
   };
 
   const triggerGenerateIdeas = async () => {
@@ -672,8 +715,11 @@ export default function Dashboard() {
                       setHeroExitState("visible");
                       setIsGenerating(false);
                     }
-                    else if (link.name === "Calendar" || link.name === "My Content" || link.name === "References") {
-                      setActiveTab(link.name as "Create" | "Calendar" | "My Content" | "References");
+                    else if (
+                      link.name === "Calendar" || link.name === "My Content" ||
+                      link.name === "References" || link.name === "Settings"
+                    ) {
+                      setActiveTab(link.name as "Create" | "Calendar" | "My Content" | "References" | "Settings");
                     }
                   }}
                   className={`w-full flex items-center justify-between px-4 py-2.5 rounded-[10px] text-[14px] font-normal transition-all duration-200 border ${isActive
@@ -988,6 +1034,8 @@ export default function Dashboard() {
                             defaultPlatform={selectedPlatform}
                             onBack={handleExitCreateFlow}
                             onSchedulePost={handleScheduleFromRender}
+                            jumpToStep={flowJumpStep}
+                            onJumpHandled={() => setFlowJumpStep(null)}
                           />
                         </div>
                       )}
@@ -1006,153 +1054,25 @@ export default function Dashboard() {
                   transition={{ duration: 0.15 }}
                   className="space-y-6"
                 >
-                  {scheduleConfirmation && (
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-[#10B981]/40 bg-[#10B981]/10 px-4 py-3 text-sm text-[#EFEFEF]">
-                      <span className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-[#10B981] shrink-0" />
-                        {scheduleConfirmation}
-                      </span>
-                      <button
-                        onClick={() => setScheduleConfirmation(null)}
-                        className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors shrink-0"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                  {/* Header row */}
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between border-b border-[#152226] pb-4">
                     <div className="space-y-1">
                       <h2 className="text-base font-semibold text-[#EFEFEF]">Content Calendar</h2>
-                      <p className="text-xs text-[#6B7C85]">June 2026</p>
+                      <p className="text-xs text-[#6B7C85]">Plan, schedule &amp; auto-post your content.</p>
                     </div>
-                    <button
-                      onClick={() => openScheduleModal()}
-                      className="bg-[#10B981] hover:bg-[#0D9E6E] text-[#070B0D] transition-all text-xs font-semibold rounded-lg px-4 py-2 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
-                    >
-                      + Schedule post
-                    </button>
                   </div>
-
-                  <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Calendar Grid */}
-                    <div className="flex-1 bg-[#0D1416] rounded-xl border border-[#152226] p-4 shadow-none">
-                      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-mono text-[#6B7C85] font-semibold uppercase tracking-wider pb-2 border-b border-[#152226] mb-2">
-                        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-                      </div>
-
-                      <div className="grid grid-cols-7 gap-1">
-                        {Array.from({ length: 30 }).map((_, idx) => {
-                          const day = idx + 1;
-                          const posts = calendarPosts[day] || [];
-                          const isSelected = selectedDate === day;
-
-                          return (
-                            <div
-                              key={day}
-                              onClick={() => {
-                                setSelectedDate(day);
-                                setShowCalendarPanel(true);
-                              }}
-                              className={`min-h-[80px] rounded-lg p-2 flex flex-col justify-between border cursor-pointer transition-all duration-150 ${isSelected
-                                ? "bg-[#10B981]/5 border-[#10B981] shadow-[0_0_10px_rgba(16,185,129,0.1)]"
-                                : "bg-[#070B0D] border-[#152226] hover:bg-[#11191B]"
-                                }`}
-                            >
-                              <span className="text-[10px] font-mono font-semibold text-[#6B7C85] self-start">
-                                {day}
-                              </span>
-
-                              <div className="space-y-0.5">
-                                {posts.map((post, pIdx) => (
-                                  <div
-                                    key={pIdx}
-                                    className="text-[9px] truncate px-1 py-0.5 rounded bg-[#070B0D] text-[#EFEFEF] border border-[#152226] flex items-center space-x-1"
-                                  >
-                                    {getPlatformIcon(post.platform, 8)}
-                                    <span className="truncate">{post.title}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                  <div className="rounded-xl bg-[#0D1416] border border-[#152226] p-12 sm:p-16 text-center flex flex-col items-center gap-4 relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: "radial-gradient(circle at 50% 0%, #10B981, transparent 60%)" }} />
+                    <div className="w-14 h-14 rounded-2xl bg-[#070B0D] border border-[#152226] flex items-center justify-center shadow-[0_0_24px_rgba(16,185,129,0.12)] relative">
+                      <CalendarRange className="w-6 h-6 text-[#10B981]" />
                     </div>
-
-                    {/* Date detail side-panel */}
-                    {showCalendarPanel && selectedDate !== null && (
-                      <div className="w-full lg:w-[280px] bg-[#0D1416] rounded-xl border border-[#152226] p-5 space-y-4 shrink-0 flex flex-col justify-between">
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between border-b border-[#152226] pb-3">
-                            <span className="text-xs font-semibold text-[#6B7C85]">June {selectedDate}, 2026</span>
-                            <button
-                              onClick={() => setShowCalendarPanel(false)}
-                              className="p-1 text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-
-                          {calendarPosts[selectedDate] ? (
-                            <div className="space-y-3">
-                              {calendarPosts[selectedDate].map((post, idx) => (
-                                <div key={idx} className="rounded-lg bg-[#070B0D] border border-[#152226] p-3.5 space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[9px] text-[#6B7C85] border border-[#152226] px-2 py-0.5 rounded-full flex items-center space-x-1 bg-[#0D1416]">
-                                      {getPlatformIcon(post.platform, 10)}
-                                      <span>{post.platform}</span>
-                                    </span>
-                                    <span className="text-[9px] text-[#6B7C85] font-mono">{post.time}</span>
-                                  </div>
-                                  <h4 className="text-xs font-semibold text-[#EFEFEF] leading-relaxed">
-                                    {post.title}
-                                  </h4>
-                                  <div className="flex justify-between items-center pt-2 border-t border-[#152226]">
-                                    <span className="text-[9px] uppercase tracking-wider font-semibold border border-[#152226] px-1.5 py-0.5 rounded text-[#6B7C85] bg-[#0D1416]">
-                                      {post.status}
-                                    </span>
-                                    <button className="text-[10px] text-[#10B981] hover:text-[#12cf90] transition-colors">
-                                      Edit script →
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="py-8 text-center space-y-3">
-                              <CalendarRange className="w-6 h-6 text-[#6B7C85] mx-auto" />
-                              <p className="text-xs text-[#6B7C85]">No scheduled posts for this date.</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Upcoming List */}
-                  <div className="space-y-4">
-                    <h3 className="text-xs uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Upcoming posts</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {UPCOMING_POSTS_LIST.map((post) => (
-                        <div key={post.id} className="rounded-xl bg-[#0D1416] hover:bg-[#10191B] border border-[#152226] p-4 flex space-x-3 items-center transition-all duration-150">
-                          <div className="w-10 h-12 rounded bg-[#070B0D] border border-[#152226] shrink-0 flex items-center justify-center">
-                            <Play className="w-3.5 h-3.5 text-[#6B7C85]" />
-                          </div>
-                          <div className="space-y-1 flex-1 min-w-0">
-                            <div className="flex items-center space-x-1.5">
-                              {getPlatformIcon(post.platform, 10)}
-                              <span className="text-[9px] text-[#6B7C85] font-semibold">{post.platform}</span>
-                            </div>
-                            <h4 className="text-xs font-semibold text-[#EFEFEF] truncate">{post.title}</h4>
-                            <div className="flex justify-between items-center">
-                              <span className="text-[9px] text-[#6B7C85] font-mono">{post.time}</span>
-                              <span className="text-[8px] uppercase tracking-wider bg-[#070B0D] text-[#6B7C85] border border-[#152226] px-1 rounded">
-                                {post.status}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                    <span className="relative text-[10px] uppercase tracking-[0.2em] font-mono text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-3 py-1 rounded-full">Coming soon</span>
+                    <h3 className="relative text-xl font-semibold text-[#EFEFEF]">Schedule &amp; auto-post</h3>
+                    <p className="relative text-sm text-[#6B7C85] max-w-sm leading-relaxed">Plan your week and let Clipr post your videos to TikTok, Reels &amp; LinkedIn automatically — right from your calendar. We&apos;re putting the finishing touches on it.</p>
+                    <div className="relative flex flex-wrap items-center justify-center gap-2 pt-2">
+                      {(["TikTok", "Instagram", "LinkedIn"] as const).map((plat) => (
+                        <span key={plat} className="inline-flex items-center gap-1.5 text-[11px] text-[#6B7C85] border border-[#152226] bg-[#070B0D] px-2.5 py-1 rounded-full">
+                          {getPlatformIcon(plat, 12)}<span>{plat}</span>
+                        </span>
                       ))}
                     </div>
                   </div>
@@ -1171,70 +1091,95 @@ export default function Dashboard() {
                   transition={{ duration: 0.15 }}
                   className="space-y-6"
                 >
-                  {/* Filter bar */}
+                  {/* Header */}
                   <div className="flex items-center justify-between border-b border-[#152226] pb-4">
-                    <div className="flex items-center space-x-2">
-                      {(["All", "Drafts", "Scheduled", "Published"] as const).map((filter) => (
-                        <button
-                          key={filter}
-                          onClick={() => setContentFilter(filter)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-155 ${contentFilter === filter
-                            ? "bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/25"
-                            : "text-[#6B7C85] hover:text-[#EFEFEF]"
-                            }`}
-                        >
-                          {filter}
-                        </button>
-                      ))}
+                    <div className="space-y-1">
+                      <h2 className="text-base font-semibold text-[#EFEFEF]">My Content</h2>
+                      <p className="text-xs text-[#6B7C85]">Every video Clipr has made for you.</p>
                     </div>
                     <span className="text-xs text-[#6B7C85] font-mono">
-                      Total: {MOCK_CONTENT_ITEMS.length} items
+                      {savedContent.length} video{savedContent.length === 1 ? "" : "s"}
                     </span>
                   </div>
 
-                  {/* Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {MOCK_CONTENT_ITEMS.filter((item) => contentFilter === "All" || item.status === contentFilter.toUpperCase() || item.status === contentFilter).map((item) => (
-                      <div
-                        key={item.id}
-                        className="rounded-xl bg-[#0D1416] hover:bg-[#10191B] border border-[#152226] overflow-hidden flex flex-col justify-between h-[210px] shadow-none transition-all duration-150"
-                      >
-                        {/* Video thumbnail placeholder */}
-                        <div className="h-[110px] bg-[#070B0D] border-b border-[#152226] relative flex items-center justify-center overflow-hidden">
-                          <div className="absolute top-2 left-2">
-                            <span className="text-[9px] text-[#6B7C85] border border-[#152226] bg-[#0D1416] px-1.5 py-0.5 rounded flex items-center space-x-1">
-                              {getPlatformIcon(item.platform, 8)}
-                              <span className="text-[#EFEFEF]">{item.platform}</span>
-                            </span>
-                          </div>
-
-                          <div className="absolute top-2 right-2">
-                            <span className="text-[8px] uppercase tracking-wider font-semibold px-1 rounded text-[#6B7C85] bg-[#0D1416] border border-[#152226]">
-                              {item.status}
-                            </span>
-                          </div>
-
-                          <div className="w-7 h-7 rounded-full bg-[#0D1416]/80 border border-[#152226] flex items-center justify-center text-[#6B7C85] hover:text-[#EFEFEF] transition-colors">
-                            <Play className="w-3.5 h-3.5 fill-[#6B7C85]" />
-                          </div>
-                        </div>
-
-                        {/* Info & Menu */}
-                        <div className="p-4 flex-1 flex flex-col justify-between">
-                          <h4 className="text-xs font-semibold text-[#EFEFEF] line-clamp-2 leading-relaxed">
-                            {item.title}
-                          </h4>
-
-                          <div className="flex justify-between items-center pt-2 border-t border-[#152226]">
-                            <span className="text-[10px] text-[#6B7C85] font-mono">{item.date}</span>
-                            <button className="p-1 rounded text-[#6B7C85] hover:text-[#EFEFEF] transition-colors">
-                              <MoreVertical className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
+                  {savedContent.length === 0 ? (
+                    /* Empty state */
+                    <div className="rounded-xl bg-[#0D1416] border border-dashed border-[#152226] p-12 text-center flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-[#070B0D] border border-[#152226] flex items-center justify-center">
+                        <Film className="w-5 h-5 text-[#6B7C85]" />
                       </div>
-                    ))}
-                  </div>
+                      <p className="text-sm text-[#EFEFEF] font-medium">No videos yet</p>
+                      <p className="text-xs text-[#6B7C85] max-w-xs">
+                        Videos you render show up here automatically. Make your first one from the Home tab.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setSidebarActive("Home");
+                          setActiveTab("Create");
+                          setSelectedIdeaId(null);
+                          setSelectedIdea(null);
+                          setHeroExitState("visible");
+                        }}
+                        className="mt-2 bg-[#10B981] hover:bg-[#0D9E6E] text-[#070B0D] text-xs font-semibold rounded-lg px-4 py-2 transition-all shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                      >
+                        Create a video
+                      </button>
+                    </div>
+                  ) : (
+                    /* Grid of rendered videos */
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {savedContent.map((item) => (
+                        <div
+                          key={item.id}
+                          className="group rounded-xl bg-[#0D1416] hover:bg-[#10191B] border border-[#152226] overflow-hidden flex flex-col transition-all duration-150"
+                        >
+                          {/* Real video (play/fullscreen inline) */}
+                          <div className="relative aspect-[9/16] bg-[#070B0D]">
+                            <video
+                              src={resolveBackendUrl(item.output_url)}
+                              className="w-full h-full object-cover"
+                              controls
+                              playsInline
+                              preload="metadata"
+                            />
+                            <span className="absolute top-2 left-2 z-10 pointer-events-none text-[9px] text-[#EFEFEF] border border-[#152226] bg-[#0D1416]/90 px-1.5 py-0.5 rounded flex items-center space-x-1">
+                              {getPlatformIcon(item.platform, 8)}
+                              <span>{item.platform}</span>
+                            </span>
+                          </div>
+
+                          {/* Info */}
+                          <div className="p-3 flex flex-col gap-2">
+                            <h4 className="text-xs font-semibold text-[#EFEFEF] line-clamp-2 leading-relaxed">
+                              {item.title}
+                            </h4>
+                            <div className="flex justify-between items-center pt-2 border-t border-[#152226]">
+                              <span className="text-[10px] text-[#6B7C85] font-mono">{item.date}</span>
+                              <div className="flex items-center gap-1.5">
+                                <a
+                                  href={resolveBackendUrl(item.output_url)}
+                                  download
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Download"
+                                  className="p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                </a>
+                                <button
+                                  onClick={() => deleteSavedVideo(item.id)}
+                                  title="Delete"
+                                  className="p-1 rounded text-[#6B7C85] hover:text-[#EF8B8B] transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -1287,11 +1232,11 @@ export default function Dashboard() {
                           key={ref.id}
                           className="rounded-xl bg-[#0D1416] border border-[#152226] overflow-hidden hover:border-[#1E343A] transition-colors"
                         >
-                          <div className="aspect-[9/16] bg-[#070B0D]">
+                          <div className="relative aspect-[9/16] bg-[#070B0D]">
                             {ref.preview_url ? (
                               <video
                                 src={resolveBackendUrl(ref.preview_url)}
-                                className="w-full h-full object-cover"
+                                className={`w-full h-full object-cover ${ref.wip ? "opacity-40 grayscale" : ""}`}
                                 muted
                                 loop
                                 autoPlay
@@ -1301,6 +1246,13 @@ export default function Dashboard() {
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
                                 <Film className="w-6 h-6 text-[#1E343A]" />
+                              </div>
+                            )}
+                            {ref.wip && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-[#070B0D]/45">
+                                <span className="px-2.5 py-1 rounded-full bg-[#1C1C1C]/90 border border-[#3A4A50] text-[10px] font-semibold uppercase tracking-wider text-[#EFEFEF]">
+                                  In development
+                                </span>
                               </div>
                             )}
                           </div>
@@ -1323,6 +1275,105 @@ export default function Dashboard() {
                       ))}
                     </div>
                   )}
+                </motion.div>
+              )}
+
+              {/* ----------------------------------------------------
+                TAB 5: SETTINGS
+               ---------------------------------------------------- */}
+              {activeTab === "Settings" && (
+                <motion.div
+                  key="settings-tab"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="space-y-6 max-w-3xl"
+                >
+                  <div className="space-y-1 border-b border-[#152226] pb-4">
+                    <h2 className="text-base font-semibold text-[#EFEFEF]">Settings</h2>
+                    <p className="text-xs text-[#6B7C85]">Manage your account, brand voice and connections.</p>
+                  </div>
+
+                  {/* Account */}
+                  <section className="rounded-xl bg-[#0D1416] border border-[#152226] p-5 space-y-4">
+                    <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Account</h3>
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-full bg-[#152226] flex items-center justify-center text-sm font-semibold text-[#EFEFEF]">A</div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[#EFEFEF]">Aidar</p>
+                        <p className="text-xs text-[#6B7C85] truncate">aidar@clipr.ai</p>
+                      </div>
+                      <span className="ml-auto text-[10px] uppercase tracking-wider font-semibold text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-2.5 py-1 rounded-full">Pro · 7 days left</span>
+                    </div>
+                    <button className="text-xs text-[#EFEFEF] bg-[#11191B] border border-[#152226] rounded-lg px-3 py-2 hover:bg-[#152226] transition-colors">Manage plan</button>
+                  </section>
+
+                  {/* Brand DNA */}
+                  <section className="rounded-xl bg-[#0D1416] border border-[#152226] p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Brand DNA</h3>
+                      <button onClick={handleResetDna} className="text-[11px] text-[#10B981] hover:text-[#12cf90] hover:underline flex items-center gap-1"><Edit2 className="w-3 h-3" />Edit</button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {[
+                        { label: "Product / niche", value: dnaInfo.product },
+                        { label: "Audience", value: dnaInfo.audience },
+                        { label: "Tone of voice", value: dnaInfo.tone },
+                        { label: "Default platform", value: dnaInfo.platform },
+                      ].map((row) => (
+                        <div key={row.label} className="rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5">
+                          <p className="text-[9px] uppercase tracking-wider font-mono text-[#6B7C85]">{row.label}</p>
+                          <p className="text-xs text-[#EFEFEF] mt-1 truncate">{row.value || "—"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Connected accounts */}
+                  <section className="rounded-xl bg-[#0D1416] border border-[#152226] p-5 space-y-4">
+                    <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Connected accounts</h3>
+                    <div className="space-y-2">
+                      {(["TikTok", "Instagram", "LinkedIn"] as const).map((plat) => (
+                        <div key={plat} className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5">
+                          <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">{getPlatformIcon(plat, 14)}<span>{plat}</span></span>
+                          <span className="inline-flex items-center gap-1.5 text-[11px] text-[#6B7C85] border border-[#152226] px-2.5 py-1 rounded-lg cursor-not-allowed">
+                            Connect
+                            <span className="text-[8px] uppercase tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-1 rounded-full">soon</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Preferences */}
+                  <section className="rounded-xl bg-[#0D1416] border border-[#152226] p-5 space-y-4">
+                    <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Preferences</h3>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-[#EFEFEF]">Theme</span>
+                      <span className="flex items-center gap-2 text-xs text-[#6B7C85]"><span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />Dark</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-[#EFEFEF]">Default platform</span>
+                      <div className="flex items-center gap-1.5">
+                        {(["TikTok", "LinkedIn", "Reels"] as const).map((plat) => (
+                          <button key={plat} onClick={() => setSelectedPlatform(plat)} className={`text-[11px] px-2.5 py-1 rounded-lg border transition-colors ${selectedPlatform === plat ? "border-[#10B981] text-[#10B981] bg-[#10B981]/10" : "border-[#152226] text-[#6B7C85] hover:text-[#EFEFEF]"}`}>{plat}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Danger zone */}
+                  <section className="rounded-xl bg-[#0D1416] border border-[#3A1A1A] p-5 space-y-3">
+                    <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#EF8B8B] font-semibold">Danger zone</h3>
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs text-[#EFEFEF]">Reset onboarding</p>
+                        <p className="text-[11px] text-[#6B7C85] mt-0.5">Clears your brand DNA and restarts the setup flow.</p>
+                      </div>
+                      <button onClick={handleResetDna} className="shrink-0 text-xs text-[#EF8B8B] border border-[#3A1A1A] hover:bg-[#EF8B8B]/10 rounded-lg px-3 py-2 transition-colors">Reset</button>
+                    </div>
+                  </section>
                 </motion.div>
               )}
 
@@ -1569,6 +1620,29 @@ export default function Dashboard() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+              {selectedIdea && (
+                <div className="mb-5 flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85] mr-1">
+                    Go back to edit
+                  </span>
+                  {([
+                    { label: "Subtitles", step: 2 },
+                    { label: "Clips & music", step: 3 },
+                    { label: "Reference", step: 4 },
+                  ] as { label: string; step: FlowStep }[]).map((b) => (
+                    <button
+                      key={b.step}
+                      type="button"
+                      onClick={() => jumpFlowToStep(b.step)}
+                      className="inline-flex items-center gap-1 rounded-full border border-[#152226] bg-[#070B0D] px-3 py-1.5 text-xs text-[#6B7C85] hover:text-[#10B981] hover:border-[#10B981]/40 transition-colors"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="space-y-4">
                 {/* Title */}

@@ -59,6 +59,9 @@ class BrollRenderRequest(BaseModel):
     platform: str = "TikTok"
     beats_per_clip: int = 2  # how many beats each clip is held for (1 = cut on every beat)
     template_id: str = ""  # style template driving pacing + caption style
+    # User-chosen start offset (seconds) into the track — the segment they picked in
+    # the trimmer. None = auto (template music_start / hook detection). Wins over both.
+    music_start: float | None = None
 
 
 class VideoClip(BaseModel):

@@ -4,6 +4,7 @@ import type {
   IdeasResponse,
   RenderStatus,
   TemplateSampleResponse,
+  TemplateTrack,
   VisualScriptRequest,
   VisualScriptResponse,
 } from "./types";
@@ -53,6 +54,12 @@ export async function uploadAudio(
     body: form,
   });
   return parseJson(res);
+}
+
+export async function fetchTracks(): Promise<TemplateTrack[]> {
+  const res = await fetch(`${API_BASE}/api/video/tracks`);
+  const data = await parseJson<{ tracks: TemplateTrack[] }>(res);
+  return data.tracks.map((t) => ({ ...t, url: resolveBackendUrl(t.url) }));
 }
 
 export async function startBrollRender(

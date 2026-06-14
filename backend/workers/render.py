@@ -6,18 +6,26 @@ from pathlib import Path
 from services.editor import (
     add_background_audio,
     add_background_audio_only,
+    apply_end_fade,
+    apply_music_hook_lead,
     build_scene_timings_from_cuts,
     burn_subtitles_ass,
     check_ffmpeg,
     concatenate_clips,
     detect_beats,
+    detect_hook_offset,
     extract_montage_cut,
     generate_ass_karaoke,
+    generate_ass_kinetic,
     generate_ass_simple,
     generate_description,
     get_duration,
+    measure_brightness,
     montage_scene_windows,
+    plan_accel_cut_montage,
+    plan_beat_cut_montage,
     plan_scene_cuts,
+    render_text_card,
     resize_for_platform,
     transcribe_audio,
     trim_clip,
@@ -25,6 +33,7 @@ from services.editor import (
 from services.storage import download_file, upload_file
 from services.templates import (
     DEFAULT_TEMPLATE,
+    cap_total_duration,
     caption_preset_of,
     caption_style_of,
     get_template,
@@ -154,6 +163,7 @@ async def run_broll_render(
     platform: str,
     beats_per_clip: int = 2,  # kept for API stability; b-roll pacing now comes from the template
     template_id: str = "",
+    music_start: float | None = None,  # user-picked track start (trimmer); wins over auto
 ):
     render_jobs[job_id] = {
         "status": "processing",
@@ -172,6 +182,11 @@ async def run_broll_render(
                 f"{len(clip_ids)} clips"
             )
 
+        # Global rule: cap the video at MAX_VIDEO_SECONDS. Scale scene durations only
+        # (never drop scenes — they're paired 1:1 with clip_ids), so the montage and
+        # captions all stay within the cap regardless of where the scenes came from.
+        scenes = cap_total_duration(scenes, as_int=False, allow_trim=False)
+
         job_dir = os.path.join(TEMP_DIR, job_id)
         os.makedirs(job_dir, exist_ok=True)
 
@@ -189,6 +204,51 @@ async def run_broll_render(
         target_cut_len = pacing["target_cut_len"]
         max_cuts = pacing["max_cuts_per_scene"]
         zooms = pacing["zooms"]
+        min_cut = pacing.get("min_cut")  # template may allow faster sub-cuts
+        # Fit mode: "card" (rounded-card frame on black, the "you versus you" look),
+        # "letterbox" (16:9 footage + black bars), or "cover" (default fill).
+        fit = (
+            "card" if template.get("card_frame")
+            else "letterbox" if template.get("letterbox")
+            else "cover"
+        )
+        card_opts = {
+            "w_frac": template.get("card_w_frac", 0.889),
+            "h_frac": template.get("card_h_frac", 0.394),
+            "radius": template.get("card_radius", 60),
+            "y_frac": template.get("card_y_frac", 0.272),
+        } if fit == "card" else None
+        # Hold the first scene as one continuous shot (no sub-cuts) for a tension-
+        # building opener before the montage drops.
+        hold_first = bool(template.get("hold_first_scene"))
+        # White flash-cuts on every Nth cut (energetic downbeat flashes). flash_dur=0
+        # disables it (every other template -> unchanged).
+        flash_dur = (float(template.get("flash_ms", 60)) / 1000.0) if template.get("flash_cut") else 0.0
+        flash_every = max(1, int(template.get("flash_every", 2)))
+        # flash_mode "scene" = flash only on each scene's first cut (sparse, ~scene_count
+        # deliberate flashes); "every" = every flash_every-th cut.
+        flash_mode = template.get("flash_mode", "every")
+        # Start music on its hook/drop (the viral part), not the intro; re-base beats.
+        # A fixed music_start is curated for the template's recommended track (its hook
+        # sits at a known timestamp), so it only applies when that exact track is used;
+        # a user's own song falls through to automatic hook detection instead.
+        audio_start = 0.0
+        is_recommended = audio_file_id == template.get("recommended_track")
+        if music_start is not None:
+            # User picked the segment in the trimmer — their choice wins over the
+            # template's curated start and over hook detection.
+            audio_start = max(0.0, float(music_start))
+        elif template.get("music_start") is not None and is_recommended:
+            audio_start = float(template["music_start"])
+        elif template.get("music_hook"):
+            audio_start = await asyncio.to_thread(detect_hook_offset, audio_path)
+            # When the music was auto-matched to the reference (user skipped picking
+            # their own track), start a touch earlier so it opens on the viral drop.
+            audio_start = apply_music_hook_lead(
+                audio_start, template, beat_times, is_recommended=is_recommended,
+            )
+        if audio_start > 0.01:
+            beat_times = [b - audio_start for b in beat_times if b >= audio_start]
         caption_style = caption_style_of(template)
         # Template owns the whole look: grade comes from the template too (not just
         # the request payload), so the color can't drift from pacing/captions.
@@ -198,57 +258,242 @@ async def run_broll_render(
         grade_filter = template.get("grade_filter") or grade
         caption_preset = caption_preset_of(template)
 
-        # Lay scenes on the video timeline with each scene change snapped to an
-        # audible beat (same clock the captions use).
-        windows = await asyncio.to_thread(
-            montage_scene_windows,
-            [s["duration_seconds"] for s in scenes],
-            beat_times,
-            target_cut_len,
-        )
+        # Generated intro text-cards (footage-less dark-gradient / light-grain cards
+        # carrying a single bold phrase) for reference templates that define them.
+        # Each card bakes in its own caption and matches the montage cut stream
+        # params, so it concatenates ahead of the footage with no re-encode mismatch.
+        intro_cards = template.get("intro_cards") or []
+        # Card captions come from the REFERENCE (the template's curated card text),
+        # not the user's script — these are the reference's signature subtitles.
+        # bg / style / duration (the dark↔light alternation) are template-driven too.
+        card_paths: list[str] = []
+        for ci, card in enumerate(intro_cards):
+            card_text = str(card.get("text", "")).lower()
+            card_out = os.path.join(job_dir, f"card_{ci:02d}.mp4")
+            await asyncio.to_thread(
+                render_text_card,
+                card_out,
+                float(card.get("duration", 1.6)),
+                card_text,
+                card.get("bg", "dark_gradient"),
+                card.get("style", "card_phrase"),
+                resolution,
+                fontcycle=card.get("fontcycle"),
+                fontcycle_dur=card.get("fontcycle_dur"),
+            )
+            card_paths.append(card_out)
 
         render_jobs[job_id]["progress"] = 15
 
-        # Slice every uploaded clip into several beat-synced montage cuts. A handful
-        # of source clips becomes a fast sequence of jump cuts instead of a slideshow.
+        # Slice the uploaded clips into beat-synced montage cuts.
         cut_paths: list[str] = []
         scene_cut_counts: list[int] = []
         cut_idx = 0
         total = max(1, len(scenes))
 
-        for i, (scene, clip_id) in enumerate(zip(scenes, clip_ids)):
-            raw_path = os.path.join(job_dir, f"raw_{i}.mp4")
-            await download_file(f"clips/{clip_id}.mp4", raw_path)
-            src_dur = await asyncio.to_thread(get_duration, raw_path)
+        # When the template opts into auto-exposure, normalize each source toward a
+        # mid target before the grade so a dark grade can't crush dark clips to black.
+        auto_exposure = bool(template.get("auto_exposure"))
+        NORM_TARGET = 58.0  # luma to normalize sources to, pre-grade
+        _exp_cache: dict = {}
 
-            window_start, window_len = windows[i]
-            cuts = plan_scene_cuts(
-                window_start, window_len, src_dur, beat_times,
-                target_cut_len, max_cuts, zooms,
+        async def _exposure_for(p: str) -> float:
+            if not auto_exposure:
+                return 0.0
+            if p not in _exp_cache:
+                yavg = await asyncio.to_thread(measure_brightness, p)
+                _exp_cache[p] = max(-0.20, min(0.22, (NORM_TARGET - yavg) / 255.0))
+            return _exp_cache[p]
+
+        if template.get("clip_per_beat"):
+            # Fast beat-cut montage: cut to the NEXT clip every `clip_beats` beats
+            # (clips repeat in sets), over the heard beats of the montage span. All
+            # clips are pulled up front so cuts can cycle through them freely.
+            uniq_ids = list(dict.fromkeys(clip_ids))
+            clip_files: list[str] = []
+            for cid in uniq_ids:
+                p = os.path.join(job_dir, f"raw_{cid}.mp4")
+                await download_file(f"clips/{cid}.mp4", p)
+                clip_files.append(p)
+            clip_durs = {
+                p: await asyncio.to_thread(get_duration, p) for p in clip_files
+            }
+            card_total = await asyncio.to_thread(
+                lambda: sum(get_duration(p) for p in card_paths)
             )
-
-            for cut in cuts:
+            montage_total = sum(s["duration_seconds"] for s in scenes)
+            plan = plan_beat_cut_montage(
+                [clip_durs[p] for p in clip_files],
+                beat_times, card_total, montage_total, zooms,
+                every=int(template.get("clip_beats", 1)),
+            )
+            for cut in plan:
+                raw_path = clip_files[cut["clip_index"]]
                 out_path = os.path.join(job_dir, f"cut_{cut_idx:03d}.mp4")
+                do_flash = flash_dur > 0 and (cut_idx % flash_every == 0)
                 await asyncio.to_thread(
                     extract_montage_cut,
-                    raw_path,
-                    out_path,
-                    cut["src_offset"],
-                    cut["length"],
-                    cut["zoom"],
-                    grade_filter,
-                    resolution,
+                    raw_path, out_path, cut["src_offset"], cut["length"],
+                    cut["zoom"], grade_filter, resolution,
+                    exposure=await _exposure_for(raw_path), fit=fit,
+                    flash=flash_dur if do_flash else 0.0, card_opts=card_opts,
                 )
                 cut_paths.append(out_path)
                 cut_idx += 1
+            scene_cut_counts.append(len(plan))
+            render_jobs[job_id]["progress"] = 45
+        else:
+            # Lay scenes on the video timeline with each scene change snapped to an
+            # audible beat (same clock the captions use); each scene = one clip with
+            # in-scene zoom sub-cuts.
+            windows = await asyncio.to_thread(
+                montage_scene_windows,
+                [s["duration_seconds"] for s in scenes],
+                beat_times,
+                target_cut_len,
+                template.get("scene_snap_tol"),
+            )
+            # Tempo shift: from `fast_after` seconds on, fill each scene's window with a
+            # fast beat-cut montage that swaps the source CLIP every `fast_clip_beats`
+            # beats (an energetic back half) instead of sub-cutting one clip per scene;
+            # scene time-windows are unchanged so the captions still line up. Flash-cuts
+            # (white transitions) only fire on cuts that start before `flash_until`.
+            fast_after = template.get("fast_after")
+            # Tempo-shift placement, derived from the montage's real end so it lands
+            # near the end regardless of total length:
+            #   `fast_hold` (+ optional `fast_ramp`) = GRADUALLY accelerate over the
+            #     ramp, then hold ONE fast tempo for the last `fast_hold` seconds.
+            #   `fast_before_end` = simpler abrupt fast for the last N seconds.
+            fast_before_end = template.get("fast_before_end")
+            fast_hold = template.get("fast_hold")
+            fast_ramp = float(template.get("fast_ramp", 0.0))
+            hold_start = None
+            slow_seg = float(template.get("fast_slow_seg", 1.5))
+            fast_seg = float(template.get("fast_seg", 0.5))
+            montage_span = max((ws + wl for ws, wl in windows), default=0.0)
+            if fast_after is None and fast_hold is not None and windows:
+                hold_start = max(0.0, montage_span - float(fast_hold))
+                fast_after = max(0.0, hold_start - fast_ramp)
+            elif fast_after is None and fast_before_end is not None and windows:
+                fast_after = max(0.0, montage_span - float(fast_before_end))
+            flash_until = template.get("flash_until")
+            fast_clip_beats = max(1, int(template.get("fast_clip_beats", 1)))
+            fast_min_cut = float(template.get("fast_min_cut", 0.18))
 
-            scene_cut_counts.append(len(cuts))
-            render_jobs[job_id]["progress"] = 15 + int(30 * (i + 1) / total)
+            # The fast section cycles through every clip, so when a tempo shift is set we
+            # pull them all up front; otherwise keep the per-scene download (one clip per
+            # scene) so templates without a tempo shift are byte-identical.
+            clip_files: list[str] = []
+            clip_durs: list[float] = []
+            clip_path_by_id: dict[str, str] = {}
+            clip_dur_by_id: dict[str, float] = {}
+            if fast_after is not None:
+                for di, cid in enumerate(dict.fromkeys(clip_ids)):
+                    p = os.path.join(job_dir, f"raw_{di}.mp4")
+                    await download_file(f"clips/{cid}.mp4", p)
+                    d = await asyncio.to_thread(get_duration, p)
+                    clip_files.append(p)
+                    clip_durs.append(d)
+                    clip_path_by_id[cid] = p
+                    clip_dur_by_id[cid] = d
+
+            for i, (scene, clip_id) in enumerate(zip(scenes, clip_ids)):
+                window_start, window_len = windows[i]
+                # A scene counts as "fast" if it reaches into the accel zone (overlap,
+                # not just start) so the ramp begins right at fast_after instead of the
+                # next scene boundary. The held opener is always kept slow.
+                window_end = window_start + window_len
+                is_fast = (
+                    fast_after is not None
+                    and window_end > float(fast_after)
+                    and not (hold_first and i == 0)
+                )
+                if is_fast and hold_start is not None:
+                    # Gradual ramp into a steady fast tempo (held for the last seconds).
+                    plan = await asyncio.to_thread(
+                        plan_accel_cut_montage, clip_durs, beat_times,
+                        window_start, window_len, zooms,
+                        float(fast_after), float(hold_start), slow_seg, fast_seg, fast_min_cut,
+                    )
+                elif is_fast:
+                    plan = await asyncio.to_thread(
+                        plan_beat_cut_montage, clip_durs, beat_times,
+                        window_start, window_len, zooms, fast_clip_beats, fast_min_cut,
+                    )
+                else:
+                    plan = None
+
+                if plan:
+                    # Fast clip-swap fill: cycle clips, a new source every beat, no flash.
+                    for cut in plan:
+                        raw_path = clip_files[cut["clip_index"]]
+                        out_path = os.path.join(job_dir, f"cut_{cut_idx:03d}.mp4")
+                        await asyncio.to_thread(
+                            extract_montage_cut,
+                            raw_path, out_path, cut["src_offset"], cut["length"],
+                            cut["zoom"], grade_filter, resolution,
+                            exposure=await _exposure_for(raw_path), fit=fit,
+                            flash=0.0, card_opts=card_opts,
+                        )
+                        cut_paths.append(out_path)
+                        cut_idx += 1
+                    scene_cut_counts.append(len(plan))
+                    render_jobs[job_id]["progress"] = 15 + int(30 * (i + 1) / total)
+                    continue
+
+                # Slow section (or no tempo shift): one clip per scene with zoom sub-cuts.
+                if fast_after is not None:
+                    raw_path = clip_path_by_id[clip_id]
+                    src_dur = clip_dur_by_id[clip_id]
+                else:
+                    raw_path = os.path.join(job_dir, f"raw_{i}.mp4")
+                    await download_file(f"clips/{clip_id}.mp4", raw_path)
+                    src_dur = await asyncio.to_thread(get_duration, raw_path)
+
+                if hold_first and i == 0:
+                    # one continuous held shot for the opener (no sub-cuts)
+                    cuts = plan_scene_cuts(
+                        window_start, window_len, src_dur, beat_times,
+                        window_len, 1, zooms, min_cut=window_len,
+                    )
+                else:
+                    cuts = plan_scene_cuts(
+                        window_start, window_len, src_dur, beat_times,
+                        target_cut_len, max_cuts, zooms, min_cut=min_cut,
+                    )
+
+                for ci, cut in enumerate(cuts):
+                    out_path = os.path.join(job_dir, f"cut_{cut_idx:03d}.mp4")
+                    in_flash_window = flash_until is None or window_start < float(flash_until)
+                    do_flash = flash_dur > 0 and in_flash_window and (
+                        (ci == 0) if flash_mode == "scene"
+                        else (cut_idx % flash_every == 0)
+                    )
+                    await asyncio.to_thread(
+                        extract_montage_cut,
+                        raw_path,
+                        out_path,
+                        cut["src_offset"],
+                        cut["length"],
+                        cut["zoom"],
+                        grade_filter,
+                        resolution,
+                        exposure=await _exposure_for(raw_path),
+                        fit=fit,
+                        flash=flash_dur if do_flash else 0.0,
+                        card_opts=card_opts,
+                    )
+                    cut_paths.append(out_path)
+                    cut_idx += 1
+
+                scene_cut_counts.append(len(cuts))
+                render_jobs[job_id]["progress"] = 15 + int(30 * (i + 1) / total)
 
         render_jobs[job_id]["progress"] = 45
 
         concat_path = os.path.join(job_dir, "concat.mp4")
-        await asyncio.to_thread(concatenate_clips, cut_paths, concat_path)
+        # Prepend any generated intro cards ahead of the footage montage cuts.
+        await asyncio.to_thread(concatenate_clips, card_paths + cut_paths, concat_path)
         render_jobs[job_id]["progress"] = 62
 
         with_audio_path = os.path.join(job_dir, "with_audio.mp4")
@@ -258,16 +503,75 @@ async def run_broll_render(
             audio_path,
             with_audio_path,
             audio_volume,
+            audio_start,
         )
         render_jobs[job_id]["progress"] = 75
 
-        # Measure real scene windows from the rendered cuts so word timing is exact.
-        scenes_with_timing = await asyncio.to_thread(
-            build_scene_timings_from_cuts, cut_paths, scene_cut_counts, scenes
+        # Cards occupy [0, card_total]; footage captions start after them. Card text
+        # is already baked into the card clips, so the final ASS carries only the
+        # footage captions, shifted by the total card duration.
+        card_total = await asyncio.to_thread(
+            lambda: sum(get_duration(p) for p in card_paths)
         )
+        # Measure real scene windows from the rendered cuts so caption timing is exact.
+        if template.get("clip_per_beat"):
+            # clip_per_beat tiles cuts across the whole montage (NOT grouped per scene),
+            # so per-scene cut counts can't time captions. Lay each scene's caption
+            # window on its share of the real footage length (scaled to the actual
+            # total) so per-scene captions follow the script over the fast clip-swaps.
+            footage_total = await asyncio.to_thread(
+                lambda: sum(get_duration(p) for p in cut_paths)
+            )
+            intended = sum(max(0.1, float(s["duration_seconds"])) for s in scenes) or 1.0
+            scale = footage_total / intended
+            scenes_with_timing = []
+            cursor = card_total
+            for s in scenes:
+                d = max(0.1, float(s["duration_seconds"])) * scale
+                scenes_with_timing.append({**s, "start_time": cursor, "duration_seconds": d})
+                cursor += d
+        else:
+            scenes_with_timing = await asyncio.to_thread(
+                build_scene_timings_from_cuts,
+                cut_paths,
+                scene_cut_counts,
+                scenes,
+                card_total,
+            )
 
         ass_path = os.path.join(job_dir, "broll_captions.ass")
-        if caption_style == "karaoke":
+        closing_caption = template.get("closing_caption")
+        if closing_caption:
+            # One persistent payoff caption held across the whole footage montage
+            # (mirrors the reference's pinned "locked in." over the b-roll).
+            footage_total = await asyncio.to_thread(
+                lambda: sum(get_duration(p) for p in cut_paths)
+            )
+            segments = [
+                {
+                    "start": card_total,
+                    "end": card_total + max(0.1, footage_total - 0.04),
+                    "text": str(closing_caption),
+                }
+            ]
+            await asyncio.to_thread(
+                generate_ass_simple,
+                segments,
+                ass_path,
+                caption_style,
+                resolution,
+                caption_preset,
+            )
+        elif caption_style == "kinetic":
+            await asyncio.to_thread(
+                generate_ass_kinetic,
+                scenes_with_timing,
+                beat_times,
+                ass_path,
+                resolution,
+                caption_preset,
+            )
+        elif caption_style == "karaoke":
             await asyncio.to_thread(
                 generate_ass_karaoke,
                 scenes_with_timing,
@@ -298,9 +602,22 @@ async def run_broll_render(
             )
 
         final_path = os.path.join(job_dir, "final.mp4")
+        # Optional "glass" caption: blend the text onto the footage (e.g. difference)
+        # so it inverts/shifts the background instead of an opaque overlay.
+        caption_blend = template.get("caption_blend")
+        blend_opacity = float(template.get("caption_blend_opacity", 0.85))
         await asyncio.to_thread(
-            burn_subtitles_ass, with_audio_path, ass_path, final_path
+            burn_subtitles_ass, with_audio_path, ass_path, final_path,
+            caption_blend, blend_opacity, True,
         )
+
+        # Optional darkening outro: fade the picture to black over the last seconds.
+        end_fade = template.get("end_fade")
+        if end_fade:
+            faded_path = os.path.join(job_dir, "final_faded.mp4")
+            await asyncio.to_thread(apply_end_fade, final_path, faded_path, float(end_fade))
+            final_path = faded_path
+
         render_jobs[job_id]["progress"] = 95
 
         remote = f"rendered/{job_id}_broll_final.mp4"

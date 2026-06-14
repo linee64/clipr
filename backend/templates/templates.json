@@ -271,12 +271,13 @@
       "all"
     ],
     "scene_count": [
-      5,
+      6,
       7
     ],
     "pacing": {
       "target_cut_len": 1.05,
       "max_cuts_per_scene": 2,
+      "min_cut": 0.6,
       "zooms": [
         1.0,
         1.12
@@ -287,9 +288,9 @@
       "max_words": 8,
       "tone": "matched to the pacing of a reference montage"
     },
-    "caption_style": "karaoke",
+    "caption_style": "broll_center",
     "color_grade": "moody",
-    "grade_filter": "eq=contrast=1.05:brightness=0.004:saturation=0.91,colorbalance=rm=0.027:bm=-0.027",
+    "grade_filter": "eq=contrast=1.05:brightness=0.022:saturation=0.96,colorbalance=rm=0.025:bm=-0.025:rh=0.02:bh=-0.02,vignette=PI/8",
     "music_vibe": "lo-fi beats",
     "structure": [
       "hook",
@@ -319,7 +320,29 @@
       "u": 127.4,
       "v": 132.8,
       "caption_density": null
-    }
+    },
+    "closing_caption": "clear goals\\Nzero distractions",
+    "caption_font": "Verdana",
+    "caption_size": 52,
+    "caption_bold": 0,
+    "caption_alignment": 5,
+    "caption_marginv": 0,
+    "caption_outline": 0,
+    "caption_shadow": 1,
+    "caption_uppercase": false,
+    "caption_italic": false,
+    "caption_emphasis_font": "",
+    "caption_fade_ms": [
+      180,
+      120
+    ],
+    "auto_exposure": false,
+    "letterbox": false,
+    "flash_cut": false,
+    "hold_first_scene": false,
+    "locked": true,
+    "recommended_track": "sxllx-mama-ma-slowed-mob4ik-com",
+    "music_hook": true
   },
   {
     "id": "ref-aqo7vko2ichdfsv4hlm3npdovogvzvonkusxlttmux2oa4u5bmo7fsmctkpwxzioqg00e-xdrh4gutmwagtyroc-v31-0lau",
@@ -327,72 +350,99 @@
     "platforms": [
       "all"
     ],
+    "locked": true,
+    "auto_exposure": true,
+    "letterbox": false,
     "scene_count": [
-      5,
-      7
+      3,
+      3
     ],
     "pacing": {
-      "target_cut_len": 0.69,
-      "max_cuts_per_scene": 2,
+      "target_cut_len": 0.55,
+      "max_cuts_per_scene": 8,
+      "min_cut": 0.4,
       "zooms": [
         1.0,
-        1.15,
+        1.1,
         1.0,
-        1.18
+        1.14
       ]
     },
     "phrase": {
-      "min_words": 3,
-      "max_words": 6,
-      "tone": "matched to the pacing of a reference montage"
+      "min_words": 2,
+      "max_words": 4,
+      "tone": "short, blunt, lowercase narrative beat held across fast cuts (e.g. \"boring life?\" / \"so... what?\"); keep punctuation"
     },
-    "caption_style": "karaoke",
+    "caption_style": "broll_center",
+    "caption_font": "Arial Black",
+    "caption_size": 64,
+    "caption_bold": 1,
+    "caption_alignment": 5,
+    "caption_marginv": 0,
+    "caption_outline": 0,
+    "caption_shadow": 1,
+    "caption_uppercase": false,
+    "caption_italic": false,
+    "caption_fade_ms": [
+      120,
+      80
+    ],
     "color_grade": "dark_cinematic",
-    "grade_filter": "eq=contrast=1.05:brightness=0.027:saturation=0.92",
+    "grade_filter": "eq=contrast=1.06:brightness=0.012:saturation=0.88,colorbalance=bs=0.03:rs=-0.02:rh=0.02:bh=-0.02",
     "music_vibe": "energetic / trap",
     "structure": [
-      "hook",
-      "body",
-      "body",
-      "body",
-      "punch"
+      "question hook (held across burst)",
+      "payoff question (held across burst)"
     ],
     "shots": [
       "close-up hands",
       "wide establishing",
       "over-the-shoulder",
-      "screen recording",
       "detail",
-      "reaction"
+      "reaction",
+      "wide establishing"
     ],
     "source": "extracted",
     "ref": "AQO7VKO2IcHdfSV4hLm3npdOvOgvZvonKUSxltTmuX2OA4U5Bmo7FSMctkPWXZIoQg00E_Xdrh4GuTmWaGtYRoc-V31-0lAu",
     "preview_file": "AQO7VKO2IcHdfSV4hLm3npdOvOgvZvonKUSxltTmuX2OA4U5Bmo7FSMctkPWXZIoQg00E_Xdrh4GuTmWaGtYRoc-V31-0lAu.mp4",
     "measured": {
-      "duration": 8.96,
-      "cuts": 12,
-      "avg_cut_len": 0.689,
+      "duration": 8.88,
+      "cuts": 14,
+      "avg_cut_len": 0.634,
       "bpm": 129.2,
       "brightness": 71.4,
       "saturation": 7.9,
       "u": 127.6,
       "v": 127.7,
       "caption_density": null
-    }
+    },
+    "flash_cut": true,
+    "flash_ms": 150,
+    "flash_every": 6,
+    "recommended_track": "drake-national-treasure-feat-pressa-mp3-pm",
+    "music_hook": true,
+    "flash_mode": "scene",
+    "caption_scale_x": 112,
+    "music_start": 18.0
   },
   {
     "id": "ref-came-from-nothing-motivation-motivational-entrepreneur-fyp-reels",
     "label": "Ref: came from nothing  #motivation #motivational #entrepreneur #fyp #reels",
+    "wip": true,
     "platforms": [
       "all"
     ],
+    "locked": true,
+    "letterbox": true,
+    "hold_first_scene": true,
     "scene_count": [
       5,
       7
     ],
     "pacing": {
-      "target_cut_len": 1.6,
-      "max_cuts_per_scene": 2,
+      "target_cut_len": 0.6,
+      "max_cuts_per_scene": 6,
+      "min_cut": 0.3,
       "zooms": [
         1.0,
         1.06
@@ -401,14 +451,30 @@
     "phrase": {
       "min_words": 5,
       "max_words": 9,
-      "tone": "matched to the pacing of a reference montage"
+      "tone": "motivational, lowercase, builds to a payoff line"
     },
     "caption_style": "karaoke",
-    "color_grade": "moody",
-    "grade_filter": "eq=contrast=1.05:brightness=-0.034:saturation=0.88,vignette=PI/6",
+    "caption_font": "Trebuchet MS",
+    "caption_size": 54,
+    "caption_bold": 1,
+    "caption_alignment": 5,
+    "caption_marginv": 0,
+    "caption_outline": 0,
+    "caption_shadow": 1,
+    "caption_uppercase": false,
+    "caption_italic": false,
+    "caption_fade_ms": [
+      120,
+      0
+    ],
+    "caption_emphasis_font": "",
+    "caption_active_color": "&H00FFFFFF&",
+    "color_grade": "moody_warm",
+    "grade_filter": "eq=contrast=1.05:saturation=0.90,colorbalance=rm=0.03:bm=-0.04:rh=0.04:bh=-0.05,curves=all='0/0 0.25/0.235 0.5/0.5 0.75/0.765 1/1'",
+    "auto_exposure": false,
     "music_vibe": "lo-fi beats",
     "structure": [
-      "hook",
+      "held hook",
       "body",
       "body",
       "body",
@@ -427,19 +493,24 @@
     "preview_file": "came from nothing  #motivation #motivational #entrepreneur #fyp #reels.mp4",
     "measured": {
       "duration": 12.12,
-      "cuts": 0,
-      "avg_cut_len": 12.116,
+      "cuts": 11,
+      "avg_cut_len": 0.58,
       "bpm": 99.4,
-      "brightness": 41.1,
-      "saturation": 4.1,
-      "u": 128.1,
-      "v": 128.2,
+      "band_crop": "720:404:0:438",
+      "brightness": 87.7,
+      "saturation": 9.5,
+      "u": 126.7,
+      "v": 130.2,
       "caption_density": null
-    }
+    },
+    "recommended_track": "spotidown-app-job-s-not-done-feat-era-kidwild",
+    "music_hook": true,
+    "music_start": 12.0
   },
   {
     "id": "ref-ease-is-a-greater-threat-to-progress-than-hardship-find-me-on-tiktok-herstudymemoir",
     "label": "Ref: Ease is a greater threat to progress than hardship.••Find me on TikTok @herstudymemoir ••_______",
+    "music_manual": true,
     "platforms": [
       "all"
     ],
@@ -450,6 +521,7 @@
     "pacing": {
       "target_cut_len": 0.47,
       "max_cuts_per_scene": 6,
+      "min_cut": 0.4,
       "zooms": [
         1.0,
         1.15,
@@ -462,9 +534,9 @@
       "max_words": 6,
       "tone": "matched to the pacing of a reference montage"
     },
-    "caption_style": "karaoke",
+    "caption_style": "broll_center",
     "color_grade": "moody",
-    "grade_filter": "eq=contrast=1.05:brightness=0.021:saturation=0.96,colorbalance=rm=0.055:bm=-0.055",
+    "grade_filter": "eq=contrast=1.04:brightness=0.02:saturation=0.95,colorbalance=rm=0.05:bm=-0.05:rh=0.04:bh=-0.04:rs=0.02:bs=-0.03,vignette=PI/7",
     "music_vibe": "lo-fi beats",
     "structure": [
       "hook",
@@ -494,7 +566,30 @@
       "u": 123.6,
       "v": 134.7,
       "caption_density": null
-    }
+    },
+    "caption_font": "Arial Black",
+    "caption_bold": 1,
+    "caption_size": 84,
+    "caption_uppercase": true,
+    "caption_alignment": 5,
+    "caption_marginv": 0,
+    "caption_outline": 0,
+    "caption_shadow": 1,
+    "caption_italic": false,
+    "caption_fade_ms": [
+      120,
+      80
+    ],
+    "caption_emphasis_font": "",
+    "caption_letter_spacing": 0,
+    "auto_exposure": true,
+    "locked": true,
+    "recommended_track": "sxllx-mama-ma-slowed-mob4ik-com",
+    "music_hook": true,
+    "caption_scale_x": 112,
+    "caption_blend": "difference",
+    "caption_blend_opacity": 0.85,
+    "caption_chunk_words": 2
   },
   {
     "id": "ref-i-don-t-care-adayinlife-of-follow-for-more-fyp-viralreels-aestheticreels-trendi",
@@ -503,15 +598,16 @@
       "all"
     ],
     "scene_count": [
-      5,
-      7
+      1,
+      1
     ],
     "pacing": {
-      "target_cut_len": 1.6,
-      "max_cuts_per_scene": 2,
+      "target_cut_len": 4.0,
+      "max_cuts_per_scene": 1,
+      "min_cut": 4.0,
       "zooms": [
         1.0,
-        1.06
+        1.0
       ]
     },
     "phrase": {
@@ -519,9 +615,9 @@
       "max_words": 9,
       "tone": "matched to the pacing of a reference montage"
     },
-    "caption_style": "karaoke",
-    "color_grade": "dark_cinematic",
-    "grade_filter": "eq=contrast=1.05:brightness=0.029:saturation=0.93,colorbalance=rm=0.029:bm=-0.029",
+    "caption_style": "kinetic",
+    "color_grade": "moody",
+    "grade_filter": "eq=contrast=0.98:brightness=0.02:saturation=0.78:gamma=1.03,colorbalance=rs=-0.03:bs=0.05:rh=0.02:bh=-0.02,curves=all='0/0.03 0.5/0.52 1/0.97',vignette=PI/6.5",
     "music_vibe": "lo-fi beats",
     "structure": [
       "hook",
@@ -551,11 +647,72 @@
       "u": 123.6,
       "v": 129.3,
       "caption_density": null
-    }
+    },
+    "caption_font": "Playfair Display",
+    "caption_size": 104,
+    "caption_bold": 0,
+    "caption_alignment": 5,
+    "caption_marginv": 0,
+    "caption_outline": 0,
+    "caption_shadow": 1,
+    "caption_uppercase": false,
+    "caption_italic": false,
+    "caption_fade_ms": [
+      140,
+      90
+    ],
+    "caption_stack": true,
+    "caption_stack_bold": true,
+    "caption_stack_wrap": 2,
+    "caption_stack_maxchars": 16,
+    "caption_stack_open_gap": 0.9,
+    "caption_stack_open_until": 5.0,
+    "caption_sans_font": "Playfair Display",
+    "caption_serif_font": "Great Vibes",
+    "caption_accent_color": "&H00FFFFFF&",
+    "caption_accent_size": 144,
+    "caption_uppercase_emphasis": false,
+    "caption_accent_words": [
+      "who's",
+      "whos",
+      "person",
+      "myself",
+      "yourself",
+      "everyone",
+      "someone",
+      "anyone",
+      "everything",
+      "кто",
+      "кто-то",
+      "себя",
+      "себе",
+      "сам",
+      "сама",
+      "человек",
+      "человека",
+      "никто",
+      "меня",
+      "тебя",
+      "мечта",
+      "душа"
+    ],
+    "hold_first_scene": true,
+    "scene_snap_tol": 0.8,
+    "fast_hold": 6.0,
+    "fast_ramp": 7.0,
+    "fast_slow_seg": 1.5,
+    "fast_seg": 0.45,
+    "fast_min_cut": 0.2,
+    "end_fade": 1.2,
+    "auto_exposure": true,
+    "locked": true,
+    "recommended_track": "bliss-slowed-klsr",
+    "music_hook": false
   },
   {
     "id": "ref-it-s-okay-to-have-off-days-we-aren-t-robots-the-9-to-5-is-draining-and-some-nights-you-just",
     "label": "Ref: It’s okay to have off-days. We aren’t robots. ☕️The 9-to-5 is draining, and some nights you just",
+    "wip": true,
     "platforms": [
       "all"
     ],
@@ -566,6 +723,7 @@
     "pacing": {
       "target_cut_len": 1.6,
       "max_cuts_per_scene": 2,
+      "min_cut": 0.9,
       "zooms": [
         1.0,
         1.06
@@ -576,9 +734,9 @@
       "max_words": 9,
       "tone": "matched to the pacing of a reference montage"
     },
-    "caption_style": "karaoke",
+    "caption_style": "broll_center",
     "color_grade": "moody",
-    "grade_filter": "eq=contrast=1.05:brightness=-0.034:saturation=0.89,colorbalance=rm=0.031:bm=-0.031,vignette=PI/6",
+    "grade_filter": "eq=contrast=1.06:brightness=-0.05:saturation=0.55:gamma=0.95,colorbalance=rs=-0.04:bs=0.05:rm=0.10:gm=0.01:bm=-0.12:rh=0.08:gh=0.01:bh=-0.09,curves=all='0/0 0.5/0.46 1/0.96',vignette=PI/6",
     "music_vibe": "dark ambient",
     "structure": [
       "hook",
@@ -608,7 +766,26 @@
       "u": 125.2,
       "v": 131.4,
       "caption_density": null
-    }
+    },
+    "caption_font": "Trebuchet MS",
+    "caption_size": 48,
+    "caption_bold": 0,
+    "caption_alignment": 5,
+    "caption_marginv": 0,
+    "caption_outline": 0,
+    "caption_shadow": 1,
+    "caption_uppercase": false,
+    "caption_italic": false,
+    "caption_fade_ms": [
+      180,
+      180
+    ],
+    "caption_emphasis_font": "",
+    "auto_exposure": true,
+    "hold_first_scene": true,
+    "locked": true,
+    "recommended_track": "lovibe-a-good-man-with-a-broken-heart",
+    "music_hook": true
   },
   {
     "id": "ref-it-s-you-versus-you",
@@ -617,12 +794,13 @@
       "all"
     ],
     "scene_count": [
-      5,
-      7
+      1,
+      2
     ],
     "pacing": {
-      "target_cut_len": 1.6,
-      "max_cuts_per_scene": 2,
+      "target_cut_len": 0.45,
+      "max_cuts_per_scene": 16,
+      "min_cut": 0.4,
       "zooms": [
         1.0,
         1.06
@@ -633,9 +811,9 @@
       "max_words": 9,
       "tone": "matched to the pacing of a reference montage"
     },
-    "caption_style": "karaoke",
-    "color_grade": "moody",
-    "grade_filter": "eq=contrast=1.05:brightness=-0.038:saturation=0.89,colorbalance=rm=0.026:bm=-0.026,vignette=PI/6",
+    "caption_style": "broll_center",
+    "color_grade": "moody_warm",
+    "grade_filter": "eq=contrast=1.10:brightness=0.0:saturation=0.68:gamma=0.98,colorbalance=rs=-0.03:gs=-0.01:bs=0.04:rm=0.05:gm=0.0:bm=-0.05:rh=0.06:gh=0.0:bh=-0.06,curves=all='0/0.01 0.5/0.5 0.95/0.97 1/1',vignette=PI/5.5",
     "music_vibe": "energetic / trap",
     "structure": [
       "hook",
@@ -665,7 +843,39 @@
       "u": 125.8,
       "v": 131.0,
       "caption_density": null
-    }
+    },
+    "card_frame": true,
+    "card_w_frac": 0.889,
+    "card_h_frac": 0.35,
+    "card_radius": 60,
+    "card_y_frac": 0.325,
+    "auto_exposure": true,
+    "letterbox": false,
+    "flash_cut": true,
+    "flash_every": 4,
+    "flash_ms": 70,
+    "clip_per_beat": true,
+    "clip_beats": 1,
+    "hold_first_scene": false,
+    "caption_font": "Georgia",
+    "caption_size": 60,
+    "caption_bold": 0,
+    "caption_italic": false,
+    "caption_uppercase": false,
+    "caption_alignment": 8,
+    "caption_marginv": 510,
+    "caption_outline": 0,
+    "caption_shadow": 1,
+    "caption_emphasis_font": "",
+    "caption_fade_ms": [
+      180,
+      120
+    ],
+    "locked": true,
+    "recommended_track": "malcolm-todd-earrings-lyrics-skysound-cc",
+    "music_hook": true,
+    "music_start": 97.0,
+    "caption_scale_y": 118
   },
   {
     "id": "ref-katanya-break-the-pattern-today-or-the-loop-will-repeat-tomorrow-editing-davinciresolve-v",
@@ -673,40 +883,57 @@
     "platforms": [
       "all"
     ],
+    "locked": true,
     "scene_count": [
-      5,
-      7
+      6,
+      8
     ],
     "pacing": {
-      "target_cut_len": 0.83,
-      "max_cuts_per_scene": 3,
+      "target_cut_len": 0.6,
+      "max_cuts_per_scene": 4,
+      "min_cut": 0.22,
       "zooms": [
         1.0,
-        1.12
+        1.14,
+        1.06,
+        1.2
       ]
     },
     "phrase": {
       "min_words": 4,
       "max_words": 8,
-      "tone": "matched to the pacing of a reference montage"
+      "tone": "imperative, punchy; one load-bearing verb/noun per line, the rest qualifiers"
     },
-    "caption_style": "karaoke",
-    "color_grade": "moody",
-    "grade_filter": "eq=contrast=1.05:brightness=0.016:saturation=0.92,colorbalance=rm=0.051:bm=-0.051",
-    "music_vibe": "lo-fi beats",
+    "caption_style": "kinetic",
+    "caption_sans_font": "Arial Black",
+    "caption_serif_font": "Georgia",
+    "caption_accent_color": "&H1B06CC&",
+    "caption_size": 150,
+    "caption_accent_size": 96,
+    "caption_uppercase_emphasis": true,
+    "caption_fade_ms": [
+      120,
+      0
+    ],
+    "color_grade": "moody_warm",
+    "grade_filter": "eq=contrast=1.07:brightness=0.02:saturation=1.0:gamma=0.98,colorbalance=rs=0.03:bs=-0.04:rm=0.17:gm=0.02:bm=-0.20:rh=0.13:bh=-0.13,curves=all='0/0.015 0.25/0.23 0.5/0.5 0.85/0.9 1/1',vignette=PI/5",
+    "auto_exposure": true,
+    "music_vibe": "lo-fi / cinematic hip-hop, ~117 bpm",
     "structure": [
       "hook",
-      "body",
-      "body",
-      "body",
+      "hook",
+      "body-hold",
+      "build",
+      "burst",
+      "burst",
       "punch"
     ],
     "shots": [
-      "close-up hands",
-      "wide establishing",
-      "over-the-shoulder",
-      "screen recording",
-      "detail",
+      "wide moody room",
+      "close-up eye / detail",
+      "screen recording (DaVinci)",
+      "hand / gesture",
+      "notebook detail",
       "reaction"
     ],
     "source": "extracted",
@@ -722,7 +949,17 @@
       "u": 123.2,
       "v": 133.3,
       "caption_density": null
-    }
+    },
+    "recommended_track": "ryutqc-norwxxd-reaper-break-the-pattern-skysound-cc",
+    "music_hook": false,
+    "flash_cut": true,
+    "flash_ms": 150,
+    "flash_mode": "scene",
+    "flash_until": 10.0,
+    "fast_after": 10.0,
+    "fast_clip_beats": 1,
+    "fast_min_cut": 0.18,
+    "caption_kinetic_groups": 4
   },
   {
     "id": "ref-locked-in",
@@ -731,40 +968,84 @@
       "all"
     ],
     "scene_count": [
-      5,
-      7
+      6,
+      8
     ],
     "pacing": {
-      "target_cut_len": 1.6,
-      "max_cuts_per_scene": 2,
+      "target_cut_len": 0.25,
+      "max_cuts_per_scene": 16,
+      "min_cut": 0.22,
       "zooms": [
         1.0,
-        1.06
+        1.08
       ]
     },
     "phrase": {
-      "min_words": 5,
-      "max_words": 9,
-      "tone": "matched to the pacing of a reference montage"
+      "min_words": 2,
+      "max_words": 6,
+      "tone": "short, blunt, lowercase, declarative — not a motivational poster"
     },
-    "caption_style": "karaoke",
-    "color_grade": "moody",
-    "grade_filter": "eq=contrast=1.05:brightness=0.012:saturation=0.89",
+    "caption_style": "broll_center",
+    "caption_font": "Arial Black",
+    "caption_bold": 0,
+    "caption_size": 84,
+    "caption_alignment": 5,
+    "caption_marginv": 0,
+    "caption_uppercase": false,
+    "caption_italic": false,
+    "caption_outline": 0,
+    "caption_shadow": 1,
+    "caption_fade_ms": [
+      120,
+      80
+    ],
+    "color_grade": "locked_in",
+    "grade_filter": "eq=contrast=1.18:brightness=0.02:saturation=0.80:gamma=1.0,colorbalance=rs=-0.05:gs=-0.01:bs=0.08:rm=-0.02:bm=0.02:rh=0.05:gh=0.0:bh=-0.03,curves=all='0/0 0.06/0.04 0.5/0.52 0.92/0.98 1/1',vignette=PI/5.5",
+    "music_start": 5.0,
+    "clip_per_beat": true,
+    "end_fade": 1.2,
+    "intro_cards": [
+      {
+        "text": "im not lucky",
+        "bg": "dark_gradient",
+        "style": "card_phrase",
+        "duration": 1.8
+      },
+      {
+        "text": "im not talented",
+        "bg": "light_grain",
+        "style": "card_phrase_light",
+        "duration": 0.9
+      },
+      {
+        "text": "it's never the right time",
+        "bg": "dark_gradient",
+        "style": "card_phrase",
+        "duration": 1.1
+      },
+      {
+        "text": "im just",
+        "bg": "light_grain",
+        "style": "card_phrase_light",
+        "duration": 1.2
+      }
+    ],
+    "closing_caption": "locked in.",
     "music_vibe": "energetic / trap",
     "structure": [
       "hook",
-      "body",
-      "body",
-      "body",
-      "punch"
+      "card",
+      "card",
+      "card",
+      "fast montage payoff"
     ],
     "shots": [
-      "close-up hands",
-      "wide establishing",
-      "over-the-shoulder",
-      "screen recording",
-      "detail",
-      "reaction"
+      "top-down desk",
+      "side-profile dark room",
+      "window skyline",
+      "monitor glow",
+      "wide back-view",
+      "detail"
     ],
     "source": "extracted",
     "ref": "Locked in",
@@ -779,11 +1060,17 @@
       "u": 129.6,
       "v": 129.3,
       "caption_density": null
-    }
+    },
+    "locked": true,
+    "auto_exposure": true,
+    "recommended_track": "lovibe-a-good-man-with-a-broken-heart",
+    "music_hook": true,
+    "music_hook_lead": 3.5
   },
   {
     "id": "ref-study-forgirls-selfgrowth-education",
     "label": "Ref: 📚✨...#study #forgirls #selfgrowth #education",
+    "wip": true,
     "platforms": [
       "all"
     ],
@@ -794,6 +1081,7 @@
     "pacing": {
       "target_cut_len": 1.6,
       "max_cuts_per_scene": 2,
+      "min_cut": 1.0,
       "zooms": [
         1.0,
         1.06
@@ -804,9 +1092,9 @@
       "max_words": 9,
       "tone": "matched to the pacing of a reference montage"
     },
-    "caption_style": "karaoke",
-    "color_grade": "moody",
-    "grade_filter": "eq=contrast=1.05:brightness=-0.025:saturation=0.87,colorbalance=rm=0.011:bm=-0.011",
+    "caption_style": "broll_center",
+    "color_grade": "moody_warm",
+    "grade_filter": "eq=brightness=0.02:contrast=1.06:saturation=1.18:gamma=0.97,colorbalance=rm=0.05:gm=0.01:bm=-0.06:rh=0.04:gh=0.0:bh=-0.05,vignette=PI/5",
     "music_vibe": "lo-fi beats",
     "structure": [
       "hook",
@@ -836,6 +1124,75 @@
       "u": 126.9,
       "v": 129.2,
       "caption_density": null
-    }
+    },
+    "caption_font": "Times New Roman",
+    "caption_size": 52,
+    "caption_bold": 0,
+    "caption_italic": false,
+    "caption_uppercase": false,
+    "caption_alignment": 5,
+    "caption_marginv": 0,
+    "caption_outline": 0,
+    "caption_shadow": 1,
+    "caption_fade_ms": [
+      180,
+      120
+    ],
+    "caption_emphasis_font": "",
+    "auto_exposure": true,
+    "hold_first_scene": true,
+    "locked": true,
+    "recommended_track": "sxllx-mama-ma-slowed-mob4ik-com",
+    "music_hook": true,
+    "caption_intro_text": ":sleeping?",
+    "caption_intro_dur": 1.2
+  },
+  {
+    "id": "ref-glass-color-shift",
+    "label": "Glass · color-shift captions",
+    "preview_file": "3c618cedf25a26a9529b20606b2d9ada.mp4",
+    "source": "3c618cedf25a26a9529b20606b2d9ada.mp4",
+    "platforms": [
+      "all"
+    ],
+    "caption_style": "broll_center",
+    "caption_blend": "difference",
+    "caption_blend_opacity": 0.85,
+    "caption_font": "Arial Black",
+    "caption_size": 80,
+    "caption_bold": 1,
+    "caption_uppercase": true,
+    "caption_italic": false,
+    "caption_alignment": 5,
+    "caption_marginv": 0,
+    "caption_outline": 0,
+    "caption_shadow": 0,
+    "caption_emphasis_font": "",
+    "caption_fade_ms": [
+      70,
+      50
+    ],
+    "color_grade": "neutral",
+    "grade_filter": "eq=contrast=1.03:saturation=1.02",
+    "pacing": {
+      "target_cut_len": 0.5,
+      "max_cuts_per_scene": 6,
+      "min_cut": 0.35,
+      "zooms": [
+        1.0,
+        1.08,
+        1.0,
+        1.12
+      ]
+    },
+    "scene_count": [
+      4,
+      6
+    ],
+    "auto_exposure": false,
+    "music_hook": true,
+    "locked": true,
+    "caption_scale_x": 112,
+    "caption_chunk_words": 2
   }
 ]

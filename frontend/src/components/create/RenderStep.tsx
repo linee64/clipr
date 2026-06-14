@@ -2,9 +2,17 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Check, Film, X } from "lucide-react";
+import { Check, ChevronLeft, X } from "lucide-react";
 import type { RenderStatus } from "@/lib/types";
+import type { FlowStep } from "./StepIndicator";
 import { resolveBackendUrl } from "@/lib/api";
+
+// Quick "go back to edit" jumps shown on the download / error screens.
+const BACK_TARGETS: { label: string; step: FlowStep }[] = [
+  { label: "Subtitles", step: 2 },
+  { label: "Clips & music", step: 3 },
+  { label: "Reference", step: 4 },
+];
 
 function progressLabel(progress: number): string {
   if (progress < 15) return "Analyzing the beat...";
@@ -15,14 +23,13 @@ function progressLabel(progress: number): string {
   return "Uploading final video...";
 }
 
-const BEAT_BARS = Array.from({ length: 18 });
-
 interface RenderStepProps {
   renderStatus: RenderStatus | null;
   renderError: string | null;
   isRendering: boolean;
   onRetry: () => void;
   onSchedulePost: () => void;
+  onJumpTo?: (step: FlowStep) => void;
   videoTitle?: string;
   platform?: string;
   caption?: string;
@@ -31,9 +38,8 @@ interface RenderStepProps {
 export function RenderStep({
   renderStatus,
   renderError,
-  isRendering,
   onRetry,
-  onSchedulePost,
+  onJumpTo,
   videoTitle,
   platform,
   caption,
@@ -42,71 +48,162 @@ export function RenderStep({
   const isDone = status === "done";
   const isError = status === "error" || !!renderError;
   const progress = renderStatus?.progress ?? 0;
+  // Before the backend job exists (clips still uploading), renderStatus is null —
+  // show an explicit upload phase so the screen is never blank.
+  const phaseLabel = renderStatus ? progressLabel(progress) : "Uploading your clips...";
 
   const title = videoTitle?.trim() || "Your Clipr video";
   const captionText = caption?.trim() || renderStatus?.description?.trim() || title;
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin p-6">
+    <div className="w-full p-6">
+      {onJumpTo && (isDone || isError) && (
+        <div className={`${isDone ? "max-w-4xl" : "max-w-lg"} mx-auto mb-4 flex flex-wrap items-center gap-2`}>
+          <span className="text-[11px] uppercase tracking-wider font-mono text-[#6B7C85] mr-1">
+            Go back to edit
+          </span>
+          {BACK_TARGETS.map((b) => (
+            <button
+              key={b.step}
+              type="button"
+              onClick={() => onJumpTo(b.step)}
+              className="inline-flex items-center gap-1 rounded-full border border-[#152226] bg-[#0D1416] px-3 py-1.5 text-xs text-[#6B7C85] hover:text-[#10B981] hover:border-[#10B981]/40 transition-colors"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              {b.label}
+            </button>
+          ))}
+        </div>
+      )}
       <div className={`${isDone ? "max-w-4xl" : "max-w-lg"} mx-auto`}>
-        {isRendering && !isDone && !isError && (
+        {!isDone && !isError && (
           <div className="bg-[#0D1416] border border-[#152226] rounded-xl p-8">
-            <div className="flex flex-col items-center text-center">
-              {/* Phone frame with sweeping scan */}
-              <div className="relative aspect-[9/16] w-[150px] rounded-2xl border border-[#152226] bg-[#070B0D] overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.45)]">
-                <motion.div
-                  className="absolute inset-x-0 h-1/3 bg-gradient-to-b from-transparent via-[#10B981]/25 to-transparent"
-                  animate={{ y: ["-45%", "150%"] }}
-                  transition={{ duration: 1.7, repeat: Infinity, ease: "easeInOut" }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <motion.div
-                    animate={{ opacity: [0.4, 1, 0.4], scale: [0.95, 1.05, 0.95] }}
-                    transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <Film className="w-7 h-7 text-[#10B981]" />
-                  </motion.div>
-                </div>
-              </div>
-
-              {/* Beat equalizer — clips snapping to the beat */}
-              <div className="flex items-end gap-[3px] h-10 mt-6">
-                {BEAT_BARS.map((_, i) => (
-                  <motion.span
-                    key={i}
-                    className="w-1.5 rounded-full bg-gradient-to-t from-[#10B981]/40 to-[#10B981]"
-                    style={{ height: "100%", transformOrigin: "bottom" }}
-                    animate={{ scaleY: [0.25, 1, 0.45, 0.85, 0.3] }}
-                    transition={{
-                      duration: 1 + (i % 4) * 0.18,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: i * 0.07,
-                    }}
+            {(() => {
+              const pct = Math.max(0, Math.min(100, progress));
+              return (
+                <div className="relative flex flex-col items-center text-center px-6 py-2">
+                  {/* atmospheric mint glow behind the phone */}
+                  <div
+                    className="pointer-events-none absolute left-1/2 top-[120px] h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+                    style={{ background: "radial-gradient(circle, rgba(16,185,129,0.10) 0%, rgba(16,185,129,0) 70%)" }}
                   />
-                ))}
-              </div>
 
-              <p className="text-lg font-semibold text-[#EFEFEF] mt-6">Rendering your video</p>
-              <motion.p
-                key={progressLabel(progress)}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-sm text-[#6B7C85] mt-1"
-              >
-                {progressLabel(progress)}
-              </motion.p>
+                  {/* PHONE — breathes on the downbeat with a beat-pulse ring */}
+                  <motion.div
+                    className="relative"
+                    animate={{ scale: [1, 1.018, 1] }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <motion.div
+                      className="absolute -inset-3 rounded-[2rem] border"
+                      style={{ borderColor: "rgba(16,185,129,0.35)" }}
+                      animate={{ opacity: [0, 0.55, 0], scale: [0.92, 1.1, 1.16] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
+                    />
+                    <div
+                      className="relative aspect-[9/16] w-[164px] overflow-hidden rounded-[1.6rem] border bg-[#070B0D] p-2"
+                      style={{ borderColor: "#152226", boxShadow: "0 20px 60px rgba(0,0,0,0.5), 0 0 22px rgba(16,185,129,0.12)" }}
+                    >
+                      <div className="absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-[#152226]" />
 
-              {/* Progress bar */}
-              <div className="w-full max-w-[300px] h-1.5 bg-[#152226] rounded-full mt-5 overflow-hidden">
-                <motion.div
-                  className="h-full bg-[#10B981]"
-                  animate={{ width: `${progress}%` }}
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                />
-              </div>
-              <p className="text-xs text-[#6B7C85] font-mono mt-2">{progress}%</p>
-            </div>
+                      {/* clip tiles snapping into the frame on the beat */}
+                      <div className="mt-4 grid grid-cols-2 gap-1.5">
+                        {[0, 1, 2, 3].map((i) => (
+                          <motion.div
+                            key={i}
+                            className="aspect-square overflow-hidden rounded-md border"
+                            style={{ borderColor: "rgba(16,185,129,0.18)", background: "linear-gradient(135deg, rgba(16,185,129,0.16) 0%, rgba(13,20,22,0.9) 60%)" }}
+                            animate={{ opacity: [0, 0, 1, 1, 0], scale: [0.6, 0.6, 1, 1, 0.6], y: [10, 10, 0, 0, 10] }}
+                            transition={{ duration: 3.2, times: [0, 0.05, 0.22, 0.85, 1], repeat: Infinity, ease: "easeOut", delay: i * 0.12 }}
+                          >
+                            <div className="flex h-full items-end justify-center gap-[2px] p-1.5">
+                              {[0, 1, 2].map((b) => (
+                                <motion.span
+                                  key={b}
+                                  className="w-[2px] flex-1 rounded-full bg-[#10B981]"
+                                  style={{ transformOrigin: "bottom" }}
+                                  animate={{ scaleY: [0.3, 1, 0.4, 0.8, 0.3] }}
+                                  transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: (i + b) * 0.09 }}
+                                />
+                              ))}
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      {/* caption chips popping word-by-word */}
+                      <div className="absolute inset-x-3 bottom-7 flex flex-wrap justify-center gap-1">
+                        {["beat", "synced", "cut"].map((w, i) => (
+                          <motion.span
+                            key={w}
+                            className="rounded-[5px] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide"
+                            style={{ color: "#070B0D", background: "#10B981", boxShadow: "0 0 12px rgba(16,185,129,0.45)" }}
+                            animate={{ opacity: [0, 1, 1, 0], y: [6, 0, 0, 6], scale: [0.8, 1, 1, 0.8] }}
+                            transition={{ duration: 1.6, times: [0, 0.18, 0.8, 1], repeat: Infinity, ease: "easeOut", delay: 0.5 + i * 0.22 }}
+                          >
+                            {w}
+                          </motion.span>
+                        ))}
+                      </div>
+
+                      {/* mint scan line sweeping the timeline */}
+                      <motion.div
+                        className="absolute inset-x-0 h-10"
+                        style={{ background: "linear-gradient(to bottom, transparent, rgba(16,185,129,0.22), transparent)" }}
+                        animate={{ y: ["-30%", "150%"] }}
+                        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                      />
+
+                      {/* in-phone timeline — playhead rides real progress */}
+                      <div className="absolute inset-x-2.5 bottom-2.5 h-1 overflow-hidden rounded-full bg-[#152226]">
+                        <motion.div
+                          className="h-full rounded-full bg-[#10B981]"
+                          style={{ boxShadow: "0 0 10px rgba(16,185,129,0.6)" }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.5, ease: "easeOut" }}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* phase label with pulsing status dot */}
+                  <p className="mt-8 text-lg font-semibold text-[#EFEFEF]">Building your edit</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <motion.span
+                      className="inline-block h-1.5 w-1.5 rounded-full bg-[#10B981]"
+                      style={{ boxShadow: "0 0 8px rgba(16,185,129,0.7)" }}
+                      animate={{ opacity: [1, 0.3, 1] }}
+                      transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    <motion.p
+                      key={phaseLabel}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      className="text-sm text-[#6B7C85]"
+                    >
+                      {phaseLabel}
+                    </motion.p>
+                  </div>
+
+                  {/* progress timeline */}
+                  <div className="mt-5 h-1.5 w-full max-w-[300px] overflow-hidden rounded-full bg-[#152226]">
+                    <motion.div
+                      className="h-full rounded-full bg-[#10B981]"
+                      style={{ boxShadow: "0 0 14px rgba(16,185,129,0.5)" }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                    />
+                  </div>
+                  <div className="mt-2 flex w-full max-w-[300px] justify-between font-mono text-[9px] tabular-nums text-[#6B7C85]">
+                    {["0:00", "0:08", "0:15", "0:22", "0:30"].map((t) => (
+                      <span key={t}>{t}</span>
+                    ))}
+                  </div>
+                  <p className="mt-1 font-mono text-xs tabular-nums text-[#6B7C85]">{Math.round(pct)}%</p>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -160,23 +257,33 @@ export function RenderStep({
                   </p>
                 </div>
 
+                {/* Saved-to-library note */}
+                <div className="mt-5 flex items-center gap-2 text-xs text-[#6B7C85]">
+                  <Check className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
+                  Saved to <span className="text-[#EFEFEF]">My Content</span>
+                </div>
+
                 {/* Actions */}
-                <div className="mt-6 flex flex-col sm:flex-row gap-2.5">
+                <div className="mt-3 flex flex-col sm:flex-row gap-2.5">
                   <a
                     href={resolveBackendUrl(renderStatus.output_url)}
                     download
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="sm:flex-1 text-center bg-[#11191B] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm hover:bg-[#152226] transition-colors"
+                    className="sm:flex-1 text-center bg-[#10B981] text-white rounded-lg py-3 text-sm font-medium hover:bg-[#12cf90] transition-colors"
                   >
                     Download
                   </a>
                   <button
                     type="button"
-                    onClick={onSchedulePost}
-                    className="sm:flex-1 bg-[#10B981] text-white rounded-lg py-3 text-sm font-medium hover:bg-[#12cf90] transition-colors"
+                    disabled
+                    title="Scheduling & auto-posting are coming soon"
+                    className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#6B7C85] rounded-lg py-3 text-sm font-medium cursor-not-allowed"
                   >
-                    Schedule &amp; post →
+                    Schedule &amp; post
+                    <span className="text-[9px] uppercase tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-1.5 py-0.5 rounded-full">
+                      soon
+                    </span>
                   </button>
                 </div>
               </div>

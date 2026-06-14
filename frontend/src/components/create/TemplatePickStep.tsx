@@ -2,17 +2,24 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, ChevronLeft, Film, Loader2, RefreshCw } from "lucide-react";
+import { Check, ChevronLeft, Film, Loader2, Music, RefreshCw } from "lucide-react";
 import { resolveBackendUrl, sampleTemplates } from "@/lib/api";
 import type { TemplateOption } from "@/lib/types";
 
 interface TemplatePickStepProps {
   platform: string;
   selectedTemplateId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, recommendedTrack?: string, musicManual?: boolean) => void;
   onRender: () => void;
   onBack: () => void;
   isStartingRender: boolean;
+  /** true when a track (library or upload) is currently chosen */
+  hasMusic?: boolean;
+  /** name of the track that will be used (reference-matched or user-picked) */
+  musicLabel?: string;
+  /** true when the user picked their own track instead of the reference's */
+  musicIsCustom?: boolean;
+  onChangeMusic?: () => void;
 }
 
 function prettyGrade(g: string): string {
@@ -26,6 +33,10 @@ export function TemplatePickStep({
   onRender,
   onBack,
   isStartingRender,
+  hasMusic,
+  musicLabel,
+  musicIsCustom,
+  onChangeMusic,
 }: TemplatePickStepProps) {
   const [templates, setTemplates] = useState<TemplateOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,6 +47,7 @@ export function TemplatePickStep({
       setIsLoading(true);
       setError(null);
       try {
+        // Show 3 references at a time; "Show other styles" reshuffles to new ones.
         const { templates: next } = await sampleTemplates(platform, excludeIds);
         setTemplates(next);
         // drop the selection if the chosen style is no longer on screen
@@ -67,16 +79,57 @@ export function TemplatePickStep({
   // When no previews exist (e.g. a deploy without reference videos) let the user
   // proceed anyway — render falls back to the storyboard's default template.
   const noTemplates = !isLoading && !error && templates.length === 0;
-  const canRender = !isStartingRender && (noTemplates || !!selectedTemplateId);
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
+  // Styles flagged music_manual require the user to choose music before rendering.
+  const needsMusic = !!selectedTemplate?.music_manual && !hasMusic;
+  const canRender =
+    !isStartingRender && (noTemplates || (!!selectedTemplateId && !needsMusic));
 
   return (
-    <div className="flex-1 overflow-y-auto scrollbar-thin p-6">
+    <div className="w-full p-6">
       <div className="max-w-3xl mx-auto">
         <h2 className="text-xl font-semibold text-[#EFEFEF]">Pick a style</h2>
         <p className="text-sm text-[#6B7C85] mt-1">
           Choose the montage you like most — we&apos;ll wrap your clips to match its
           pace and captions (roughly, not 1:1).
         </p>
+
+        {selectedTemplateId && needsMusic ? (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#10B981]/30 bg-[#10B981]/5 px-3 py-2 text-xs">
+            <Music className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
+            <span className="text-[#EFEFEF]">
+              This style needs music — pick a track from the library or upload your own.
+            </span>
+            {onChangeMusic && (
+              <button
+                type="button"
+                onClick={onChangeMusic}
+                className="ml-auto shrink-0 font-medium text-[#10B981] hover:text-[#12cf90] hover:underline"
+              >
+                Choose music
+              </button>
+            )}
+          </div>
+        ) : (
+          selectedTemplateId && musicLabel && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#152226] bg-[#0D1416] px-3 py-1.5 text-xs">
+              <Music className="w-3.5 h-3.5 text-[#10B981]" />
+              <span className="text-[#EFEFEF] font-medium">{musicLabel}</span>
+              <span className="text-[#6B7C85]">
+                {musicIsCustom ? "· your pick" : "· matched to this style"}
+              </span>
+              {onChangeMusic && (
+                <button
+                  type="button"
+                  onClick={onChangeMusic}
+                  className="text-[#10B981] hover:text-[#12cf90] hover:underline"
+                >
+                  Change
+                </button>
+              )}
+            </div>
+          )
+        )}
 
         {error && (
           <div className="mt-6 rounded-xl bg-[#0D1416] border border-[#152226] p-6 text-center">
@@ -100,28 +153,36 @@ export function TemplatePickStep({
           !error && (
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
               {templates.map((t, idx) => {
-                const isSelected = t.id === selectedTemplateId;
+                const wip = !!t.wip;
+                const isSelected = !wip && t.id === selectedTemplateId;
                 const cut = t.pacing?.target_cut_len;
                 const bpm = t.measured?.bpm;
                 return (
                   <motion.button
                     type="button"
                     key={t.id}
+                    disabled={wip}
+                    aria-disabled={wip}
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.06, duration: 0.25 }}
-                    onClick={() => onSelect(t.id)}
+                    onClick={() => {
+                      if (wip) return; // in development — not selectable yet
+                      onSelect(t.id, t.recommended_track, t.music_manual);
+                    }}
                     className={`group relative text-left rounded-xl overflow-hidden border transition-all ${
-                      isSelected
-                        ? "border-[#10B981] shadow-[0_0_24px_rgba(16,185,129,0.22)]"
-                        : "border-[#152226] hover:border-[#1E343A]"
+                      wip
+                        ? "border-[#152226] cursor-not-allowed"
+                        : isSelected
+                          ? "border-[#10B981] shadow-[0_0_24px_rgba(16,185,129,0.22)]"
+                          : "border-[#152226] hover:border-[#1E343A]"
                     }`}
                   >
                     <div className="relative aspect-[9/16] bg-[#070B0D]">
                       {t.preview_url ? (
                         <video
                           src={resolveBackendUrl(t.preview_url)}
-                          className="w-full h-full object-cover"
+                          className={`w-full h-full object-cover ${wip ? "opacity-40 grayscale" : ""}`}
                           muted
                           loop
                           autoPlay
@@ -131,6 +192,14 @@ export function TemplatePickStep({
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Film className="w-7 h-7 text-[#1E343A]" />
+                        </div>
+                      )}
+
+                      {wip && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-[#070B0D]/45">
+                          <span className="px-3 py-1.5 rounded-full bg-[#1C1C1C]/90 border border-[#3A4A50] text-[11px] font-semibold uppercase tracking-wider text-[#EFEFEF] shadow-lg">
+                            In development
+                          </span>
                         </div>
                       )}
 

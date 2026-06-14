@@ -43,6 +43,14 @@ def _public(t: dict) -> dict:
         "caption_style": t.get("caption_style"),
         "color_grade": t.get("color_grade"),
         "music_vibe": t.get("music_vibe"),
+        # The built-in track id that best fits this reference's vibe; the create flow
+        # auto-selects it when the user picks this style (overridable).
+        "recommended_track": t.get("recommended_track") or "",
+        # When true, the create flow does NOT auto-pick music for this style — the
+        # user must choose a track (library or upload) before rendering.
+        "music_manual": bool(t.get("music_manual")),
+        # Work-in-progress style: shown in the picker but not selectable yet.
+        "wip": bool(t.get("wip")),
         "pacing": t.get("pacing"),
         "measured": t.get("measured"),
         "preview_url": (

@@ -114,10 +114,16 @@ def generate_ideas(topic, platform, format, niche, tone) -> list[dict]:
 def generate_visual_script(idea_title, hook_phrase, platform, tone, niche, template=None) -> dict:
     import re
 
-    from services.templates import DEFAULT_TEMPLATE, scene_count_range
+    from services.templates import (
+        MAX_VIDEO_SECONDS,
+        DEFAULT_TEMPLATE,
+        cap_total_duration,
+        scene_count_range,
+    )
 
     tmpl = template or DEFAULT_TEMPLATE
     lo, hi = scene_count_range(tmpl)
+    max_secs = int(MAX_VIDEO_SECONDS)
     ph = tmpl.get("phrase") or {}
     min_w = int(ph.get("min_words", 4))
     max_w = int(ph.get("max_words", 8))
@@ -148,6 +154,8 @@ Create a storyboard of {lo}-{hi} scenes — short scenes for a montage, not a fe
 - An on-screen line, lowercase, {min_w} to {max_w} words; the final "punch" line can be shorter
 - A detailed filming suggestion: describe the exact shot in 10-18 words: camera framing/angle, the subject, the action, and the setting or lighting (so the creator knows precisely what to film)
 - Duration in seconds (each scene at least 3 seconds)
+
+HARD LIMIT — TOTAL LENGTH: the sum of all "duration_seconds" across every scene MUST be {max_secs} seconds or less. Pick the scene count and per-scene durations so the WHOLE video is at most {max_secs} seconds. Never exceed {max_secs} seconds total.
 
 Narrative shape to follow across the scenes: {structure_str}.
 Last scene is the "punch" — the shortest, most impactful line.
@@ -217,4 +225,8 @@ Return ONLY valid JSON:
     # the chosen template regardless of what the model echoed back.
     script["color_grade"] = grade
     script["music_vibe"] = vibe
+    # Enforce the global length cap on the storyboard itself, so the durations the
+    # user sees (and that flow into the render) never sum to more than the cap.
+    if isinstance(script.get("scenes"), list):
+        script["scenes"] = cap_total_duration(script["scenes"], as_int=True)
     return script

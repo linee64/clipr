@@ -306,6 +306,22 @@ def extract_one(path: Path, use_ocr: bool) -> dict:
     return signals_to_template(path.stem, signals)
 
 
+def _locked_ids() -> set:
+    """Ids of templates flagged ``"locked": true`` — manually tuned entries that
+    the auto-extractor must never overwrite."""
+    if not TEMPLATES_PATH.exists():
+        return set()
+    try:
+        data = json.loads(TEMPLATES_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError, ValueError):
+        return set()
+    return {
+        t["id"]
+        for t in (data if isinstance(data, list) else [])
+        if isinstance(t, dict) and t.get("locked") and t.get("id")
+    }
+
+
 def merge_into_file(new_templates: list):
     existing = []
     if TEMPLATES_PATH.exists():
@@ -315,9 +331,17 @@ def merge_into_file(new_templates: list):
                 existing = []
         except (json.JSONDecodeError, OSError, ValueError):
             existing = []
-    new_ids = {t["id"] for t in new_templates}
+    # Defense-in-depth: never let an auto-extracted entry replace a locked one,
+    # even if a locked id slipped through to here.
+    locked = {
+        t["id"]
+        for t in existing
+        if isinstance(t, dict) and t.get("locked") and t.get("id")
+    }
+    incoming = [t for t in new_templates if t.get("id") not in locked]
+    new_ids = {t["id"] for t in incoming}
     kept = [t for t in existing if t.get("id") not in new_ids]
-    merged = kept + new_templates
+    merged = kept + incoming
     TEMPLATES_PATH.parent.mkdir(parents=True, exist_ok=True)
     TEMPLATES_PATH.write_text(
         json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -344,8 +368,13 @@ def main():
         return
 
     print(f"Found {len(files)} reference video(s) in {ref_dir}\n")
+    locked = _locked_ids()
     templates = []
     for p in files:
+        tid = f"ref-{_slug(p.stem)}"
+        if tid in locked:
+            print(f"- {p.name}: SKIPPED (locked manual template '{tid}' — not re-extracting)")
+            continue
         try:
             t = extract_one(p, args.ocr)
             templates.append(t)

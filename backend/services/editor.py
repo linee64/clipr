@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -21,6 +22,12 @@ _FFMPEG_HINT = (
 )
 
 _LOCAL_FFMPEG_BIN = BACKEND_DIR / "tools" / "ffmpeg" / "bin"
+
+# Bundled .ttf/.otf fonts (e.g. high-contrast serif + calligraphy script for the
+# "I don't care" reference look). Staged next to the .ass at burn time and made
+# visible to libass via the ass filter's fontsdir, so a template can use a font
+# that isn't installed on the host (local Windows OR the Linux render box).
+ASSETS_FONTS_DIR = BACKEND_DIR / "assets" / "fonts"
 
 
 def _register_local_ffmpeg_on_path() -> None:
@@ -211,6 +218,25 @@ def get_duration(file_path: str) -> float:
     return float(data["format"]["duration"])
 
 
+def measure_brightness(path: str) -> float:
+    """Average luma (YAVG, 0-255) of a clip via signalstats — used to normalize
+    exposure before a moody grade so already-dark footage isn't crushed to black.
+    Returns a neutral 60.0 when measurement fails."""
+    import re
+
+    try:
+        res = _run(
+            ["ffmpeg", "-i", path, "-vf", "fps=2,signalstats,metadata=print",
+             "-an", "-f", "null", "-"],
+            text=True,
+        )
+        text = (res.stderr or "") + (res.stdout or "")
+        vals = [float(x) for x in re.findall(r"signalstats\.YAVG=([\d.]+)", text)]
+        return round(sum(vals) / len(vals), 1) if vals else 60.0
+    except Exception:
+        return 60.0
+
+
 def concatenate_clips(clip_paths: list[str], output_path: str):
     """Concatenate multiple clips into one video using FFmpeg concat."""
     if not clip_paths:
@@ -283,10 +309,23 @@ def add_background_audio(
 
 
 def add_background_audio_only(
-    video_path: str, audio_path: str, output_path: str, volume: float = 0.6
+    video_path: str, audio_path: str, output_path: str, volume: float = 0.6,
+    start_offset: float = 0.0,
 ):
-    """Replace video audio with background music only — source clip audio is discarded."""
+    """Replace video audio with background music only — source clip audio is discarded.
+
+    start_offset > 0 seeks into the track first, so the video opens on the hook/drop
+    (the viral part) instead of the intro; the track still loops to cover the video.
+    """
     vol = max(0.05, min(float(volume), 2.0))
+    seek = ["-ss", f"{max(0.0, float(start_offset)):.2f}"] if float(start_offset) > 0.01 else []
+    # Small music fade-in at the start and fade-out at the very end of the video so
+    # the track doesn't cut off abruptly.
+    afilter = f"[1:a]volume={vol}"
+    dur = get_duration(video_path)
+    if dur and dur > 1.5:
+        afilter += f",afade=t=in:st=0:d=0.4,afade=t=out:st={max(0.0, dur - 0.9):.2f}:d=0.9"
+    afilter += "[aout]"
     cmd = [
         "ffmpeg",
         "-y",
@@ -296,10 +335,11 @@ def add_background_audio_only(
         # -shortest below then ends the output exactly at the video length
         "-stream_loop",
         "-1",
+        *seek,
         "-i",
         audio_path,
         "-filter_complex",
-        f"[1:a]volume={vol}[aout]",
+        afilter,
         "-map",
         "0:v",
         "-map",
@@ -374,7 +414,7 @@ ASS_STYLES = {
         "BackColour": "&H00000000",
         "Bold": "1",
         "Italic": "0",
-        "Outline": "4",
+        "Outline": "0",
         "Shadow": "2",
         "Alignment": "2",
         "MarginV": "150",
@@ -405,7 +445,7 @@ ASS_STYLES = {
         "BackColour": "&H00000000",
         "Bold": "1",
         "Italic": "0",
-        "Outline": "4",
+        "Outline": "0",
         "Shadow": "2",
         "Alignment": "5",
         "MarginV": "0",
@@ -420,7 +460,7 @@ ASS_STYLES = {
         "BackColour": "&H00000000",
         "Bold": "0",
         "Italic": "0",
-        "Outline": "1",
+        "Outline": "0",
         "Shadow": "1",
         "Alignment": "5",
         "MarginV": "0",
@@ -437,7 +477,74 @@ ASS_STYLES = {
         "BackColour": "&H80000000",
         "Bold": "1",
         "Italic": "0",
-        "Outline": "3",
+        "Outline": "0",
+        "Shadow": "1",
+        "Alignment": "5",
+        "MarginV": "0",
+    },
+    # --- "Locked in" reference look: bold lowercase white sans, centered, no mint ---
+    # Heavy wide grotesque (Arial Black) over the dark gradient cards and graded
+    # footage. Bold=0 because the face already supplies the weight.
+    "card_phrase": {
+        "Name": "Default",
+        "Fontname": "Arial Black",
+        "Fontsize": "84",
+        "PrimaryColour": "&H00FFFFFF",
+        "SecondaryColour": "&H00FFFFFF",
+        "OutlineColour": "&H00000000",
+        "BackColour": "&H00000000",
+        "Bold": "0",
+        "Italic": "0",
+        "Outline": "0",
+        "Shadow": "1",
+        "Alignment": "5",
+        "MarginV": "0",
+    },
+    # Same face, BLACK text — for the light film-grain cards (the dark/light flip).
+    "card_phrase_light": {
+        "Name": "Default",
+        "Fontname": "Arial Black",
+        "Fontsize": "84",
+        "PrimaryColour": "&H00000000",
+        "SecondaryColour": "&H00000000",
+        "OutlineColour": "&H00FFFFFF",
+        "BackColour": "&H00FFFFFF",
+        "Bold": "0",
+        "Italic": "0",
+        "Outline": "0",
+        "Shadow": "0",
+        "Alignment": "5",
+        "MarginV": "0",
+    },
+    # The single serif moment — small upright Georgia, the elegant opener line.
+    "intro_serif": {
+        "Name": "Default",
+        "Fontname": "Georgia",
+        "Fontsize": "80",
+        "PrimaryColour": "&H00FFFFFF",
+        "SecondaryColour": "&H00FFFFFF",
+        "OutlineColour": "&H00000000",
+        "BackColour": "&H00000000",
+        "Bold": "0",
+        "Italic": "0",
+        "Outline": "0",
+        "Shadow": "1",
+        "Alignment": "5",
+        "MarginV": "0",
+    },
+    # Base style for kinetic captions — per-Dialogue \\pos/\\fn/\\c/\\fs overrides do
+    # the real work; this just sets sane defaults + outline for legibility over footage.
+    "kinetic": {
+        "Name": "Default",
+        "Fontname": "Arial Black",
+        "Fontsize": "150",
+        "PrimaryColour": "&H00FFFFFF",
+        "SecondaryColour": "&H00FFFFFF",
+        "OutlineColour": "&H00000000",
+        "BackColour": "&H00000000",
+        "Bold": "0",
+        "Italic": "0",
+        "Outline": "0",
         "Shadow": "1",
         "Alignment": "5",
         "MarginV": "0",
@@ -446,6 +553,27 @@ ASS_STYLES = {
 
 # Mint accent (#10B981) written as ASS &HBBGGRR for the currently-spoken word.
 KARAOKE_ACTIVE_COLOR = "&H81B910&"
+
+# --- Kinetic captions ("Break the pattern" reference) ---------------------------
+# Multi-position word chunks that build on the beat at cycling screen anchors,
+# mixing big white sans emphasis words with smaller red serif accent words.
+KINETIC_ACCENT_COLOR = "&H1B06CC&"  # crimson #CC061B as ASS &HBBGGRR, sampled from the type fill
+# Each LAYOUT is a set of 3 mutually NON-overlapping anchors (alignment, x_frac,
+# y_frac) — the words are well separated vertically so they never collide. Scenes
+# alternate between layouts for variety: a centered vertical stack, then a
+# corners+center spread (mirrors the reference's two looks). Within a scene chunk j
+# lands at layout[j % 3]; a 3-slot sliding window clears older chunks so at most 3
+# are on screen at once.
+KINETIC_LAYOUTS = [
+    [(8, 0.50, 0.27), (5, 0.50, 0.49), (2, 0.50, 0.73)],   # vertical stack (pulled toward center)
+    [(7, 0.16, 0.29), (5, 0.50, 0.49), (3, 0.84, 0.71)],   # corners + center
+]
+# Articles / connectives / prepositions render as red serif accents; the rest are
+# white sans emphasis words.
+_KINETIC_ACCENT_WORDS = {
+    "the", "a", "an", "or", "and", "but", "of", "to", "in", "on", "for",
+    "will", "is", "be", "your", "my", "it", "if", "so", "than", "then",
+}
 
 
 def _ass_time(seconds: float) -> str:
@@ -474,6 +602,10 @@ def _overrides_from_preset(preset: dict | None) -> dict | None:
         o["Outline"] = str(preset["outline"])
     if preset.get("marginv") is not None:
         o["MarginV"] = str(preset["marginv"])
+    if preset.get("bold") is not None:
+        o["Bold"] = str(int(preset["bold"]))
+    if preset.get("shadow") is not None:
+        o["Shadow"] = str(int(preset["shadow"]))
     return o
 
 
@@ -529,12 +661,43 @@ def _write_ass_header(
     )
 
 
+def _italicize_words(text: str, italic_words: set) -> str:
+    """Wrap each word whose lowercased, punctuation-stripped form is in italic_words
+    in an ASS italic run {\\i1}word{\\r}, preserving \\N line breaks."""
+    out_lines = []
+    for line in text.split("\\N"):
+        toks = []
+        for wrd in line.split(" "):
+            key = wrd.strip(",.!?;:'\"“”‘’").lower()
+            toks.append(f"{{\\i1}}{wrd}{{\\r}}" if key and key in italic_words else wrd)
+        out_lines.append(" ".join(toks))
+    return "\\N".join(out_lines)
+
+
+def _chunk_segment(seg: dict, n: int) -> list[dict]:
+    """Split one held caption into chunks of <= n words, spread evenly across the
+    segment's time span — so fewer words show at once (the reference's one/two-word
+    punch). n<=0 returns the segment unchanged."""
+    words = str(seg.get("text", "")).split()
+    if n <= 0 or len(words) <= n:
+        return [seg]
+    groups = [words[i:i + n] for i in range(0, len(words), n)]
+    start, end = float(seg["start"]), float(seg["end"])
+    step = max(0.1, (end - start) / len(groups))
+    return [
+        {"start": start + i * step, "end": start + (i + 1) * step, "text": " ".join(g)}
+        for i, g in enumerate(groups)
+    ]
+
+
 def generate_ass_simple(
     segments: list,
     output_path: str,
     style: str = "tiktok_bold",
     resolution: str = "1080:1920",
     preset: dict | None = None,
+    fontcycle=None,
+    fontcycle_dur=None,
 ):
     """
     Generate .ass subtitle file with advanced styling.
@@ -553,16 +716,106 @@ def generate_ass_simple(
         play_w, play_h = 1080, 1920
     overrides = _overrides_from_preset(preset)
     upper = bool(preset and preset.get("uppercase")) or style == "center_caps"
+    # Optional per-phrase fade-in/out pop (the reference's text appears with a quick
+    # fade). preset["fade_ms"] = [in_ms, out_ms]; absent -> no fade (unchanged).
+    fade = ""
+    if preset and preset.get("fade_ms"):
+        try:
+            fin, fout = (int(x) for x in preset["fade_ms"][:2])
+            fade = f"{{\\fad({fin},{fout})}}"
+        except (TypeError, ValueError, IndexError):
+            fade = ""
+    # Optional letter-spacing/tracking (the tracked-caps statement look) via \fsp.
+    sp = ""
+    lsp = (preset or {}).get("letter_spacing")
+    if lsp:
+        sp = f"{{\\fsp{float(lsp):g}}}"
+    # Optional glyph stretch via \fscx (wider) / \fscy (taller) — default 100.
+    scale_tag = ""
+    if (preset or {}).get("scale_x"):
+        scale_tag += f"\\fscx{int(float(preset['scale_x']))}"
+    if (preset or {}).get("scale_y"):
+        scale_tag += f"\\fscy{int(float(preset['scale_y']))}"
+    sx = f"{{{scale_tag}}}" if scale_tag else ""
+    # Optional: show fewer words at a time by splitting each held phrase into
+    # n-word timed chunks (the reference's one/two-word punch).
+    chunk_n = int((preset or {}).get("chunk_words") or 0)
+    # Optional: gently break the phrase onto new lines every n words.
+    wrap_n = int((preset or {}).get("wrap_words") or 0)
+    # Optional per-word italic accents (editorial serif look): words in this set are
+    # wrapped in {\i1}word{\r} while the rest stay upright.
+    italic_words = set((preset or {}).get("italic_words") or [])
+    # Optional intros (applied before the normal captions on the first segment):
+    #  - intro_text: a fixed word that reveals left-to-right then fades out.
+    #  - fontcycle_intro: flip the first phrase rapidly through many fonts, then settle.
+    intro_text = (preset or {}).get("intro_text")
+    intro_dur = float((preset or {}).get("intro_dur") or 1.0)
+    cycle_fonts = fontcycle or (preset or {}).get("fontcycle_intro")
+    _CYCLE_FONTS = ["Arial Black", "Impact", "Georgia", "Verdana", "Trebuchet MS",
+                    "Comic Sans MS", "Times New Roman", "Courier New"]
     with open(output_path, "w", encoding="utf-8") as f:
         _write_ass_header(f, style, play_w, play_h, overrides)
-        for seg in segments:
-            text = seg["text"].strip()
-            if upper:
-                text = text.upper()
+        clamp_start = 0.0
+        if intro_text and segments:
+            cx, cy = play_w // 2, play_h // 2
+            itxt = intro_text.upper() if upper else intro_text
+            rev = max(150, int(intro_dur * 450))  # left-to-right reveal time (ms)
             f.write(
-                f"Dialogue: 0,{_ass_time(seg['start'])},{_ass_time(seg['end'])},"
-                f"Default,,0,0,0,,{text}\n"
+                f"Dialogue: 0,{_ass_time(0.0)},{_ass_time(intro_dur)},Default,,0,0,0,,"
+                f"{{\\an5\\pos({cx},{cy})\\clip(0,0,0,{play_h})"
+                f"\\t(0,{rev},\\clip(0,0,{play_w},{play_h}))\\fad(0,200)}}{itxt}\n"
             )
+            clamp_start = intro_dur
+        if cycle_fonts and segments:
+            seg0 = segments[0]
+            t0 = max(float(seg0["start"]), clamp_start)
+            cyc = cycle_fonts if isinstance(cycle_fonts, list) else _CYCLE_FONTS
+            avail = float(seg0["end"]) - t0
+            # How long the font-flipping effect runs. Default: a quick ~0.4-0.8s
+            # flicker. A template/card can request a longer, more deliberate cycle
+            # (fontcycle_dur), clamped to the time the segment is actually on screen.
+            fc_dur = fontcycle_dur if fontcycle_dur is not None else (preset or {}).get("fontcycle_dur")
+            if fc_dur:
+                cdur = max(0.2, min(float(fc_dur), avail))
+            else:
+                cdur = min(0.8, max(0.4, avail * 0.5))
+            # Keep each font visible for a snappy ~0.14s and repeat the font list as
+            # needed to fill the whole cycle, so a longer cycle stays lively instead
+            # of just holding each font longer.
+            n_slices = max(len(cyc), round(cdur / 0.14))
+            step = cdur / n_slices
+            # strip any embedded override block (e.g. a \fad longer than a cycle slice
+            # would keep the text invisible) so each font flashes fully opaque
+            import re as _re
+            txt0 = _re.sub(r"\{[^}]*\}", "", str(seg0["text"])).strip()
+            if upper:
+                txt0 = txt0.upper()
+            for i in range(n_slices):
+                fn = cyc[i % len(cyc)]
+                f.write(
+                    f"Dialogue: 0,{_ass_time(t0 + i * step)},{_ass_time(t0 + (i + 1) * step)},"
+                    f"Default,,0,0,0,,{{\\fn{fn}}}{sx}{sp}{txt0}\n"
+                )
+            clamp_start = t0 + cdur
+        for si, seg in enumerate(segments):
+            if si == 0 and clamp_start > float(seg["start"]):
+                seg = {**seg, "start": min(clamp_start, float(seg["end"]) - 0.1)}
+            for part in (_chunk_segment(seg, chunk_n) if chunk_n else [seg]):
+                text = str(part["text"]).strip()
+                if upper:
+                    text = text.upper()
+                if wrap_n:
+                    words = text.split()
+                    if len(words) > wrap_n:
+                        text = "\\N".join(
+                            " ".join(words[i:i + wrap_n]) for i in range(0, len(words), wrap_n)
+                        )
+                if italic_words:
+                    text = _italicize_words(text, italic_words)
+                f.write(
+                    f"Dialogue: 0,{_ass_time(part['start'])},{_ass_time(part['end'])},"
+                    f"Default,,0,0,0,,{fade}{sx}{sp}{text}\n"
+                )
 
 
 def _wrap_words(words: list[str], max_chars: int = 18, max_words_per_line: int = 3):
@@ -620,11 +873,13 @@ def _karaoke_word_times(start: float, end: float, n_words: int, beats: list[floa
 
 
 def _render_cumulative(
-    lines_struct, visible: int, active: int, upper: bool = False, emph: str = ""
+    lines_struct, visible: int, active: int, upper: bool = False, emph: str = "",
+    active_col: str = KARAOKE_ACTIVE_COLOR,
 ) -> str:
     """Render the first `visible` words across wrapped lines. The `active` (newest)
-    word is mint and, when `emph` is set, drawn in a second font — so a single video
-    shows two fonts. `\\r` resets back to the base style for anything after it."""
+    word is drawn in `active_col` (mint by default; a template can force white for an
+    all-white build) and, when `emph` is set, in a second font. `\\r` resets back to
+    the base style for anything after it."""
     out_lines: list[str] = []
     gi = 0
     for line in lines_struct:
@@ -634,7 +889,7 @@ def _render_cumulative(
                 ww = w.upper() if upper else w
                 if gi == active:
                     fn = f"\\fn{emph}" if emph else ""
-                    toks.append(f"{{{fn}\\c{KARAOKE_ACTIVE_COLOR}}}{ww}{{\\r}}")
+                    toks.append(f"{{{fn}\\c{active_col}}}{ww}{{\\r}}")
                 else:
                     toks.append(ww)
             gi += 1
@@ -667,6 +922,16 @@ def generate_ass_karaoke(
     overrides = _overrides_from_preset(preset)
     upper = bool(preset and preset.get("uppercase"))
     emph = (preset or {}).get("emphasis_font") or ""
+    # A template can force the active word to a custom colour (e.g. white for an
+    # all-white build instead of the mint highlight) and add a per-word fade-in pop.
+    active_col = (preset or {}).get("active_color") or KARAOKE_ACTIVE_COLOR
+    fade = ""
+    if preset and preset.get("fade_ms"):
+        try:
+            fin, fout = (int(x) for x in preset["fade_ms"][:2])
+            fade = f"{{\\fad({fin},{fout})}}"
+        except (TypeError, ValueError, IndexError):
+            fade = ""
 
     beats = sorted(b for b in (beat_times or []) if b is not None and b >= 0)
     with open(output_path, "w", encoding="utf-8") as f:
@@ -688,35 +953,524 @@ def generate_ass_karaoke(
                 if seg_end <= seg_start:
                     seg_end = seg_start + 0.05
                 text = _render_cumulative(
-                    lines_struct, visible=j + 1, active=j, upper=upper, emph=emph
+                    lines_struct, visible=j + 1, active=j, upper=upper, emph=emph,
+                    active_col=active_col,
                 )
                 f.write(
                     f"Dialogue: 0,{_ass_time(seg_start)},{_ass_time(seg_end)},"
-                    f"Default,,0,0,0,,{text}\n"
+                    f"Default,,0,0,0,,{fade}{text}\n"
                 )
 
 
-def burn_subtitles_ass(video_path: str, ass_path: str, output_path: str) -> str:
-    """Burn .ass subtitles into video using FFmpeg."""
-    work_dir = os.path.dirname(os.path.abspath(ass_path))
+def _kinetic_chunks(words: list[str], accent_set: set) -> list[list[tuple]]:
+    """Group a leading accent word (article/connective) with the following content
+    word into one on-screen chunk ("The"+"Pattern"); standalone/trailing accent
+    words stand alone. Each chunk is a list of (word, is_accent)."""
+    def is_accent(w: str) -> bool:
+        return w.strip(",.!?;:’'\"").lower() in accent_set
+
+    chunks: list[list[tuple]] = []
+    i, n = 0, len(words)
+    while i < n:
+        w = words[i]
+        if is_accent(w) and i + 1 < n and not is_accent(words[i + 1]):
+            chunks.append([(w, True), (words[i + 1], False)])
+            i += 2
+        else:
+            chunks.append([(w, is_accent(w))])
+            i += 1
+    return chunks
+
+
+def _kinetic_chunk_text(
+    chunk: list[tuple], sans_font: str, serif_font: str, accent_col: str,
+    base_size: int, accent_size: int, upper_emph: bool,
+) -> str:
+    """Render one chunk: accent words as small red serif italic, content words as
+    big white sans (uppercased when upper_emph). \\r resets to the base style."""
+    runs = []
+    for word, is_accent in chunk:
+        if is_accent:
+            runs.append(
+                f"{{\\fn{serif_font}\\i1\\b0\\fs{accent_size}\\bord0\\shad1"
+                f"\\c{accent_col}}}{word}{{\\r}}"
+            )
+        else:
+            w = word.upper() if upper_emph else word
+            runs.append(
+                f"{{\\fn{sans_font}\\i0\\b0\\fs{base_size}\\bord0\\shad1"
+                f"\\c&H00FFFFFF&}}{w}{{\\r}}"
+            )
+    return " ".join(runs)
+
+
+def _kinetic_chunk_times(
+    start: float, end: float, n: int, beats: list[float], min_gap: float = 0.2
+) -> list[float]:
+    """Reveal chunk j on the beats right after the scene start (a punchy, beat-synced
+    build that holds once shown) — not spread across the whole scene, which made later
+    words appear late and feel laggy.
+
+    ``min_gap`` is the minimum spacing between consecutive reveals: 0.2 (default) lands
+    on every beat; a larger value (e.g. 0.9) skips to a later beat so each word holds
+    longer — still ON a beat, just a calmer cadence (used to slow the opening build)."""
+    if n <= 1:
+        return [start]
+    bs = sorted(b for b in (beats or []) if b is not None and b > start + 0.12)
+    times = [start]
+    bi = 0
+    for _ in range(1, n):
+        prev = times[-1]
+        nxt = None
+        while bi < len(bs):
+            if bs[bi] >= prev + min_gap:
+                nxt = bs[bi]
+                bi += 1
+                break
+            bi += 1
+        if nxt is None:
+            nxt = prev + max(0.42, min_gap)  # ran out of beats -> steady fallback gap
+        nxt = min(nxt, end - 0.12)
+        nxt = max(nxt, prev + 0.12)  # strictly increasing, min readable gap
+        times.append(nxt)
+    return times
+
+
+def _write_kinetic_groups(
+    f, phrase: str, start: float, end: float, beats: list[float], group_size: int,
+    play_w: int, play_h: int, sans_font: str, serif_font: str, accent_col: str,
+    base_size: int, accent_size: int, upper_emph: bool, fin: int, fout: int,
+) -> None:
+    """Render one scene as centered word-stacks (the "groups" kinetic look): the phrase
+    is split into groups of ``group_size``; within each group the first 3 words are big
+    white sans (one per line) and any trailing word is small red serif. Words pop in ONE
+    BY ONE on consecutive beats — each holds at its fixed line as the stack builds — and
+    the whole group clears when the next group's first word appears. Mirrors the
+    "3 words + a red 4th" reference treatment with a sequential build (not all at once)."""
+    words = phrase.split()
+    if not words:
+        return
+    groups = [words[i:i + group_size] for i in range(0, len(words), group_size)]
+    # One reveal time per WORD (consecutive beats) so words appear sequentially.
+    wtimes = _kinetic_chunk_times(start, end, len(words), beats)
+    cx = play_w // 2
+    step = max(1, int(round(base_size * 1.15)))  # vertical gap between stacked lines
+    gidx = 0  # running global word index into wtimes
+    for gi, group in enumerate(groups):
+        m = len(group)
+        # the group holds until its last word's slot ends: the next group's first word
+        # (or the scene end for the final group) — so the stack clears as a unit.
+        next_global = gidx + m
+        group_end = wtimes[next_global] if next_global < len(words) else end
+        top = (play_h // 2) - (m - 1) * step // 2  # center the m-line stack
+        last_group = gi == len(groups) - 1
+        for lj, word in enumerate(group):
+            seg_start = wtimes[gidx + lj]
+            # Very short scene + many words can push a word's beat past the scene end
+            # (consecutive-beat spacing overruns); drop it rather than emit an inverted
+            # interval, and guarantee seg_end > seg_start for the words that do fit.
+            if seg_start >= end - 0.05:
+                continue
+            seg_end = group_end
+            if seg_end <= seg_start:
+                seg_end = min(end, seg_start + 0.2)
+            y = top + lj * step
+            if lj >= 3:  # the 4th (overflow) word -> small red serif
+                style = (
+                    f"\\fn{serif_font}\\i1\\b0\\fs{accent_size}\\bord0\\shad1\\c{accent_col}"
+                )
+                shown = word
+            else:  # up to 3 big white emphasis words, one per line
+                style = (
+                    f"\\fn{sans_font}\\i0\\b1\\fs{base_size}\\bord0\\shad1\\c&H00FFFFFF&"
+                )
+                shown = word.upper() if upper_emph else word
+            fout_w = fout if last_group else 0  # only the final group fades out
+            f.write(
+                f"Dialogue: 0,{_ass_time(seg_start)},{_ass_time(seg_end)},"
+                f"Default,,0,0,0,,"
+                f"{{\\an5\\pos({cx},{y})\\fad({fin},{fout_w}){style}}}{shown}\n"
+            )
+        gidx += m
+
+
+def _stack_accent_key(word: str) -> str:
+    return word.strip(",.!?;:’'\"“”‘’«»…—-").lower()
+
+
+def _write_kinetic_stack(
+    f, phrase: str, start: float, end: float, beats: list[float],
+    play_w: int, play_h: int, main_font: str, script_font: str, accent_col: str,
+    base_size: int, accent_size: int, accent_set: set, wrap_words: int,
+    max_chars: int, upper_emph: bool, fin: int, fout: int, reveal_gap: float = 0.2,
+    body_bold: bool = False,
+) -> None:
+    """Render one scene as a CENTRED, build-and-hold caption (the "I don't care"
+    reference look): the phrase wraps into short, frame-fitting lines that reveal
+    one-by-one on CONSECUTIVE beats and HOLD — accumulating into a vertically- and
+    horizontally-centred block — then fade together as the next phrase begins.
+    Designated accent words render in a flowing script face; the rest in a
+    high-contrast serif (both white).
+
+    Two robustness points: lines wrap by character budget (so long words — e.g.
+    Russian — stay on-frame and centred), and if NO word matches the accent set
+    (e.g. a non-English phrase), the final word still gets the script face so the
+    two-font look never collapses to a single font."""
+    words = phrase.split()
+    if not words:
+        return
+    # Which word indices use the script face. Curated accent words win; if none match
+    # (e.g. the phrase is in Russian and the list is English), fall back to the last
+    # word so a script accent is always present.
+    accent_idx = {
+        i for i, w in enumerate(words)
+        if _stack_accent_key(w) and _stack_accent_key(w) in accent_set
+    }
+    if not accent_idx and len(words) > 1:
+        accent_idx = {len(words) - 1}
+    # Wrap to centred lines that fit the frame width (≤ max_chars or wrap_words each).
+    lines = _wrap_words(words, max_chars=max_chars, max_words_per_line=max(1, int(wrap_words)))
+    ltimes = _kinetic_chunk_times(start, end, len(lines), beats, min_gap=reveal_gap)
+    step = max(1, int(round(base_size * 1.16)))            # gap between stacked lines
+    top = max(step // 2, (play_h - step * len(lines)) // 2)  # vertically centre block
+    cx = play_w // 2
+    gi = 0  # running word index across the flattened lines (matches `words` order)
+    for i, line in enumerate(lines):
+        seg_start = ltimes[i]
+        if seg_start >= end - 0.05:  # a beat that overruns the scene -> drop the line
+            gi += len(line)
+            continue
+        y = top + i * step
+        runs = []
+        for word in line:
+            if gi in accent_idx:  # flowing script accent word
+                runs.append(
+                    f"{{\\fn{script_font}\\i0\\b0\\fs{accent_size}\\bord0\\shad1"
+                    f"\\c{accent_col}}}{word}{{\\r}}"
+                )
+            else:  # high-contrast serif body word
+                shown = word.upper() if upper_emph else word
+                runs.append(
+                    f"{{\\fn{main_font}\\i0\\b{1 if body_bold else 0}\\fs{base_size}"
+                    f"\\bord0\\shad1\\c&H00FFFFFF&}}{shown}{{\\r}}"
+                )
+            gi += 1
+        # Each line holds to the scene end so the block accumulates; the whole stack
+        # fades out together over the last `fout` ms as the next phrase takes over.
+        f.write(
+            f"Dialogue: 0,{_ass_time(seg_start)},{_ass_time(end)},"
+            f"Default,,0,0,0,,"
+            f"{{\\an8\\pos({cx},{y})\\fad({fin},{fout})}}{' '.join(runs)}\n"
+        )
+
+
+def generate_ass_kinetic(
+    scenes_timed: list,
+    beat_times: list,
+    output_path: str,
+    resolution: str = "1080:1920",
+    preset: dict | None = None,
+):
+    """Kinetic multi-position captions (the "Break the pattern" reference look):
+    each scene's phrase is split into chunks that appear on consecutive beats at
+    NON-overlapping anchors (alternating layout per scene), mixing big white sans
+    emphasis words with smaller red serif accents. A 3-slot sliding window clears
+    older chunks so at most 3 are on screen at once (no stacking/overlap).
+
+    preset keys (from caption_preset_of): sans_font, serif_font, accent_color,
+    fontsize (base sans size), accent_size, layouts, accent_words, uppercase_emphasis,
+    fade_ms."""
+    try:
+        play_w, play_h = (int(float(x)) for x in resolution.split(":"))
+    except (ValueError, TypeError):
+        play_w, play_h = 1080, 1920
+
+    p = preset or {}
+    sans_font = p.get("sans_font") or "Arial Black"
+    serif_font = p.get("serif_font") or "Georgia"
+    accent_col = p.get("accent_color") or KINETIC_ACCENT_COLOR
+    base_size = int(p.get("fontsize") or 150)
+    accent_size = int(p.get("accent_size") or round(base_size * 0.64))
+    layouts = p.get("layouts") or KINETIC_LAYOUTS
+    accent_set = set(p.get("accent_words") or _KINETIC_ACCENT_WORDS)
+    upper_emph = bool(p.get("uppercase_emphasis", True))
+    # "Groups" mode (caption_kinetic_groups = N): instead of article-accented chunks at
+    # scattered anchors, show the phrase as centered stacks of up to N words — the first
+    # 3 big white (one per line), the 4th small red — one group popping in per beat.
+    # 0/absent keeps the classic sliding-window chunk behaviour (other kinetic uses).
+    group_size = int(p.get("kinetic_groups") or 0)
+    # "Stack" mode (caption_stack = true): the phrase wraps into short lines that
+    # reveal on consecutive beats and HOLD as a vertically-centred left block, with
+    # accent words in a script face (the "I don't care" editorial-serif look). Other
+    # kinetic modes (chunks / groups) are untouched when this is off.
+    stack_mode = bool(p.get("kinetic_stack"))
+    stack_wrap = max(1, int(p.get("stack_wrap") or 2))
+    stack_maxchars = max(6, int(p.get("stack_maxchars") or 16))
+    # Opening cadence: scenes that START before `stack_open_until` reveal each line
+    # with at least `stack_open_gap` between them (slower, holds each word longer);
+    # later scenes keep the default snappy every-beat build.
+    stack_open_gap = float(p.get("stack_open_gap") or 0.0)
+    stack_open_until = float(p.get("stack_open_until") or 0.0)
+    stack_bold = bool(p.get("stack_bold"))  # bold weight on the body (serif) font only
+    try:
+        fin, fout = (int(x) for x in (p.get("fade_ms") or (120, 0))[:2])
+    except (TypeError, ValueError, IndexError):
+        fin, fout = 120, 0
+
+    beats = sorted(b for b in (beat_times or []) if b is not None and b >= 0)
+    with open(output_path, "w", encoding="utf-8") as f:
+        _write_ass_header(f, "kinetic", play_w, play_h, _overrides_from_preset(preset))
+        for si, scene in enumerate(scenes_timed):
+            phrase = str(scene.get("phrase", "")).strip()
+            if not phrase:
+                continue
+            start = float(scene.get("start_time", 0.0))
+            dur = max(0.3, float(scene.get("duration_seconds", 3.0)))
+            end = start + dur
+            if stack_mode:
+                reveal_gap = (
+                    stack_open_gap
+                    if (stack_open_gap > 0 and start < stack_open_until)
+                    else 0.2
+                )
+                _write_kinetic_stack(
+                    f, phrase, start, end, beats, play_w, play_h,
+                    sans_font, serif_font, accent_col, base_size, accent_size,
+                    accent_set, stack_wrap, stack_maxchars, upper_emph, fin, fout,
+                    reveal_gap, stack_bold,
+                )
+                continue
+            if group_size > 0:
+                _write_kinetic_groups(
+                    f, phrase, start, end, beats, group_size, play_w, play_h,
+                    sans_font, serif_font, accent_col, base_size, accent_size,
+                    upper_emph, fin, fout,
+                )
+                continue
+            chunks = _kinetic_chunks(phrase.split(), accent_set)
+            if not chunks:
+                continue
+            layout = layouts[si % len(layouts)]
+            slots = len(layout)
+            times = _kinetic_chunk_times(start, end, len(chunks), beats)
+            for j, chunk in enumerate(chunks):
+                seg_start = times[j]
+                # A chunk clears when the next chunk reusing its slot appears, so at
+                # most `slots` chunks are visible at once (no overlap when cycling).
+                seg_end = times[j + slots] if j + slots < len(chunks) else end
+                if seg_end <= seg_start:
+                    seg_end = min(end, seg_start + 0.2)
+                an, xf, yf = layout[j % slots]
+                x, y = int(play_w * xf), int(play_h * yf)
+                # only the chunks that survive to the cut fade out; cleared ones hard-cut
+                fout_j = fout if j + slots >= len(chunks) else 0
+                text = _kinetic_chunk_text(
+                    chunk, sans_font, serif_font, accent_col,
+                    base_size, accent_size, upper_emph,
+                )
+                f.write(
+                    f"Dialogue: 0,{_ass_time(seg_start)},{_ass_time(seg_end)},"
+                    f"Default,,0,0,0,,"
+                    f"{{\\an{an}\\pos({x},{y})\\fad({fin},{fout_j})}}{text}\n"
+                )
+
+
+def apply_end_fade(
+    input_path: str,
+    output_path: str,
+    fade_dur: float = 1.0,
+    color: str = "black",
+) -> str:
+    """Fade the picture to ``color`` over the last ``fade_dur`` seconds — a darkening
+    outro as the video ends. Audio is left as-is (it already gets its own fade-out in
+    add_background_audio_only), so we copy the audio stream and only re-encode video.
+    """
+    dur = get_duration(input_path)
+    fd = max(0.1, min(float(fade_dur), max(0.1, dur)))
+    st = max(0.0, dur - fd)
     cmd = [
-        "ffmpeg",
-        "-y",
-        "-i",
-        os.path.basename(video_path),
-        "-vf",
-        f"ass={os.path.basename(ass_path)}",
-        "-c:a",
-        "copy",
-        os.path.basename(output_path),
+        "ffmpeg", "-y", "-i", input_path,
+        "-vf", f"fade=t=out:st={st:.3f}:d={fd:.3f}:color={color}",
+        "-c:v", "libx264", "-preset", "fast", "-c:a", "copy",
+        output_path,
     ]
-    if cmd:
-        cmd = [_tool(cmd[0])] + cmd[1:]
+    _run(cmd)
+    return output_path
+
+
+def _stage_bundled_fonts(work_dir: str) -> bool:
+    """Copy bundled fonts (ASSETS_FONTS_DIR) into ``work_dir`` so libass can find
+    them via the ass filter's ``fontsdir=.`` (the filter runs with cwd=work_dir).
+
+    Returns True if at least one font was staged. Using a relative ``.`` fontsdir
+    sidesteps Windows filtergraph escaping of an absolute path's drive colon.
+    """
+    try:
+        if not ASSETS_FONTS_DIR.is_dir():
+            return False
+        staged = False
+        for font in ASSETS_FONTS_DIR.iterdir():
+            if font.suffix.lower() not in (".ttf", ".otf", ".ttc"):
+                continue
+            dest = os.path.join(work_dir, font.name)
+            if not os.path.exists(dest):
+                shutil.copy2(font, dest)
+            staged = True
+        return staged
+    except OSError:
+        return False
+
+
+def burn_subtitles_ass(
+    video_path: str,
+    ass_path: str,
+    output_path: str,
+    blend_mode: str | None = None,
+    blend_opacity: float = 0.85,
+    use_bundled_fonts: bool = False,
+) -> str:
+    """Burn .ass subtitles into video using FFmpeg.
+
+    blend_mode (e.g. "difference") renders the caption as WHITE text on a black
+    canvas and composites it onto the video with ffmpeg's blend filter, so the text
+    inverts/shifts the colours behind it (a frosted "glass" caption: light over dark
+    areas, dark over bright areas). None = the normal opaque `over` burn (unchanged).
+    blend_opacity (<1) lets some of the original show through for a translucent feel.
+
+    use_bundled_fonts stages backend/assets/fonts into the work dir and points
+    libass at it (``fontsdir=.``) so a template can render with a bundled face that
+    isn't installed on the host. Default False keeps the command byte-identical for
+    every existing caller/template.
+    """
+    work_dir = os.path.dirname(os.path.abspath(ass_path))
+    vbase = os.path.basename(video_path)
+    abase = os.path.basename(ass_path)
+    obase = os.path.basename(output_path)
+    ass_opt = abase
+    if use_bundled_fonts and _stage_bundled_fonts(work_dir):
+        ass_opt = f"{abase}:fontsdir=."
+    if blend_mode:
+        op = max(0.1, min(1.0, float(blend_opacity)))
+        # The blend MUST run in RGB: in YUV a black canvas has chroma 128, so
+        # `difference` would corrupt the U/V planes and tint the whole frame.
+        fc = (
+            f"[0:v]split=2[v0][v1];"
+            f"[v1]drawbox=color=black:t=fill[blk];"
+            f"[blk]ass={ass_opt}[txt];"
+            f"[v0]format=gbrp[v0f];"
+            f"[txt]format=gbrp[txtf];"
+            f"[v0f][txtf]blend=all_mode={blend_mode}:all_opacity={op:g},format=yuv420p[vout]"
+        )
+        cmd = [
+            "ffmpeg", "-y", "-i", vbase,
+            "-filter_complex", fc,
+            "-map", "[vout]", "-map", "0:a?",
+            "-c:a", "copy", obase,
+        ]
+    else:
+        cmd = ["ffmpeg", "-y", "-i", vbase, "-vf", f"ass={ass_opt}", "-c:a", "copy", obase]
+    cmd = [_tool(cmd[0])] + cmd[1:]
     try:
         subprocess.run(cmd, check=True, capture_output=True, cwd=work_dir)
     except FileNotFoundError as e:
         raise RuntimeError(_FFMPEG_HINT) from e
     return output_path
+
+
+def _card_bg_command(bg: str, w: int, h: int, fps: int, dur: float, out_path: str) -> list[str]:
+    """ffmpeg command for a footage-less 'text card' background. Stream params
+    (1080x1920, SAR 1, fps, yuv420p, stereo aac 44100) match extract_montage_cut
+    so cards concatenate with montage cuts with no re-encode mismatch."""
+    if bg == "light_grain":
+        # bright neutral gray + heavy film grain + faint vignette (the light cards).
+        # Heavier grain so the texture survives x264 (alls=14 was smoothed away).
+        src = ["-f", "lavfi", "-i", f"color=c=0x969696:s={w}x{h}"]
+        vf = f"format=gray,noise=alls=22:allf=t+u,vignette=PI/6,setsar=1,fps={fps},format=yuv420p"
+    else:
+        # dark_gradient: a broad soft charcoal wash — mid-gray base darkened by an
+        # off-center vignette so the bright lobe sits upper-center-left and fades to
+        # near-black on the right and bottom (matches the reference's broad falloff).
+        # A `gradients` radial made a tight spotlight; color + vignette gives the
+        # broad soft fill and scales cleanly to any resolution.
+        x0, y0 = int(w * 0.30), int(h * 0.32)
+        src = ["-f", "lavfi", "-i", f"color=c=0x4d4d4d:s={w}x{h}"]
+        vf = (
+            f"format=gray,noise=alls=12:allf=t+u,"
+            f"vignette=a=PI/3.6:x0={x0}:y0={y0},setsar=1,fps={fps},format=yuv420p"
+        )
+    return [
+        "ffmpeg", "-y", *src,
+        "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
+        "-vf", vf, "-t", f"{max(0.3, float(dur)):.3f}",
+        "-map", "0:v", "-map", "1:a",
+        "-c:v", "libx264", "-preset", "fast", "-c:a", "aac",
+        "-pix_fmt", "yuv420p", "-shortest", out_path,
+    ]
+
+
+def _ensure_card_mask(w: int, h: int, radius: int) -> str:
+    """A cached grayscale rounded-rectangle alpha mask (white rounded-rect on black)
+    for the card-frame fit. Generated once per (w,h,radius) with Pillow."""
+    path = os.path.join(TEMP_DIR, f"_cardmask_{w}x{h}_r{radius}.png")
+    if not os.path.isfile(path):
+        try:
+            from PIL import Image, ImageDraw
+        except ImportError as e:
+            raise RuntimeError("Pillow is required for the card_frame fit (pip install pillow)") from e
+        m = Image.new("L", (w, h), 0)
+        ImageDraw.Draw(m).rounded_rectangle([0, 0, w - 1, h - 1], radius=radius, fill=255)
+        m.save(path)
+    return path
+
+
+def render_text_card(
+    out_path: str,
+    duration: float,
+    text: str,
+    bg: str = "dark_gradient",
+    style: str = "card_phrase",
+    resolution: str = "1080:1920",
+    fps: int = 30,
+    fade_ms: tuple = (120, 80),
+    fontcycle=None,
+    fontcycle_dur=None,
+) -> str:
+    """Render one 'text card' — a generated dark-gradient (or light-grain)
+    background with a single centered phrase burned in — matching the "Locked in"
+    reference's intro cards. Reuses generate_ass_simple + burn_subtitles_ass."""
+    try:
+        w, h = (int(float(x)) for x in resolution.split(":"))
+    except (ValueError, TypeError):
+        w, h = 1080, 1920
+    dur = max(0.3, float(duration))
+    work = os.path.dirname(os.path.abspath(out_path)) or TEMP_DIR
+    base = os.path.splitext(os.path.basename(out_path))[0]
+
+    bg_path = os.path.join(work, f"{base}_bg.mp4")
+    _run(_card_bg_command(bg, w, h, fps, dur, bg_path))
+
+    phrase = (text or "").strip()
+    # Wrap long phrases to ≤2-3 short centered lines so user-supplied scene text
+    # can't run off-frame at the heavy card font size.
+    if phrase:
+        phrase = "\\N".join(
+            " ".join(line) for line in _wrap_words(phrase.split(), max_chars=16)
+        )
+    fade = ""
+    if fade_ms:
+        try:
+            fin, fout = (int(x) for x in tuple(fade_ms)[:2])
+            fade = f"{{\\fad({fin},{fout})}}"
+        except (TypeError, ValueError, IndexError):
+            fade = ""
+    segments = [{"start": 0.0, "end": dur, "text": f"{fade}{phrase}"}]
+    ass_path = os.path.join(work, f"{base}.ass")
+    generate_ass_simple(
+        segments, ass_path, style, resolution, preset=None,
+        fontcycle=fontcycle, fontcycle_dur=fontcycle_dur,
+    )
+    burn_subtitles_ass(bg_path, ass_path, out_path)
+    return out_path
 
 
 def detect_beats(audio_path: str) -> list[float]:
@@ -727,6 +1481,75 @@ def detect_beats(audio_path: str) -> list[float]:
     _, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
     beat_times = librosa.frames_to_time(beat_frames, sr=sr).tolist()
     return beat_times
+
+
+def detect_hook_offset(audio_path: str) -> float:
+    """Find the start of the track's highest-energy section (the hook/drop — the
+    'viral' part), skipping the intro, snapped to a beat. Returns a seconds offset
+    to seek to so the video opens on the hook instead of the quiet intro. Returns
+    0.0 on any failure."""
+    try:
+        import librosa
+        import numpy as np
+
+        y, sr = librosa.load(audio_path, sr=None, mono=True)
+        if y is None or len(y) == 0:
+            return 0.0
+        dur = len(y) / sr
+        if dur < 8:  # too short to bother skipping an intro
+            return 0.0
+        hop = 512
+        rms = librosa.feature.rms(y=y, hop_length=hop)[0]
+        times = librosa.frames_to_time(np.arange(len(rms)), sr=sr, hop_length=hop)
+        # smooth over ~2s so we pick a sustained loud section, not a single transient
+        win = max(1, int(2.0 * sr / hop))
+        smooth = np.convolve(rms, np.ones(win) / win, mode="same")
+        # The "viral" part is usually the FIRST chorus/drop, not the loudest single
+        # point (which is often a late climax/outro). So search the early-to-mid range
+        # and take the first time the energy crosses into the loud band; only fall back
+        # to the window max if it never gets there.
+        lo = int(np.searchsorted(times, 0.10 * dur))
+        hi = int(np.searchsorted(times, min(dur - 1.5, 0.60 * dur)))
+        if hi <= lo:
+            hi = int(np.searchsorted(times, max(0.10 * dur, dur - 1.5)))
+        if hi <= lo:
+            return 0.0
+        thr = float(np.percentile(smooth, 80))  # "loud" level for this track
+        above = smooth[lo:hi] >= thr
+        idx = lo + int(np.argmax(above)) if bool(above.any()) else lo + int(np.argmax(smooth[lo:hi]))
+        offset = float(times[idx])
+        # snap to the nearest beat for a clean entry
+        try:
+            _, bf = librosa.beat.beat_track(y=y, sr=sr)
+            bt = librosa.frames_to_time(bf, sr=sr)
+            if len(bt):
+                offset = float(min(bt, key=lambda b: abs(b - offset)))
+        except Exception:
+            pass
+        return max(0.0, min(offset, dur - 0.5))
+    except Exception:
+        return 0.0
+
+
+def apply_music_hook_lead(
+    audio_start: float, template: dict, beat_times: list[float], is_recommended: bool
+) -> float:
+    """Start the music a touch before the auto-detected hook.
+
+    Used only when the music was auto-matched to the reference (the user skipped
+    picking their own track, so `is_recommended` is true) AND the template sets
+    `music_hook_lead` (seconds). For some recommended tracks the energy-based hook
+    detector lands mid-build instead of on the recognizable "drop" — beginning a
+    few seconds earlier opens the video on the more viral moment. The result is
+    re-snapped to the nearest beat at or before the detected hook for a clean entry.
+    Returns audio_start unchanged when not applicable.
+    """
+    lead = float(template.get("music_hook_lead") or 0.0)
+    if lead <= 0 or not is_recommended:
+        return audio_start
+    target = max(0.0, audio_start - lead)
+    earlier = [b for b in beat_times if b <= audio_start + 0.01]
+    return min(earlier, key=lambda b: abs(b - target)) if earlier else target
 
 
 def _concat_with_fade(clip_paths: list[str], output_path: str, fade_duration: float = 0.12):
@@ -967,6 +1790,7 @@ def plan_scene_cuts(
     target_cut_len: float = MONTAGE_TARGET_CUT,
     max_cuts: int = MONTAGE_MAX_CUTS,
     zooms: list | tuple | None = None,
+    min_cut: float = MONTAGE_MIN_CUT,
 ) -> list[dict]:
     """Tile one scene's screen time [0, window_len] with beat-synced sub-cuts.
 
@@ -980,16 +1804,19 @@ def plan_scene_cuts(
 
     Returns a list of ``{"src_offset", "length", "zoom"}`` in play order.
     """
-    target_cut_len = max(MONTAGE_MIN_CUT, float(target_cut_len or MONTAGE_TARGET_CUT))
+    # min_cut is the shortest allowed sub-cut; a template can lower it (below the
+    # 0.45 default) for a faster, more frequent beat-cut montage.
+    min_cut = max(0.15, float(min_cut or MONTAGE_MIN_CUT))
+    target_cut_len = max(min_cut, float(target_cut_len or MONTAGE_TARGET_CUT))
     max_cuts = max(1, int(max_cuts or MONTAGE_MAX_CUTS))
     zooms = list(zooms) if zooms else list(MONTAGE_PUNCH_ZOOMS)
 
-    window_len = max(MONTAGE_MIN_CUT, float(window_len))
+    window_len = max(min_cut, float(window_len))
     src = max(0.2, float(source_duration))
     beats = sorted(b for b in (beat_times or []) if b is not None)
 
     k = int(round(window_len / target_cut_len))
-    max_by_len = max(1, int(window_len // MONTAGE_MIN_CUT))
+    max_by_len = max(1, int(window_len // min_cut))
     k = max(1, min(k, max_cuts, max_by_len))
 
     # beats inside the window, expressed relative to the window start
@@ -1010,14 +1837,14 @@ def plan_scene_cuts(
         # if snapping to a beat pulled the boundary too close to drop it, fall back
         # to the evenly-spaced position so the montage keeps its intended cut count
         if not (
-            chosen - boundaries[-1] >= MONTAGE_MIN_CUT
-            and window_len - chosen >= MONTAGE_MIN_CUT
+            chosen - boundaries[-1] >= min_cut
+            and window_len - chosen >= min_cut
         ):
             chosen = ideal
         # keep boundaries monotonic and every piece >= the minimum cut length
         if (
-            chosen - boundaries[-1] >= MONTAGE_MIN_CUT
-            and window_len - chosen >= MONTAGE_MIN_CUT
+            chosen - boundaries[-1] >= min_cut
+            and window_len - chosen >= min_cut
         ):
             boundaries.append(chosen)
     boundaries.append(window_len)
@@ -1047,6 +1874,7 @@ def montage_scene_windows(
     scene_durations: list[float],
     beat_times: list[float],
     target_cut_len: float = MONTAGE_TARGET_CUT,
+    snap_tol: float | None = None,
 ) -> list[tuple]:
     """Lay scenes out on the video timeline and snap each scene's END to a beat.
 
@@ -1057,9 +1885,17 @@ def montage_scene_windows(
     a beat the viewer can hear, and ``plan_scene_cuts`` / ``generate_ass_karaoke``,
     which both read the same absolute beats, stay on the exact same clock.
 
+    ``snap_tol`` caps how far a scene end may move to reach a beat. It defaults to
+    ``target_cut_len`` (loose), but a template can pass a smaller value so scene
+    windows stay close to their intended durations — e.g. to keep a held opener
+    short instead of letting it balloon to a distant beat.
+
     Returns ``[(window_start, window_len), ...]`` in video time.
     """
-    snap_tol = max(MONTAGE_MIN_CUT, float(target_cut_len or MONTAGE_TARGET_CUT))
+    snap_tol = (
+        max(MONTAGE_MIN_CUT, float(target_cut_len or MONTAGE_TARGET_CUT))
+        if snap_tol is None else max(0.05, float(snap_tol))
+    )
     beats = sorted(b for b in (beat_times or []) if b is not None and b >= 0)
     windows: list[tuple] = []
     cursor = 0.0
@@ -1080,14 +1916,158 @@ def montage_scene_windows(
     return windows
 
 
+def plan_beat_cut_montage(
+    clip_durations: list[float],
+    beat_times: list[float],
+    card_total: float,
+    montage_total: float,
+    zooms: list | tuple | None = None,
+    every: int = 1,
+    min_seg: float = 0.18,
+) -> list[dict]:
+    """Tile the montage span on the *heard* beats, giving each beat-slot the NEXT
+    clip (cycling through the provided clips in sets) so the source CLIP swaps every
+    ``every`` beats — a fast beat-cut montage where clips repeat in sets.
+
+    The montage plays back starting at ``card_total`` (right after the intro cards),
+    so cuts land on the beats that fall in [card_total, card_total + montage_total]
+    and each segment's length is the gap to the next beat. Each clip keeps its own
+    running read offset and advances it every time it comes back around (wrapping
+    when it runs out), so a repeated clip doesn't always show the same frames.
+
+    Returns ``[{"clip_index", "src_offset", "length", "zoom"}, ...]`` in play order.
+    """
+    n = len(clip_durations)
+    if n == 0 or montage_total <= 0.05:
+        return []
+    every = max(1, int(every or 1))
+    end = card_total + montage_total
+    beats = sorted(b for b in (beat_times or []) if card_total + 1e-3 < b < end - 1e-3)
+    picked = beats[::every]
+    # Build segment boundaries: montage start, every Nth beat, montage end. Drop any
+    # boundary that would make a sub-min_seg sliver.
+    cleaned = [float(card_total)]
+    for b in picked:
+        if b - cleaned[-1] >= min_seg:
+            cleaned.append(float(b))
+    if end - cleaned[-1] >= min_seg:
+        cleaned.append(float(end))
+    else:
+        cleaned[-1] = float(end)
+    # No usable beats -> fall back to an even ~0.4s tiling so the effect still works.
+    if len(cleaned) < 3:
+        k = max(1, int(round(montage_total / 0.4)))
+        cleaned = [card_total + montage_total * j / k for j in range(k + 1)]
+    zlist = list(zooms) if zooms else [1.0, 1.08]
+    plan: list[dict] = []
+    offsets: dict[int, float] = {}
+    for k in range(len(cleaned) - 1):
+        slot = cleaned[k + 1] - cleaned[k]
+        if slot <= 0.01:
+            continue
+        ci = k % n
+        sdur = max(0.2, float(clip_durations[ci]))
+        length = round(min(slot, sdur), 3)
+        off = offsets.get(ci, 0.0)
+        if off + length > sdur:
+            off = 0.0
+        offsets[ci] = off + length
+        plan.append(
+            {
+                "clip_index": ci,
+                "src_offset": round(off, 3),
+                "length": length,
+                "zoom": zlist[k % len(zlist)],
+            }
+        )
+    return plan
+
+
+def plan_accel_cut_montage(
+    clip_durations: list[float],
+    beat_times: list[float],
+    window_start: float,
+    window_len: float,
+    zooms: list | tuple | None = None,
+    ramp_start: float = 0.0,
+    hold_start: float = 0.0,
+    slow_seg: float = 1.5,
+    fast_seg: float = 0.5,
+    min_seg: float = 0.18,
+) -> list[dict]:
+    """Beat-cut montage whose cut length RAMPS over time, then HOLDS constant.
+
+    Within [window_start, window_start+window_len] cuts are laid sequentially. The
+    target length of each cut is a function of its start time t:
+      - t <= ramp_start          -> slow_seg (calm)
+      - ramp_start < t < hold_start -> linearly interpolated slow_seg -> fast_seg
+                                       (a GRADUAL acceleration)
+      - t >= hold_start          -> fast_seg (one steady fast tempo, e.g. the last
+                                     N seconds of the video)
+    Each cut end is snapped to the nearest heard beat so the swaps stay musical.
+    Clips cycle (like plan_beat_cut_montage), each keeping its own read offset.
+
+    Returns ``[{"clip_index", "src_offset", "length", "zoom"}, ...]`` in play order.
+    """
+    n = len(clip_durations)
+    if n == 0 or window_len <= 0.05:
+        return []
+    w_end = window_start + window_len
+    span = max(1e-6, float(hold_start) - float(ramp_start))
+    beats = sorted(b for b in (beat_times or []) if b is not None)
+    zlist = list(zooms) if zooms else [1.0, 1.08]
+
+    def seg_len_at(t: float) -> float:
+        if t >= hold_start:
+            return fast_seg
+        if t <= ramp_start:
+            return slow_seg
+        frac = (t - ramp_start) / span  # 0 at ramp start -> 1 at hold start
+        return slow_seg + (fast_seg - slow_seg) * frac
+
+    plan: list[dict] = []
+    offsets: dict[int, float] = {}
+    t = float(window_start)
+    k = 0
+    while t < w_end - min_seg and k < 4000:
+        target_end = t + max(min_seg, seg_len_at(t))
+        cands = [b for b in beats if t + min_seg <= b <= w_end]
+        end_t = min(cands, key=lambda b: abs(b - target_end)) if cands else min(target_end, w_end)
+        if end_t - t < min_seg:  # nearest beat too close -> use the target length
+            end_t = min(t + max(min_seg, seg_len_at(t)), w_end)
+        ci = k % n
+        sdur = max(0.2, float(clip_durations[ci]))
+        length = round(min(end_t - t, sdur), 3)
+        if length < min_seg:
+            break
+        off = offsets.get(ci, 0.0)
+        if off + length > sdur:
+            off = 0.0
+        offsets[ci] = off + length
+        plan.append({
+            "clip_index": ci, "src_offset": round(off, 3),
+            "length": length, "zoom": zlist[k % len(zlist)],
+        })
+        t = end_t
+        k += 1
+    return plan
+
+
 def build_scene_timings_from_cuts(
-    cut_paths: list[str], scene_cut_counts: list[int], scenes: list[dict]
+    cut_paths: list[str],
+    scene_cut_counts: list[int],
+    scenes: list[dict],
+    start_offset: float = 0.0,
 ) -> list[dict]:
     """Regroup rendered sub-cuts back into scenes and measure each scene's real
     on-screen window from the actual cut durations, so the karaoke text lines up
-    exactly with what ffmpeg produced (rounding and all)."""
+    exactly with what ffmpeg produced (rounding and all).
+
+    start_offset shifts every scene's start_time forward (used when generated
+    intro cards are prepended ahead of the footage cuts); defaults to 0.0 so
+    existing callers are unaffected."""
     timed: list[dict] = []
-    cursor = 0.0
+    cursor = float(start_offset)
     pos = 0
     for scene, count in zip(scenes, scene_cut_counts):
         seg = 0.0
@@ -1262,6 +2242,13 @@ COLOR_GRADES = {
     "dark_cinematic": "eq=brightness=-0.06:contrast=1.18:saturation=0.72,vignette=PI/5",
     "moody": "eq=brightness=-0.08:contrast=1.12:saturation=0.65,vignette=PI/4",
     "high_contrast": "eq=brightness=-0.03:contrast=1.35:saturation=0.85,vignette=PI/4",
+    # "Locked in" reference: dark, punchy, desaturated, teal-shadow/warm-highlight
+    # split, crushed toe, vignette. Templates normally pass this as grade_filter;
+    # the named entry is a convenience/fallback.
+    "locked_in": "eq=contrast=1.18:brightness=0.02:saturation=0.80:gamma=1.0,colorbalance=rs=-0.05:gs=-0.01:bs=0.08:rm=-0.02:bm=0.02:rh=0.05:gh=0.0:bh=-0.03,curves=all='0/0 0.06/0.04 0.5/0.52 0.92/0.98 1/1',vignette=PI/5.5",
+    # "Break the pattern" reference: warm, amber-lit, lifted toe, gentle contrast +
+    # warm midtone/highlight push (orange-in-highlights, slightly warm shadows).
+    "moody_warm": "eq=contrast=1.07:brightness=0.02:saturation=1.0:gamma=0.98,colorbalance=rs=0.03:bs=-0.04:rm=0.17:gm=0.02:bm=-0.20:rh=0.13:bh=-0.13,curves=all='0/0.015 0.25/0.23 0.5/0.5 0.85/0.9 1/1',vignette=PI/5",
 }
 
 
@@ -1292,6 +2279,10 @@ def extract_montage_cut(
     grade: str,
     resolution: str = "1080:1920",
     fps: int = 30,
+    exposure: float = 0.0,
+    fit: str = "cover",
+    flash: float = 0.0,
+    card_opts: dict | None = None,
 ) -> str:
     """Produce one montage sub-cut in a single ffmpeg pass.
 
@@ -1313,18 +2304,91 @@ def extract_montage_cut(
         if gf not in COLOR_GRADES:  # typo / unknown name -> surface it, don't silently misgrade
             print(f"[grade] unknown grade '{gf}', falling back to dark_cinematic")
         gf = COLOR_GRADES.get(gf, COLOR_GRADES["dark_cinematic"])
-    vf_parts = [gf] if gf else []
+    # Normalize exposure BEFORE the grade so a moody/crushed grade lands on the
+    # same tone regardless of how bright/dark the source clip was (prevents already
+    # -dark footage from being crushed to black). exposure is an eq brightness delta.
+    vf_parts = []
+    if abs(float(exposure)) > 0.001:
+        vf_parts.append(f"eq=brightness={float(exposure):.3f}")
+    if gf:
+        vf_parts.append(gf)
 
     z = max(1.0, float(zoom))
     if z > 1.001:
         # crop the centre then let the cover-scale below blow it back up = punch-in
         vf_parts.append(f"crop=iw/{z:.4f}:ih/{z:.4f}")
 
-    # cover-fill the target frame (no letterbox bars), force constant fps/SAR/pixfmt
-    vf_parts.append(
-        f"scale={w}:{h}:force_original_aspect_ratio=increase,"
-        f"crop={w}:{h},setsar=1,fps={fps},format=yuv420p"
-    )
+    if fit == "card":
+        # Rounded-card frame: footage in a rounded-rect card centered on black (the
+        # "you versus you" look). The graded/zoomed footage is scaled to fill the
+        # card, given rounded corners via a cached alpha mask (alphamerge), then
+        # overlaid on a black background. Caption is added later by the ASS pass.
+        wi, hi = int(float(w)), int(float(h))
+        co = card_opts or {}
+        cw = int(round(wi * float(co.get("w_frac", 0.889)))); cw -= cw % 2
+        ch = int(round(hi * float(co.get("h_frac", 0.394)))); ch -= ch % 2
+        radius = int(co.get("radius", 60))
+        cx = (wi - cw) // 2
+        cy = int(round(hi * float(co.get("y_frac", 0.272))))
+        mask = _ensure_card_mask(cw, ch, radius)
+        seg = max(0.1, float(length))
+        footage = list(vf_parts) + [
+            f"scale={cw}:{ch}:force_original_aspect_ratio=increase",
+            f"crop={cw}:{ch}",
+        ]
+        # Optional white flash-cut: the cut opens white and resolves over `flash` sec.
+        # Applied to the FOOTAGE (before the rounded mask + composite), so the flash
+        # happens INSIDE the card only — the black background around it stays black.
+        if float(flash) > 0.001:
+            footage.append(f"fade=t=in:st=0:d={float(flash):.3f}:color=white")
+        footage.append("format=rgba")
+        fc = (
+            f"[0:v]{','.join(footage)}[fg];"
+            f"[fg][2:v]alphamerge[card];"
+            f"color=c=black:s={wi}x{hi}[bg];"
+            f"[bg][card]overlay={cx}:{cy},setsar=1,fps={fps},format=yuv420p[vout]"
+        )
+        cmd = [
+            "ffmpeg", "-y",
+            "-ss", str(max(0.0, float(src_offset))), "-i", src_path,
+            "-f", "lavfi", "-i", f"anullsrc=r=44100:cl=stereo:d={seg}",
+            "-loop", "1", "-i", mask,
+            "-t", str(seg),
+            "-filter_complex", fc,
+            "-map", "[vout]", "-map", "1:a",
+            "-c:v", "libx264", "-c:a", "aac", "-preset", "fast",
+            "-pix_fmt", "yuv420p", "-shortest", out_path,
+        ]
+        _run(cmd)
+        return out_path
+
+    if fit == "letterbox":
+        # Cinematic letterbox: FILL a 16:9 band at full width with footage, then pad
+        # to the full frame with pure-black bars top/bottom (the "came from nothing"
+        # signature). Cover-fill the band so it's always full of footage — a 16:9
+        # source fills it exactly; a portrait/landscape source is cropped to the band
+        # strip (the cinematic intent) rather than shrunk to a tiny pillarboxed clip.
+        # The grade above runs BEFORE the pad, so the black bars stay pure black.
+        wi, hi = int(float(w)), int(float(h))
+        band_h = (wi * 9) // 16
+        if band_h % 2:
+            band_h += 1
+        vf_parts.append(
+            f"scale={wi}:{band_h}:force_original_aspect_ratio=increase,"
+            f"crop={wi}:{band_h},"
+            f"pad={wi}:{hi}:(ow-iw)/2:(oh-ih)/2:black,"
+            f"setsar=1,fps={fps},format=yuv420p"
+        )
+    else:
+        # cover-fill the target frame (no letterbox bars), force constant fps/SAR/pixfmt
+        vf_parts.append(
+            f"scale={w}:{h}:force_original_aspect_ratio=increase,"
+            f"crop={w}:{h},setsar=1,fps={fps},format=yuv420p"
+        )
+    # Optional white flash-cut: the cut opens fully white and resolves to footage over
+    # `flash` seconds (a quick downbeat flash, the energetic-edit signature).
+    if float(flash) > 0.001:
+        vf_parts.append(f"fade=t=in:st=0:d={float(flash):.3f}:color=white")
     vf = ",".join(vf_parts)
 
     seg = max(0.1, float(length))

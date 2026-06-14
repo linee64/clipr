@@ -4,13 +4,21 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { ChevronLeft } from "lucide-react";
 import {
+  fetchTracks,
   generateVisualScript,
   getRenderStatus,
   startBrollRender,
   uploadAudio,
   uploadClip,
 } from "@/lib/api";
-import type { RenderStatus, Scene, UploadedClipSlot, VisualScriptResponse } from "@/lib/types";
+import type {
+  AudioSelection,
+  RenderStatus,
+  Scene,
+  TemplateTrack,
+  UploadedClipSlot,
+  VisualScriptResponse,
+} from "@/lib/types";
 import { StepIndicator, type FlowStep } from "./StepIndicator";
 import { StoryboardStep } from "./StoryboardStep";
 import { UploadBySlotStep } from "./UploadBySlotStep";
@@ -36,6 +44,10 @@ interface CreateFlowProps {
     outputUrl: string;
     platform: string;
   }) => void;
+  /** External request to jump the flow to a given step (e.g. from the schedule
+   * modal's "back to reference / subtitles" buttons). Consumed once, then cleared. */
+  jumpToStep?: FlowStep | null;
+  onJumpHandled?: () => void;
 }
 
 function fallbackVisualScript(idea: CreateFlowIdea): VisualScriptResponse {
@@ -179,6 +191,8 @@ export function CreateFlow({
   defaultPlatform,
   onBack,
   onSchedulePost,
+  jumpToStep,
+  onJumpHandled,
 }: CreateFlowProps) {
   const [currentStep, setCurrentStep] = useState<FlowStep>(2);
   const [visualScript, setVisualScript] = useState<VisualScriptResponse | null>(null);
@@ -186,10 +200,11 @@ export function CreateFlow({
   const [scriptError, setScriptError] = useState<string | null>(null);
 
   const [uploadedClips, setUploadedClips] = useState<Record<number, UploadedClipSlot>>({});
-  const [audioFile, setAudioFile] = useState<{
-    file: File;
-    audio_file_id?: string;
-  } | null>(null);
+  const [audioFile, setAudioFile] = useState<AudioSelection | null>(null);
+  // true once the user actively picks/uploads their own track — their choice then
+  // wins over a reference's recommended track.
+  const [audioUserPicked, setAudioUserPicked] = useState(false);
+  const [tracks, setTracks] = useState<TemplateTrack[]>([]);
   const [selectedMusicVibe, setSelectedMusicVibe] = useState("dark ambient");
   const [chosenTemplateId, setChosenTemplateId] = useState<string | null>(null);
 
@@ -198,8 +213,23 @@ export function CreateFlow({
   const [renderError, setRenderError] = useState<string | null>(null);
   const [isStartingRender, setIsStartingRender] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const savedContentRef = useRef<string | null>(null);
 
   const outputPlatform = idea.platform || defaultPlatform;
+
+  useEffect(() => {
+    let active = true;
+    fetchTracks()
+      .then((data) => {
+        if (active) setTracks(data);
+      })
+      .catch(() => {
+        /* template tracks are optional — fall back to upload-only */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const fetchStoryboard = useCallback(async () => {
     setIsLoadingScript(true);
@@ -257,6 +287,14 @@ export function CreateFlow({
     fetchStoryboard();
   }, [fetchStoryboard]);
 
+  // Consume an external "jump back to step N" request (from the schedule modal).
+  useEffect(() => {
+    if (jumpToStep != null) {
+      setCurrentStep(jumpToStep);
+      onJumpHandled?.();
+    }
+  }, [jumpToStep, onJumpHandled]);
+
   useEffect(() => {
     if (!renderJobId) return;
 
@@ -266,6 +304,30 @@ export function CreateFlow({
         setRenderStatus(status);
         if (status.status === "done") {
           setCurrentStep(6);
+          // Persist the finished video so it shows up in "My Content".
+          if (status.output_url && savedContentRef.current !== status.output_url) {
+            savedContentRef.current = status.output_url;
+            try {
+              const key = "clipr_content";
+              const list = JSON.parse(localStorage.getItem(key) || "[]");
+              list.unshift({
+                id: renderJobId,
+                title: idea.title,
+                output_url: status.output_url,
+                platform: outputPlatform,
+                caption: visualScript?.caption ?? "",
+                date: new Date().toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                }),
+                createdAt: Date.now(),
+              });
+              localStorage.setItem(key, JSON.stringify(list.slice(0, 200)));
+            } catch {
+              /* localStorage unavailable — skip persisting */
+            }
+          }
         }
         if (status.status === "done" || status.status === "error") {
           if (pollingRef.current) {
@@ -291,6 +353,9 @@ export function CreateFlow({
         pollingRef.current = null;
       }
     };
+    // idea/outputPlatform/visualScript are read only inside the done branch when
+    // saving to My Content; re-subscribing on their change would restart polling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [renderJobId]);
 
   const handlePhraseEdit = (order: number, phrase: string) => {
@@ -315,7 +380,14 @@ export function CreateFlow({
   const handleStartRender = async () => {
     if (!visualScript) return;
     const scenes = [...visualScript.scenes].sort((a, b) => a.order - b.order);
-    if (Object.keys(uploadedClips).length !== scenes.length || !audioFile) return;
+    // Music is optional: prefer the user's pick / reference-matched track, else fall
+    // back to the first built-in track so the render always has audio.
+    const audio: AudioSelection | null =
+      audioFile ??
+      (tracks[0]
+        ? { audio_file_id: tracks[0].id, name: tracks[0].name, url: tracks[0].url, isTemplate: true }
+        : null);
+    if (Object.keys(uploadedClips).length !== scenes.length || !audio) return;
 
     setIsStartingRender(true);
     setRenderError(null);
@@ -338,12 +410,14 @@ export function CreateFlow({
         }
       }
 
-      let audioId = audioFile.audio_file_id;
-      if (!audioId) {
-        const { audio_file_id } = await uploadAudio(audioFile.file);
+      let audioId = audio.audio_file_id;
+      if (!audioId && audio.file) {
+        const { audio_file_id } = await uploadAudio(audio.file);
         audioId = audio_file_id;
-        setAudioFile({ ...audioFile, audio_file_id });
+        setAudioFile({ ...audio, audio_file_id });
       }
+
+      if (!audioId) throw new Error("No background music selected");
 
       const jobId = uuidv4();
       await startBrollRender({
@@ -355,6 +429,8 @@ export function CreateFlow({
         color_grade: visualScript.color_grade.split("|")[0]?.trim() || "dark_cinematic",
         platform: outputPlatform,
         template_id: chosenTemplateId || visualScript.template_id || "",
+        // user-picked track segment (trimmer); omitted -> template/auto behaviour
+        ...(audio.start != null ? { music_start: audio.start } : {}),
       });
 
       setRenderJobId(jobId);
@@ -388,7 +464,7 @@ export function CreateFlow({
     !renderError;
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-[#070B0D]">
+    <div className="flex flex-col h-full overflow-y-auto scrollbar-thin bg-[#070B0D]">
       <div className="flex items-center gap-3 px-6 py-3 border-b border-[#152226] shrink-0">
         <button
           type="button"
@@ -413,6 +489,7 @@ export function CreateFlow({
             fetchStoryboard();
           }}
           onContinue={() => setCurrentStep(3)}
+          onBack={onBack}
         />
       )}
 
@@ -421,12 +498,35 @@ export function CreateFlow({
           visualScript={visualScript}
           uploadedClips={uploadedClips}
           audioFile={audioFile}
+          tracks={tracks}
           selectedMusicVibe={selectedMusicVibe}
           onClipUpload={handleClipUpload}
           onClipReplace={handleClipUpload}
-          onAudioSelect={(file) => setAudioFile({ file })}
+          onAudioSelect={(file) => {
+            setAudioFile({ file, name: file.name });
+            setAudioUserPicked(true);
+          }}
+          onTrackSelect={(track) => {
+            // Toggle: clicking the already-selected track deselects it.
+            if (audioFile?.isTemplate && audioFile.audio_file_id === track.id) {
+              setAudioFile(null);
+              setAudioUserPicked(false);
+              return;
+            }
+            setAudioFile({
+              audio_file_id: track.id,
+              name: track.name,
+              url: track.url,
+              isTemplate: true,
+            });
+            setAudioUserPicked(true);
+          }}
           onMusicVibeSelect={setSelectedMusicVibe}
           onContinue={() => setCurrentStep(4)}
+          onBack={() => setCurrentStep(2)}
+          onTrimChange={(start) =>
+            setAudioFile((prev) => (prev ? { ...prev, start } : prev))
+          }
         />
       )}
 
@@ -434,10 +534,36 @@ export function CreateFlow({
         <TemplatePickStep
           platform={outputPlatform}
           selectedTemplateId={chosenTemplateId}
-          onSelect={(id) => setChosenTemplateId(id || null)}
+          onSelect={(id, recommendedTrack, musicManual) => {
+            setChosenTemplateId(id || null);
+            if (!id) return;
+            // Styles flagged music_manual never auto-pick a track — the user must
+            // choose one (library or upload). Clear any auto-filled track (keep the
+            // user's own pick) so they're prompted to choose.
+            if (musicManual) {
+              if (!audioUserPicked) setAudioFile(null);
+              return;
+            }
+            // Otherwise auto-fill the reference's recommended track UNLESS the user
+            // already picked their own music. If the track list hasn't loaded it yet,
+            // still pin the recommended id directly so the render uses the RIGHT track
+            // (the backend seeds it) instead of falling back to a different track.
+            if (!audioUserPicked && recommendedTrack) {
+              const rec = tracks.find((t) => t.id === recommendedTrack);
+              setAudioFile(
+                rec
+                  ? { audio_file_id: rec.id, name: rec.name, url: rec.url, isTemplate: true }
+                  : { audio_file_id: recommendedTrack, name: recommendedTrack, isTemplate: true }
+              );
+            }
+          }}
           onRender={handleStartRender}
           onBack={() => setCurrentStep(3)}
           isStartingRender={isStartingRender}
+          hasMusic={!!audioFile}
+          musicLabel={audioFile?.name}
+          musicIsCustom={audioUserPicked}
+          onChangeMusic={() => setCurrentStep(3)}
         />
       )}
 
@@ -450,6 +576,7 @@ export function CreateFlow({
           platform={outputPlatform}
           caption={visualScript?.caption}
           onRetry={handleRetryRender}
+          onJumpTo={(step) => setCurrentStep(step)}
           onSchedulePost={() => {
             if (!renderStatus?.output_url) return;
             onSchedulePost({
