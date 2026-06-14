@@ -1445,10 +1445,18 @@ def render_text_card(
     fade_ms: tuple = (120, 80),
     fontcycle=None,
     fontcycle_dur=None,
+    caption_resolution: str | None = None,
 ) -> str:
     """Render one 'text card' — a generated dark-gradient (or light-grain)
     background with a single centered phrase burned in — matching the "Locked in"
-    reference's intro cards. Reuses generate_ass_simple + burn_subtitles_ass."""
+    reference's intro cards. Reuses generate_ass_simple + burn_subtitles_ass.
+
+    The background is built at ``resolution`` (the actual render frame, which may be
+    downscaled to save memory) while the burned-in text is authored on
+    ``caption_resolution`` (the full-res canvas) so libass scales it 1:1 onto the
+    frame — the card text stays the same size relative to the frame at any res.
+    """
+    cap_res = caption_resolution or resolution
     try:
         w, h = (int(float(x)) for x in resolution.split(":"))
     except (ValueError, TypeError):
@@ -1477,7 +1485,7 @@ def render_text_card(
     segments = [{"start": 0.0, "end": dur, "text": f"{fade}{phrase}"}]
     ass_path = os.path.join(work, f"{base}.ass")
     generate_ass_simple(
-        segments, ass_path, style, resolution, preset=None,
+        segments, ass_path, style, cap_res, preset=None,
         fontcycle=fontcycle, fontcycle_dur=fontcycle_dur,
     )
     burn_subtitles_ass(bg_path, ass_path, out_path)

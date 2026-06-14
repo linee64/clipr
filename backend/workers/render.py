@@ -48,6 +48,22 @@ TEMP_DIR = str(BACKEND_DIR / "temp")
 from services.jobstore import jobs as render_jobs  # noqa: E402
 
 
+def _render_resolution(platform: str, full_res: str) -> str:
+    """The frame size to render at. Defaults to full res; RENDER_LONG_EDGE can shrink
+    it (e.g. 1280 -> 720x1280) to cut encode memory on a small instance. Captions are
+    still authored on the full-res canvas, so libass scales them down 1:1."""
+    try:
+        long_edge = int(os.getenv("RENDER_LONG_EDGE", "1920") or "1920")
+    except ValueError:
+        long_edge = 1920
+    if long_edge >= 1920:
+        return full_res
+    long_edge -= long_edge % 2
+    short = round(long_edge * 9 / 16)
+    short -= short % 2
+    return f"{long_edge}:{short}" if platform == "LinkedIn" else f"{short}:{long_edge}"
+
+
 async def run_render_job(
     job_id: str,
     clips: list,
@@ -199,7 +215,11 @@ async def run_broll_render(
         await download_file(f"audio/{audio_file_id}.mp3", audio_path)
         beat_times = await asyncio.to_thread(detect_beats, audio_path)
 
-        resolution = "1920:1080" if platform == "LinkedIn" else "1080:1920"
+        # Caption authoring canvas = full res (templates were tuned at 1080p). The
+        # actual render frame may be downscaled (RENDER_LONG_EDGE) to cut encode
+        # memory on small instances; libass scales the full-res captions onto it.
+        caption_resolution = "1920:1080" if platform == "LinkedIn" else "1080:1920"
+        resolution = _render_resolution(platform, caption_resolution)
 
         # Style template drives pacing + caption style (falls back to defaults).
         template = get_template(template_id) or DEFAULT_TEMPLATE
@@ -283,6 +303,7 @@ async def run_broll_render(
                 resolution,
                 fontcycle=card.get("fontcycle"),
                 fontcycle_dur=card.get("fontcycle_dur"),
+                caption_resolution=caption_resolution,
             )
             card_paths.append(card_out)
 
@@ -562,7 +583,7 @@ async def run_broll_render(
                 segments,
                 ass_path,
                 caption_style,
-                resolution,
+                caption_resolution,
                 caption_preset,
             )
         elif caption_style == "kinetic":
@@ -571,7 +592,7 @@ async def run_broll_render(
                 scenes_with_timing,
                 beat_times,
                 ass_path,
-                resolution,
+                caption_resolution,
                 caption_preset,
             )
         elif caption_style == "karaoke":
@@ -581,7 +602,7 @@ async def run_broll_render(
                 beat_times,
                 ass_path,
                 "karaoke",
-                resolution,
+                caption_resolution,
                 caption_preset,
             )
         else:
@@ -600,7 +621,7 @@ async def run_broll_render(
                 segments,
                 ass_path,
                 caption_style,
-                resolution,
+                caption_resolution,
                 caption_preset,
             )
 
