@@ -7,10 +7,16 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 api_key = (os.getenv("GEMINI_API_KEY") or "").strip().strip('"').strip("'")
-if not api_key or api_key == "your_key_here":
-    raise RuntimeError(
-        "GEMINI_API_KEY is missing. Set it in backend/.env and restart the server."
-    )
+# Don't crash the whole server at import when the key is missing (e.g. before the
+# deploy's env vars are set). Only the Gemini-backed endpoints should error.
+GEMINI_READY = bool(api_key) and api_key != "your_key_here"
+
+
+def _require_gemini() -> None:
+    if not GEMINI_READY:
+        raise RuntimeError(
+            "GEMINI_API_KEY is not configured on the server. Set it in the environment."
+        )
 
 SYSTEM_PROMPT = """
 You are Clipr's AI content strategist — an expert in viral short-form video content for founders, startups, and content creators.
@@ -40,7 +46,7 @@ OUTPUT RULES:
 - Always write as if the creator is speaking, not a brand
 """
 
-genai.configure(api_key=api_key)
+genai.configure(api_key=api_key or "")
 model = genai.GenerativeModel(
     "gemini-2.5-flash-lite",
     system_instruction=SYSTEM_PROMPT,
@@ -101,6 +107,7 @@ Return ONLY valid JSON:
 
 
 def generate_ideas(topic, platform, format, niche, tone) -> list[dict]:
+    _require_gemini()
     prompt = IDEA_PROMPT.format(
         niche=niche,
         tone=tone,
@@ -112,6 +119,7 @@ def generate_ideas(topic, platform, format, niche, tone) -> list[dict]:
 
 
 def generate_visual_script(idea_title, hook_phrase, platform, tone, niche, template=None) -> dict:
+    _require_gemini()
     import re
 
     from services.templates import (
