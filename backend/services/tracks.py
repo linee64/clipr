@@ -9,6 +9,10 @@ template track, so creators without their own music can pick one. Optional
 Tracks are lazily seeded into the same storage bucket the renderer reads from
 (`audio/<slug>.mp3`), so the existing render path works unchanged whether the
 selected audio came from an upload or a template.
+
+On a deploy the `.mp3` files aren't shipped (they're gitignored). There the
+CATALOG comes from `tracks.json` and the audio is served from the storage bucket
+(seeded once from a machine that has the files), so the music library still works.
 """
 
 import json
@@ -22,6 +26,18 @@ from services.storage import (
     upload_file,
     use_local_storage,
 )
+
+
+def _bucket_url(remote_path: str) -> str | None:
+    """Public URL for an object already in the storage bucket (no upload)."""
+    if use_local_storage():
+        return f"/api/video/files/{remote_path}"
+    try:
+        from services.storage import BUCKET, _get_supabase
+
+        return _get_supabase().storage.from_(BUCKET).get_public_url(remote_path)
+    except Exception:
+        return None
 
 ASSETS_TRACKS_DIR = BACKEND_DIR / "assets" / "tracks"
 _OVERRIDES_FILE = ASSETS_TRACKS_DIR / "tracks.json"
@@ -73,23 +89,32 @@ def _id_to_file() -> dict[str, Path]:
 
 
 def get_tracks() -> list[dict]:
-    """Metadata for all template tracks (no storage side effects)."""
+    """Metadata for all template tracks (no storage side effects).
+
+    Catalog = local `.mp3` files UNION `tracks.json` entries. On a deploy (no local
+    files) the list comes entirely from `tracks.json`.
+    """
     overrides = _load_overrides()
-    tracks: list[dict] = []
+    out: dict[str, dict] = {}
     for track_id, path in _id_to_file().items():
-        meta = overrides.get(track_id, {}) if isinstance(overrides, dict) else {}
-        tracks.append(
-            {
+        meta = overrides.get(track_id) or {}
+        out[track_id] = {
+            "id": track_id,
+            "name": meta.get("name") or _display_name(path.stem),
+            "vibe": meta.get("vibe") or "atmospheric",
+        }
+    for track_id, meta in overrides.items():
+        if track_id not in out and isinstance(meta, dict):
+            out[track_id] = {
                 "id": track_id,
-                "name": meta.get("name") or _display_name(path.stem),
+                "name": meta.get("name") or _display_name(track_id),
                 "vibe": meta.get("vibe") or "atmospheric",
             }
-        )
-    return tracks
+    return list(out.values())
 
 
 def is_template_track(track_id: str) -> bool:
-    return track_id in _id_to_file()
+    return track_id in _id_to_file() or track_id in _load_overrides()
 
 
 async def ensure_track_seeded(track_id: str) -> str | None:
@@ -98,14 +123,22 @@ async def ensure_track_seeded(track_id: str) -> str | None:
     Returns a playable URL for the seeded track, or None if the id is unknown.
     Idempotent: skips work once seeded in this process (or already on local disk).
     """
-    source = _id_to_file().get(track_id)
-    if source is None:
-        return None
-
     if track_id in _seeded:
         return _seeded[track_id]
 
     remote_path = f"audio/{track_id}.mp3"
+    source = _id_to_file().get(track_id)
+    if source is None:
+        # No local file (e.g. on the deploy). If it's a known catalog track, its
+        # audio already lives in the bucket — hand back the URL. Unknown ids
+        # (e.g. a user-uploaded UUID) return None: a no-op, the render downloads
+        # the already-uploaded file directly.
+        if track_id not in _load_overrides():
+            return None
+        url = _bucket_url(remote_path)
+        if url:
+            _seeded[track_id] = url
+        return url
 
     if use_local_storage():
         dest = local_file_path(remote_path)
