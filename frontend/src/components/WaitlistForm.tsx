@@ -13,6 +13,19 @@ export function WaitlistForm() {
   const [message, setMessage] = useState("");
   const [dbCount, setDbCount] = useState(17);
 
+  // After a successful sign-up, mark the user registered and send them into the
+  // app. There's no real auth gate yet — the dashboard runs onboarding for any
+  // user without a saved brand DNA.
+  const goToDashboard = (userEmail?: string) => {
+    try {
+      localStorage.setItem("clipr_registered", "1");
+      if (userEmail) localStorage.setItem("clipr_email", userEmail);
+    } catch {
+      /* ignore */
+    }
+    window.location.href = "/dashboard";
+  };
+
   useEffect(() => {
     async function fetchCount() {
       if (!isSupabaseConfigured || !supabase) return;
@@ -77,8 +90,9 @@ export function WaitlistForm() {
       const response = await submitWaitlist(formData);
       if (response.success) {
         setStatus("success");
-        setMessage(`Registered via Google: ${userEmail} 🎉`);
+        setMessage(`Welcome, ${userEmail} — taking you in…`);
         setDbCount((prev) => prev + 1);
+        setTimeout(() => goToDashboard(userEmail), 900);
       } else {
         setStatus("error");
         setMessage(response.message);
@@ -100,7 +114,8 @@ export function WaitlistForm() {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       localStorage.removeItem("clipr_google_signin_active");
       setStatus("success");
-      setMessage("Simulated Google waitlist signup successful (Demo Mode)! 🎉");
+      setMessage("Welcome — taking you to your studio…");
+      setTimeout(() => goToDashboard(), 900);
       return;
     }
 
@@ -139,9 +154,11 @@ export function WaitlistForm() {
       const response = await submitWaitlist(formData);
       if (response.success) {
         setStatus("success");
-        setMessage(response.message);
-        setEmail("");
+        setMessage("You're in — taking you to your studio…");
         setDbCount((prev) => prev + 1);
+        const captured = email;
+        setEmail("");
+        setTimeout(() => goToDashboard(captured), 900);
       } else {
         setStatus("error");
         setMessage(response.message);
@@ -160,22 +177,14 @@ export function WaitlistForm() {
             initial={{ opacity: 0, scale: 0.98, y: 5 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
-            className="p-4 rounded-2xl border border-zinc-800 bg-zinc-950/60 backdrop-blur-md flex flex-row items-center justify-between gap-4 w-full text-left"
+            className="p-4 rounded-2xl border border-[#10B981]/30 bg-zinc-950/60 backdrop-blur-md flex flex-row items-center gap-3 w-full text-left"
           >
-            <div className="flex items-start space-x-3 min-w-0 pl-1">
-              <CheckCircle2 className="w-5 h-5 text-[#10B981] shrink-0 mt-0.5" />
-              <div className="min-w-0 leading-tight">
-                <p className="text-[9px] uppercase font-mono tracking-widest text-[#10B981] font-bold">Success</p>
-                <p className="text-xs text-zinc-200 mt-1 leading-normal">{message}</p>
-              </div>
+            <CheckCircle2 className="w-5 h-5 text-[#10B981] shrink-0" />
+            <div className="min-w-0 leading-tight flex-1">
+              <p className="text-[9px] uppercase font-mono tracking-widest text-[#10B981] font-bold">Welcome to Clipr</p>
+              <p className="text-xs text-zinc-200 mt-1 leading-normal">{message}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setStatus("idle")}
-              className="px-4 py-2 text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 rounded-xl transition-all shrink-0 active:scale-95"
-            >
-              Add another
-            </button>
+            <Loader2 className="w-4 h-4 text-[#10B981] animate-spin shrink-0" />
           </motion.div>
         ) : (
           <motion.div

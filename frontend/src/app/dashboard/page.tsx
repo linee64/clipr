@@ -537,7 +537,8 @@ export default function Dashboard() {
         setHasCompletedOnboarding(true);
       }
     } else {
-      setHasCompletedOnboarding(true);
+      // No brand DNA yet (e.g. a freshly registered user) → run onboarding first.
+      setHasCompletedOnboarding(false);
     }
     setIsLoadingOnboarding(false);
   }, []);
