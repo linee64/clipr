@@ -252,10 +252,21 @@ async def exchange_code(code: str, state: str) -> dict:
             },
         )
     if resp.status_code != 200:
-        # Log the upstream detail server-side; never reflect the raw provider body
-        # back to the browser (it lands in the dashboard URL / history / logs).
+        # Log the full upstream detail server-side; surface only X's short OAuth
+        # error code to the browser (e.g. invalid_client / invalid_grant) — a
+        # standard, non-sensitive code that makes the failure self-diagnosable,
+        # while the raw body (no secrets here) stays in the server log.
         logger.warning("X token exchange failed (%s): %s", resp.status_code, resp.text[:500])
-        raise TwitterError("Couldn't connect your X account — please try again.")
+        code_hint = ""
+        try:
+            code_hint = (resp.json() or {}).get("error") or ""
+        except Exception:
+            code_hint = ""
+        raise TwitterError(
+            "Couldn't connect your X account"
+            + (f" [{code_hint}]" if code_hint else "")
+            + " — please try again."
+        )
     tok = resp.json()
 
     account = {
