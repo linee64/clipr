@@ -749,6 +749,23 @@ export default function Dashboard() {
     );
   };
 
+  // Shared nav handler — used by both the desktop sidebar and the mobile bottom bar.
+  const handleNav = (
+    name: "Home" | "My Content" | "Calendar" | "References" | "Settings"
+  ) => {
+    setSidebarActive(name);
+    if (name === "Home") {
+      // Fresh start: back to the AI chat / idea generation
+      setActiveTab("Create");
+      setSelectedIdeaId(null);
+      setSelectedIdea(null);
+      setHeroExitState("visible");
+      setIsGenerating(false);
+    } else {
+      setActiveTab(name);
+    }
+  };
+
   if (isLoadingOnboarding) {
     return (
       <div className="h-screen bg-[#070B0D] flex items-center justify-center">
@@ -800,23 +817,7 @@ export default function Dashboard() {
               return (
                 <button
                   key={link.name}
-                  onClick={() => {
-                    setSidebarActive(link.name as "Home" | "My Content" | "Calendar" | "References" | "Settings");
-                    if (link.name === "Home") {
-                      // Fresh start: back to the AI chat / idea generation
-                      setActiveTab("Create");
-                      setSelectedIdeaId(null);
-                      setSelectedIdea(null);
-                      setHeroExitState("visible");
-                      setIsGenerating(false);
-                    }
-                    else if (
-                      link.name === "Calendar" || link.name === "My Content" ||
-                      link.name === "References" || link.name === "Settings"
-                    ) {
-                      setActiveTab(link.name as "Create" | "Calendar" | "My Content" | "References" | "Settings");
-                    }
-                  }}
+                  onClick={() => handleNav(link.name as "Home" | "My Content" | "Calendar" | "References" | "Settings")}
                   className={`w-full flex items-center justify-between px-4 py-2.5 rounded-[10px] text-[14px] font-normal transition-all duration-200 border ${isActive
                     ? "glowing-active-nav text-[#EFEFEF] border-transparent"
                     : "border-transparent text-[#6B7C85] hover:text-[#EFEFEF] hover:bg-[#11191B]"
@@ -857,13 +858,27 @@ export default function Dashboard() {
       <main className="flex-1 flex flex-col h-full relative z-10 bg-[#070B0D] overflow-hidden">
 
         {/* TOP NAVBAR */}
-        <header className="h-12 border-b border-[#152226] bg-[#070B0D] px-6 flex items-center justify-between sticky top-0 z-20">
-          {/* Tabs removed */}
-          <div className="flex items-center h-full space-x-6">
-          </div>
+        <header className="h-12 border-b border-[#152226] bg-[#070B0D] px-4 md:px-6 flex items-center justify-between sticky top-0 z-20">
+          {/* Left: mobile logo (the sidebar — and its logo — is hidden on phones) */}
+          <button
+            onClick={() => handleNav("Home")}
+            className="md:hidden flex items-center gap-2 hover:opacity-85 transition-opacity"
+          >
+            <Image
+              src="/Clipr-logo.png"
+              alt="Clipr"
+              width={22}
+              height={22}
+              className="w-[22px] h-[22px] rounded-[6px] shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+            />
+            <span className="text-base font-bold tracking-tight text-[#EFEFEF] leading-none">
+              Clipr<span className="text-[#10B981] font-mono">.</span>
+            </span>
+          </button>
+          <div className="hidden md:flex items-center h-full space-x-6" />
 
           {/* Right Header */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3 sm:space-x-4">
             <button className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors">
               <Search className="w-3.5 h-3.5" />
             </button>
@@ -874,7 +889,7 @@ export default function Dashboard() {
 
             <button
               onClick={handleResetDna}
-              className="text-[10px] text-[#6B7C85] hover:text-white border border-dashed border-[#152226] hover:border-[#10B981]/40 px-2 py-1 rounded transition-all"
+              className="hidden md:inline-block text-[10px] text-[#6B7C85] hover:text-white border border-dashed border-[#152226] hover:border-[#10B981]/40 px-2 py-1 rounded transition-all"
               title="Restart onboarding (dev)"
             >
               ↻ Onboarding
@@ -882,7 +897,7 @@ export default function Dashboard() {
 
             {/* Trends sidebar is hidden for now */}
 
-            <div className="flex items-center space-x-2 text-xs text-[#6B7C85] hover:text-[#EFEFEF] cursor-pointer transition-colors">
+            <div className="hidden sm:flex items-center space-x-2 text-xs text-[#6B7C85] hover:text-[#EFEFEF] cursor-pointer transition-colors">
               <span className="flex items-center gap-1">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
@@ -900,7 +915,7 @@ export default function Dashboard() {
 
         {/* WORKSPACE CONTENT */}
         <div className={`flex-1 w-full ${activeTab === "Create" ? "overflow-hidden" : "overflow-y-auto"}`}>
-          <div className={`w-full mx-auto ${activeTab === "Create" ? "h-full max-w-5xl px-6 py-4 flex flex-col justify-between" : "p-6 md:p-8 max-w-4xl space-y-6"}`}>
+          <div className={`w-full mx-auto ${activeTab === "Create" ? "h-full max-w-5xl px-4 sm:px-6 py-4 pb-20 md:pb-4 flex flex-col justify-between" : "p-4 sm:p-6 md:p-8 pb-24 md:pb-8 max-w-4xl space-y-6"}`}>
 
             <AnimatePresence mode="wait">
 
@@ -925,8 +940,8 @@ export default function Dashboard() {
                           : 'opacity-100 scale-100'
                       }`}
                     >
-                      <div className="flex flex-col items-center text-center space-y-1.5 pb-2 pt-24 select-none">
-                        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#EFEFEF]">
+                      <div className="flex flex-col items-center text-center space-y-1.5 pb-2 pt-12 sm:pt-16 md:pt-24 select-none">
+                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[#EFEFEF]">
                           What&apos;s your next viral hook<span className="text-[#10B981]">?</span>
                         </h1>
                         <p className="text-[10px] text-[#6B7C85] tracking-[0.5em] uppercase font-mono font-bold">
@@ -951,8 +966,8 @@ export default function Dashboard() {
                             />
                           </div>
 
-                          <div className="flex justify-between items-center pt-2 border-t border-[#152226]">
-                            <div className="flex items-center space-x-4">
+                          <div className="flex flex-wrap justify-between items-center gap-y-2.5 pt-2 border-t border-[#152226]">
+                            <div className="flex items-center gap-2.5 sm:gap-4">
                               {/* Platform Dropdown */}
                               <div className="relative">
                                 <button
@@ -1116,7 +1131,7 @@ export default function Dashboard() {
                   )}
 
                       {selectedIdeaId && selectedIdea && (
-                        <div className="flex-1 min-h-0 overflow-hidden -mx-6 -mb-4 flex flex-col">
+                        <div className="flex-1 min-h-0 overflow-hidden -mx-4 sm:-mx-6 -mb-4 flex flex-col">
                           <CreateFlow
                             idea={{
                               id: selectedIdea.id,
@@ -1662,6 +1677,38 @@ export default function Dashboard() {
         </div>
       </aside>
 
+      {/* ----------------------------------------------------
+          MOBILE BOTTOM NAV (md:hidden) — replaces the hidden sidebar on phones
+         ---------------------------------------------------- */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t border-[#152226] bg-[#0B1012]/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
+        {[
+          { name: "Home", label: "Home", icon: <Home className="w-5 h-5" /> },
+          { name: "My Content", label: "Content", icon: <Film className="w-5 h-5" /> },
+          { name: "Calendar", label: "Calendar", icon: <CalendarIcon className="w-5 h-5" /> },
+          { name: "References", label: "Refs", icon: <Bookmark className="w-5 h-5" /> },
+          { name: "Settings", label: "Settings", icon: <Settings className="w-5 h-5" /> },
+        ].map((link) => {
+          const isActive = sidebarActive === link.name;
+          return (
+            <button
+              key={link.name}
+              onClick={() =>
+                handleNav(link.name as "Home" | "My Content" | "Calendar" | "References" | "Settings")
+              }
+              className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
+                isActive ? "text-[#10B981]" : "text-[#6B7C85] hover:text-[#EFEFEF]"
+              }`}
+            >
+              {isActive && (
+                <span className="absolute top-0 h-0.5 w-8 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+              )}
+              {link.icon}
+              <span>{link.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
       {/* Modal Expansion */}
       <AnimatePresence>
         {modalIdea && (
@@ -1682,7 +1729,7 @@ export default function Dashboard() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.92 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
-              className="relative w-full max-w-[560px] rounded-[20px] p-[32px] border shadow-2xl z-10 overflow-hidden"
+              className="relative w-full max-w-[560px] rounded-[20px] p-6 sm:p-[32px] border shadow-2xl z-10 overflow-hidden"
               style={{
                 background: 'rgba(13, 20, 22, 0.96)',
                 backdropFilter: 'blur(16px)',
@@ -1897,7 +1944,7 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.96 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed bottom-6 right-6 z-[60] max-w-sm"
+            className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-[60] max-w-[calc(100vw-2rem)] sm:max-w-sm"
           >
             <div
               className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-2xl backdrop-blur-md ${
