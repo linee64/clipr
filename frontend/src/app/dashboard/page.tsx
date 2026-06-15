@@ -1470,6 +1470,15 @@ export default function Dashboard() {
                   <section className="rounded-xl bg-[#0D1416] border border-[#152226] p-5 space-y-4">
                     <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Connected accounts</h3>
                     <div className="space-y-2">
+                      {/* LinkedIn — in development */}
+                      <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5 opacity-80">
+                        <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">{getPlatformIcon("LinkedIn", 14)}<span>LinkedIn</span></span>
+                        <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] uppercase tracking-wider font-mono text-[#6B7C85] border border-[#152226] bg-[#0D1416] px-2.5 py-1 rounded-lg cursor-not-allowed select-none">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#6B7C85]/70" />
+                          In development
+                        </span>
+                      </div>
+
                       {/* X (Twitter) — the live one: real OAuth connect + auto-post */}
                       <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5">
                         <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">
@@ -1510,15 +1519,15 @@ export default function Dashboard() {
                           </button>
                         )}
                       </div>
-                      {(["TikTok", "Instagram", "LinkedIn"] as const).map((plat) => (
-                        <div key={plat} className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5">
-                          <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">{getPlatformIcon(plat, 14)}<span>{plat}</span></span>
-                          <span className="inline-flex items-center gap-1.5 text-[11px] text-[#6B7C85] border border-[#152226] px-2.5 py-1 rounded-lg cursor-not-allowed">
-                            Connect
-                            <span className="text-[8px] uppercase tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-1 rounded-full">soon</span>
-                          </span>
-                        </div>
-                      ))}
+
+                      {/* TikTok — in development */}
+                      <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5 opacity-80">
+                        <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">{getPlatformIcon("TikTok", 14)}<span>TikTok</span></span>
+                        <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] uppercase tracking-wider font-mono text-[#6B7C85] border border-[#152226] bg-[#0D1416] px-2.5 py-1 rounded-lg cursor-not-allowed select-none">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#6B7C85]/70" />
+                          In development
+                        </span>
+                      </div>
                     </div>
                   </section>
 
