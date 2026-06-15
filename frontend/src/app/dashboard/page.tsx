@@ -299,6 +299,13 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"Create" | "Calendar" | "My Content" | "References" | "Settings">("Create");
   const [savedContent, setSavedContent] = useState<SavedVideo[]>([]);
   const [dnaInfo, setDnaInfo] = useState<{ product?: string; audience?: string; tone?: string; platform?: string }>({});
+  // The signed-in user's identity, derived from the email saved at registration
+  // (set by the landing page / Google sign-in before redirecting here).
+  const [profile, setProfile] = useState<{ name: string; email: string; initial: string }>({
+    name: "Creator",
+    email: "",
+    initial: "C",
+  });
   const [sidebarActive, setSidebarActive] = useState<"Home" | "My Content" | "Calendar" | "References" | "Settings">("Home");
   const [references, setReferences] = useState<TemplateOption[]>([]);
   const [refsLoading, setRefsLoading] = useState(false);
@@ -359,6 +366,33 @@ export default function Dashboard() {
       } catch {
         /* ignore */
       }
+    }
+  }, []);
+
+  // Resolve the displayed profile: prefer the name the user typed in onboarding
+  // (clipr_name); otherwise fall back to the email's local part, lightly
+  // title-cased. Initial = the name's first letter.
+  useEffect(() => {
+    try {
+      const email = (localStorage.getItem("clipr_email") || "").trim();
+      const savedName = (localStorage.getItem("clipr_name") || "").trim();
+      if (!email && !savedName) return;
+      let name = savedName;
+      if (!name && email) {
+        const local = email.split("@")[0] || email;
+        name =
+          local
+            .replace(/[._-]+/g, " ")
+            .trim()
+            .split(" ")
+            .filter(Boolean)
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(" ");
+      }
+      if (!name) name = "Creator";
+      setProfile({ name, email, initial: (name.charAt(0) || "C").toUpperCase() });
+    } catch {
+      /* ignore — keep the default profile */
     }
   }, []);
 
@@ -902,10 +936,10 @@ export default function Dashboard() {
         <div className="pt-4 border-t border-[#152226] space-y-2.5">
           <div className="flex items-center space-x-2.5">
             <div className="w-7 h-7 rounded-full bg-[#152226] flex items-center justify-center text-xs font-semibold text-[#EFEFEF]">
-              A
+              {profile.initial}
             </div>
             <div className="min-w-0">
-              <span className="text-sm font-semibold text-[#EFEFEF] block leading-tight">Aidar</span>
+              <span className="text-sm font-semibold text-[#EFEFEF] block leading-tight truncate">{profile.name}</span>
               <span
                 className={`text-xs block mt-0.5 ${
                   planState.plan === "pro"
@@ -1082,7 +1116,7 @@ export default function Dashboard() {
               aria-label="Settings"
               className="md:hidden flex h-9 w-9 items-center justify-center rounded-full bg-[#152226] text-[13px] font-semibold text-[#EFEFEF] border border-[#1E2A2E] active:scale-95 transition-transform"
             >
-              A
+              {profile.initial}
             </button>
           </div>
         </header>
@@ -1634,10 +1668,10 @@ export default function Dashboard() {
                   <section className="rounded-xl bg-[#0D1416] border border-[#152226] p-5 space-y-4">
                     <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Account</h3>
                     <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-full bg-[#152226] flex items-center justify-center text-sm font-semibold text-[#EFEFEF] shrink-0">A</div>
+                      <div className="w-11 h-11 rounded-full bg-[#152226] flex items-center justify-center text-sm font-semibold text-[#EFEFEF] shrink-0">{profile.initial}</div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[#EFEFEF]">Aidar</p>
-                        <p className="text-xs text-[#6B7C85] truncate">aidar@clipr.ai</p>
+                        <p className="text-sm font-semibold text-[#EFEFEF]">{profile.name}</p>
+                        <p className="text-xs text-[#6B7C85] truncate">{profile.email || "Not signed in"}</p>
                       </div>
                       <span
                         className={`ml-auto shrink-0 text-[10px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full border ${
