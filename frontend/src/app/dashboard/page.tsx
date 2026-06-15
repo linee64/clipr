@@ -35,12 +35,23 @@ import {
   type TwitterStatus,
 } from "@/lib/api";
 import type { TemplateOption } from "@/lib/types";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { readPlan, setPlan, TRIAL_DAYS, type PlanState } from "@/lib/plan";
 
 // X (Twitter) wordmark — the stylised "X".
 function XLogo({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
+    </svg>
+  );
+}
+
+// Four-point sparkle for Pro accents.
+function Spark({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M12 2l1.7 6.6L20 10l-6.3 1.4L12 18l-1.7-6.6L4 10l6.3-1.4L12 2z" />
     </svg>
   );
 }
@@ -296,6 +307,19 @@ export default function Dashboard() {
   const [xStatus, setXStatus] = useState<TwitterStatus | null>(null);
   const [xToast, setXToast] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
+  // Subscription / trial state (local until a real billing provider is wired).
+  const [planState, setPlanState] = useState<PlanState>({
+    plan: "trial",
+    daysLeft: TRIAL_DAYS,
+    expired: false,
+  });
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    setPlanState(readPlan());
+  }, []);
+
   // On load, surface the result of an OAuth round-trip (the backend redirects back
   // to /dashboard?x_connected=1 or ?x_error=...), then scrub it from the URL.
   useEffect(() => {
@@ -367,6 +391,19 @@ export default function Dashboard() {
     } finally {
       setXPostingId(null);
     }
+  };
+
+  // Subscription actions (local-only stub — swap for a Stripe checkout later).
+  const handleSubscribe = () => {
+    setPlanState(setPlan("pro"));
+    setUpgradeOpen(false);
+    setTrialBannerDismissed(true);
+    setXToast({ kind: "ok", text: "Welcome to Pro! 🎉" });
+  };
+  const handleCancelPlan = () => {
+    setPlanState(setPlan("trial"));
+    setUpgradeOpen(false);
+    setXToast({ kind: "ok", text: "Subscription cancelled — you're back on the trial." });
   };
 
   useEffect(() => {
@@ -837,18 +874,39 @@ export default function Dashboard() {
         </div>
 
         {/* User Card */}
-        <div className="pt-4 border-t border-[#152226] space-y-1">
+        <div className="pt-4 border-t border-[#152226] space-y-2.5">
           <div className="flex items-center space-x-2.5">
             <div className="w-7 h-7 rounded-full bg-[#152226] flex items-center justify-center text-xs font-semibold text-[#EFEFEF]">
               A
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-sm font-semibold text-[#EFEFEF] block leading-tight">Aidar</span>
-              <span className="text-xs text-[#6B7C85] block mt-0.5">
-                Pro · 7 days left
+              <span
+                className={`text-xs block mt-0.5 ${
+                  planState.plan === "pro"
+                    ? "text-[#10B981]"
+                    : planState.expired
+                      ? "text-[#EF8B8B]"
+                      : "text-[#6B7C85]"
+                }`}
+              >
+                {planState.plan === "pro"
+                  ? "Pro · active"
+                  : planState.expired
+                    ? "Trial ended"
+                    : `Pro trial · ${planState.daysLeft} day${planState.daysLeft === 1 ? "" : "s"} left`}
               </span>
             </div>
           </div>
+          {planState.plan !== "pro" && (
+            <button
+              onClick={() => setUpgradeOpen(true)}
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#10B981] py-1.5 text-[11px] font-bold text-[#070B0D] hover:bg-[#12cf90] transition-colors shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+            >
+              <Spark className="w-3 h-3" />
+              {planState.expired ? "Upgrade to Pro" : "Upgrade"}
+            </button>
+          )}
         </div>
       </aside>
 
@@ -926,6 +984,43 @@ export default function Dashboard() {
             </button>
           </div>
         </header>
+
+        {/* Trial banner — surfaces in the last 2 days or once the trial has ended */}
+        {planState.plan !== "pro" &&
+          (planState.expired || planState.daysLeft <= 2) &&
+          !trialBannerDismissed && (
+            <div
+              className={`shrink-0 flex items-center gap-3 px-4 md:px-6 py-2.5 border-b ${
+                planState.expired
+                  ? "border-[#EF8B8B]/20 bg-[#EF8B8B]/[0.06]"
+                  : "border-[#10B981]/20 bg-[#10B981]/[0.06]"
+              }`}
+            >
+              <Spark
+                className={`h-4 w-4 shrink-0 ${planState.expired ? "text-[#EF8B8B]" : "text-[#10B981]"}`}
+              />
+              <p className="text-xs text-[#EFEFEF] flex-1 min-w-0">
+                {planState.expired
+                  ? "Your free trial has ended. Upgrade to keep rendering and posting."
+                  : `${planState.daysLeft} day${planState.daysLeft === 1 ? "" : "s"} left on your free trial.`}
+              </p>
+              <button
+                onClick={() => setUpgradeOpen(true)}
+                className="shrink-0 rounded-lg bg-[#10B981] px-3 py-1.5 text-[11px] font-bold text-[#070B0D] hover:bg-[#12cf90] transition-colors"
+              >
+                Upgrade
+              </button>
+              {!planState.expired && (
+                <button
+                  onClick={() => setTrialBannerDismissed(true)}
+                  aria-label="Dismiss"
+                  className="shrink-0 text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
 
         {/* WORKSPACE CONTENT */}
         <div className={`flex-1 w-full ${activeTab === "Create" ? "overflow-hidden" : "overflow-y-auto"}`}>
@@ -1047,8 +1142,8 @@ export default function Dashboard() {
                                     </button>
                                     <button
                                       onClick={() => {
-                                        alert("Text post format requires premium Clipr subscription.");
                                         setIsFormatOpen(false);
+                                        setUpgradeOpen(true);
                                       }}
                                       className="w-full text-left px-3 py-2.5 rounded-lg text-xs hover:bg-[#11191B] text-[#6B7C85] transition-all flex items-center justify-between opacity-80 cursor-not-allowed"
                                     >
@@ -1431,18 +1526,79 @@ export default function Dashboard() {
                     <p className="text-xs text-[#6B7C85]">Manage your account, brand voice and connections.</p>
                   </div>
 
-                  {/* Account */}
+                  {/* Account & plan */}
                   <section className="rounded-xl bg-[#0D1416] border border-[#152226] p-5 space-y-4">
                     <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Account</h3>
                     <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-full bg-[#152226] flex items-center justify-center text-sm font-semibold text-[#EFEFEF]">A</div>
+                      <div className="w-11 h-11 rounded-full bg-[#152226] flex items-center justify-center text-sm font-semibold text-[#EFEFEF] shrink-0">A</div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-[#EFEFEF]">Aidar</p>
                         <p className="text-xs text-[#6B7C85] truncate">aidar@clipr.ai</p>
                       </div>
-                      <span className="ml-auto text-[10px] uppercase tracking-wider font-semibold text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-2.5 py-1 rounded-full">Pro · 7 days left</span>
+                      <span
+                        className={`ml-auto shrink-0 text-[10px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full border ${
+                          planState.expired
+                            ? "text-[#EF8B8B] bg-[#EF8B8B]/10 border-[#EF8B8B]/25"
+                            : "text-[#10B981] bg-[#10B981]/10 border-[#10B981]/25"
+                        }`}
+                      >
+                        {planState.plan === "pro" ? "Pro" : planState.expired ? "Trial ended" : "Trial"}
+                      </span>
                     </div>
-                    <button className="text-xs text-[#EFEFEF] bg-[#11191B] border border-[#152226] rounded-lg px-3 py-2 hover:bg-[#152226] transition-colors">Manage plan</button>
+
+                    {/* Plan card */}
+                    <div className="rounded-lg border border-[#152226] bg-[#070B0D] p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2 text-sm font-semibold text-[#EFEFEF]">
+                          <Spark className="w-3.5 h-3.5 text-[#10B981]" />
+                          Clipr Pro
+                        </span>
+                        <span className="text-xs text-[#6B7C85]">
+                          <span className="text-[#EFEFEF] font-semibold">$20</span>/mo
+                        </span>
+                      </div>
+
+                      {planState.plan === "pro" ? (
+                        <p className="text-xs text-[#10B981]">Your subscription is active — everything&apos;s unlocked.</p>
+                      ) : (
+                        <>
+                          <p className="text-xs text-[#6B7C85]">
+                            {planState.expired
+                              ? "Your free trial has ended — upgrade to keep rendering and posting."
+                              : `Free trial — ${planState.daysLeft} of ${TRIAL_DAYS} days left.`}
+                          </p>
+                          {!planState.expired && (
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#152226]">
+                              <div
+                                className="h-full rounded-full bg-[#10B981]"
+                                style={{
+                                  width: `${(planState.daysLeft / TRIAL_DAYS) * 100}%`,
+                                  boxShadow: "0 0 8px rgba(16,185,129,0.5)",
+                                }}
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      <button
+                        onClick={() => setUpgradeOpen(true)}
+                        className={
+                          planState.plan === "pro"
+                            ? "w-full text-xs font-medium text-[#EFEFEF] bg-[#11191B] border border-[#152226] rounded-lg px-3 py-2 hover:bg-[#152226] transition-colors"
+                            : "w-full flex items-center justify-center gap-1.5 text-xs font-bold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] rounded-lg px-3 py-2.5 transition-colors shadow-[0_0_14px_rgba(16,185,129,0.25)]"
+                        }
+                      >
+                        {planState.plan === "pro" ? (
+                          "Manage plan"
+                        ) : (
+                          <>
+                            <Spark className="w-3.5 h-3.5" />
+                            Upgrade to Pro
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </section>
 
                   {/* Brand DNA */}
@@ -1998,6 +2154,15 @@ export default function Dashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <UpgradeModal
+        open={upgradeOpen}
+        plan={planState.plan}
+        daysLeft={planState.daysLeft}
+        onClose={() => setUpgradeOpen(false)}
+        onSubscribe={handleSubscribe}
+        onCancel={handleCancelPlan}
+      />
 
     </div>
   );
