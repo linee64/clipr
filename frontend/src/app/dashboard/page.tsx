@@ -858,35 +858,43 @@ export default function Dashboard() {
       <main className="flex-1 flex flex-col h-full relative z-10 bg-[#070B0D] overflow-hidden">
 
         {/* TOP NAVBAR */}
-        <header className="h-12 border-b border-[#152226] bg-[#070B0D] px-4 md:px-6 flex items-center justify-between sticky top-0 z-20">
-          {/* Left: mobile logo (the sidebar — and its logo — is hidden on phones) */}
-          <button
-            onClick={() => handleNav("Home")}
-            className="md:hidden flex items-center gap-2 hover:opacity-85 transition-opacity"
-          >
-            <Image
-              src="/Clipr-logo.png"
-              alt="Clipr"
-              width={22}
-              height={22}
-              className="w-[22px] h-[22px] rounded-[6px] shadow-[0_0_12px_rgba(16,185,129,0.3)]"
-            />
-            <span className="text-base font-bold tracking-tight text-[#EFEFEF] leading-none">
-              Clipr<span className="text-[#10B981] font-mono">.</span>
+        <header className="h-14 md:h-12 border-b border-[#152226] bg-[#070B0D] px-4 md:px-6 flex items-center justify-between sticky top-0 z-20">
+          {/* ----- MOBILE: logo mark + current section title (the sidebar is hidden) ----- */}
+          <div className="md:hidden flex items-center gap-2.5 min-w-0">
+            <button
+              onClick={() => handleNav("Home")}
+              aria-label="Home"
+              className="shrink-0 active:scale-95 transition-transform"
+            >
+              <Image
+                src="/Clipr-logo.png"
+                alt="Clipr"
+                width={26}
+                height={26}
+                className="w-[26px] h-[26px] rounded-[7px] shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+              />
+            </button>
+            <span className="text-[15px] font-semibold tracking-tight text-[#EFEFEF] truncate">
+              {sidebarActive === "Home" ? (
+                <>Clipr<span className="text-[#10B981] font-mono">.</span></>
+              ) : (
+                sidebarActive
+              )}
             </span>
-          </button>
+          </div>
+          {/* Desktop placeholder (tabs removed) */}
           <div className="hidden md:flex items-center h-full space-x-6" />
 
-          {/* Right Header */}
-          <div className="flex items-center space-x-3 sm:space-x-4">
-            <button className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors">
+          {/* ----- Right side ----- */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Desktop-only controls (kept off phones so the bar isn't a squished PC toolbar) */}
+            <button className="hidden md:inline-flex text-[#6B7C85] hover:text-[#EFEFEF] transition-colors">
               <Search className="w-3.5 h-3.5" />
             </button>
-            <button className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors relative">
+            <button className="hidden md:inline-flex text-[#6B7C85] hover:text-[#EFEFEF] transition-colors relative">
               <Bell className="w-3.5 h-3.5" />
               <span className="absolute top-0 right-0 w-1 h-1 bg-[#10B981] rounded-full" />
             </button>
-
             <button
               onClick={handleResetDna}
               className="hidden md:inline-block text-[10px] text-[#6B7C85] hover:text-white border border-dashed border-[#152226] hover:border-[#10B981]/40 px-2 py-1 rounded transition-all"
@@ -894,10 +902,7 @@ export default function Dashboard() {
             >
               ↻ Onboarding
             </button>
-
-            {/* Trends sidebar is hidden for now */}
-
-            <div className="hidden sm:flex items-center space-x-2 text-xs text-[#6B7C85] hover:text-[#EFEFEF] cursor-pointer transition-colors">
+            <div className="hidden md:flex items-center space-x-2 text-xs text-[#6B7C85] hover:text-[#EFEFEF] cursor-pointer transition-colors">
               <span className="flex items-center gap-1">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
@@ -910,6 +915,15 @@ export default function Dashboard() {
                 {getPlatformIcon("LinkedIn", 10)}
               </div>
             </div>
+
+            {/* MOBILE: profile avatar -> Settings */}
+            <button
+              onClick={() => handleNav("Settings")}
+              aria-label="Settings"
+              className="md:hidden flex h-8 w-8 items-center justify-center rounded-full bg-[#152226] text-xs font-semibold text-[#EFEFEF] border border-[#1E2A2E] active:scale-95 transition-transform"
+            >
+              A
+            </button>
           </div>
         </header>
 
