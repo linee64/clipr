@@ -858,7 +858,7 @@ export default function Dashboard() {
       <main className="flex-1 flex flex-col h-full relative z-10 bg-[#070B0D] overflow-hidden">
 
         {/* TOP NAVBAR */}
-        <header className="h-14 md:h-12 border-b border-[#152226] bg-[#070B0D] px-4 md:px-6 flex items-center justify-between sticky top-0 z-20">
+        <header className="h-16 md:h-12 border-b border-[#152226] bg-[#070B0D] px-4 md:px-6 flex items-center justify-between sticky top-0 z-20">
           {/* ----- MOBILE: logo mark + current section title (the sidebar is hidden) ----- */}
           <div className="md:hidden flex items-center gap-2.5 min-w-0">
             <button
@@ -869,12 +869,12 @@ export default function Dashboard() {
               <Image
                 src="/Clipr-logo.png"
                 alt="Clipr"
-                width={26}
-                height={26}
-                className="w-[26px] h-[26px] rounded-[7px] shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                width={28}
+                height={28}
+                className="w-[28px] h-[28px] rounded-[7px] shadow-[0_0_12px_rgba(16,185,129,0.3)]"
               />
             </button>
-            <span className="text-[15px] font-semibold tracking-tight text-[#EFEFEF] truncate">
+            <span className="text-base font-semibold tracking-tight text-[#EFEFEF] truncate">
               {sidebarActive === "Home" ? (
                 <>Clipr<span className="text-[#10B981] font-mono">.</span></>
               ) : (
@@ -920,7 +920,7 @@ export default function Dashboard() {
             <button
               onClick={() => handleNav("Settings")}
               aria-label="Settings"
-              className="md:hidden flex h-8 w-8 items-center justify-center rounded-full bg-[#152226] text-xs font-semibold text-[#EFEFEF] border border-[#1E2A2E] active:scale-95 transition-transform"
+              className="md:hidden flex h-9 w-9 items-center justify-center rounded-full bg-[#152226] text-[13px] font-semibold text-[#EFEFEF] border border-[#1E2A2E] active:scale-95 transition-transform"
             >
               A
             </button>
