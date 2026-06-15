@@ -943,7 +943,7 @@ export default function Dashboard() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
-                  className="flex flex-col h-full gap-4 min-h-0 overflow-hidden"
+                  className="flex flex-col h-full gap-4 min-h-0 overflow-hidden justify-center md:justify-start"
                 >
                   {/* Modern Startup-themed Header & Input Workspace Card */}
                   {heroExitState !== 'hidden' && (
@@ -954,7 +954,7 @@ export default function Dashboard() {
                           : 'opacity-100 scale-100'
                       }`}
                     >
-                      <div className="flex flex-col items-center text-center space-y-1.5 pb-2 pt-12 sm:pt-16 md:pt-24 select-none">
+                      <div className="flex flex-col items-center text-center space-y-1.5 pb-2 pt-2 sm:pt-10 md:pt-24 select-none">
                         <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[#EFEFEF]">
                           What&apos;s your next viral hook<span className="text-[#10B981]">?</span>
                         </h1>
