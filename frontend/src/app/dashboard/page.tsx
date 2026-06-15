@@ -320,6 +320,20 @@ export default function Dashboard() {
     setPlanState(readPlan());
   }, []);
 
+  // Header "Connect accounts" popover (connect X right from the Home tab).
+  const [connectMenuOpen, setConnectMenuOpen] = useState(false);
+  const connectMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!connectMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (connectMenuRef.current && !connectMenuRef.current.contains(e.target as Node)) {
+        setConnectMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [connectMenuOpen]);
+
   // On load, surface the result of an OAuth round-trip (the backend redirects back
   // to /dashboard?x_connected=1 or ?x_error=...), then scrub it from the URL.
   useEffect(() => {
@@ -961,18 +975,93 @@ export default function Dashboard() {
             >
               ↻ Onboarding
             </button>
-            <div className="hidden md:flex items-center space-x-2 text-xs text-[#6B7C85] hover:text-[#EFEFEF] cursor-pointer transition-colors">
-              <span className="flex items-center gap-1">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+            <div className="relative hidden md:block" ref={connectMenuRef}>
+              <button
+                onClick={() => setConnectMenuOpen((v) => !v)}
+                className="flex items-center space-x-2 text-xs text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
+              >
+                <span className="flex items-center gap-1.5">
+                  <span className="relative flex h-1.5 w-1.5">
+                    {xStatus?.connected ? (
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#10B981] shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+                    ) : (
+                      <>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                      </>
+                    )}
+                  </span>
+                  {xStatus?.connected ? "Accounts" : "Connect accounts"}
                 </span>
-                Connect accounts
-              </span>
-              <div className="flex items-center space-x-1 pl-1.5 border-l border-[#152226]">
-                {getPlatformIcon("TikTok", 10)}
-                {getPlatformIcon("LinkedIn", 10)}
-              </div>
+                <span className="flex items-center space-x-1 pl-1.5 border-l border-[#152226]">
+                  <XLogo className="w-2.5 h-2.5 text-[#EFEFEF]" />
+                  {getPlatformIcon("TikTok", 10)}
+                  {getPlatformIcon("LinkedIn", 10)}
+                </span>
+              </button>
+
+              {connectMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-[#152226] bg-[#0D1416] shadow-2xl z-40 p-2 space-y-1">
+                  {/* X (Twitter) — live connect */}
+                  <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-2.5 py-2">
+                    <span className="flex items-center gap-2 text-xs text-[#EFEFEF] min-w-0">
+                      <XLogo className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">
+                        {xStatus?.connected && xStatus.username ? `@${xStatus.username}` : "X (Twitter)"}
+                      </span>
+                    </span>
+                    {xStatus?.connected ? (
+                      <button
+                        onClick={handleDisconnectX}
+                        className="shrink-0 text-[10px] text-[#6B7C85] hover:text-[#EF8B8B] border border-[#152226] hover:border-[#EF8B8B]/40 px-2 py-1 rounded-md transition-colors"
+                      >
+                        Disconnect
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setConnectMenuOpen(false);
+                          startTwitterConnect().catch((e) =>
+                            setXToast({
+                              kind: "error",
+                              text: `Couldn't start X connect: ${
+                                e instanceof Error ? e.message : "try again"
+                              }`,
+                            })
+                          );
+                        }}
+                        className="shrink-0 text-[10px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-2.5 py-1 rounded-md transition-colors"
+                      >
+                        Connect
+                      </button>
+                    )}
+                  </div>
+
+                  {/* LinkedIn / TikTok — in development */}
+                  {(["LinkedIn", "TikTok"] as const).map((plat) => (
+                    <div
+                      key={plat}
+                      className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-2.5 py-2 opacity-80"
+                    >
+                      <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">
+                        {getPlatformIcon(plat, 14)}
+                        <span>{plat}</span>
+                      </span>
+                      <span className="text-[9px] uppercase tracking-wider font-mono text-[#6B7C85]">In dev</span>
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={() => {
+                      setConnectMenuOpen(false);
+                      handleNav("Settings");
+                    }}
+                    className="w-full text-center text-[10px] text-[#6B7C85] hover:text-[#10B981] pt-1 pb-0.5 transition-colors"
+                  >
+                    Manage in Settings →
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* MOBILE: profile avatar -> Settings */}
