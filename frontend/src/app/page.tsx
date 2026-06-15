@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
   Clock,
@@ -12,7 +12,8 @@ import {
   Check,
   Send,
   FileText,
-  ArrowRight
+  ArrowRight,
+  X
 } from "lucide-react";
 import { WaitlistForm } from "@/components/WaitlistForm";
 import { Marquee } from "@/components/Marquee";
@@ -23,6 +24,7 @@ import {
 
 export default function Home() {
   const [scrolled, setScrolled] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -36,12 +38,7 @@ export default function Home() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const scrollToWaitlist = () => {
-    const element = document.getElementById("waitlist-section");
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-  };
+  const openSignup = () => setSignupOpen(true);
 
   // Scroll animations variants
   const fadeInVariants = {
@@ -89,7 +86,7 @@ export default function Home() {
             >
               Log in
             </button>
-            <Button variant="primary" size="sm" onClick={scrollToWaitlist} className="rounded-full">
+            <Button variant="primary" size="sm" onClick={openSignup} className="rounded-full">
               Get started
             </Button>
           </div>
@@ -142,7 +139,7 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.3 }}
             className="pt-2"
           >
-            <Button variant="primary" size="lg" onClick={scrollToWaitlist}>
+            <Button variant="primary" size="lg" onClick={openSignup}>
               Get started
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
@@ -350,7 +347,7 @@ export default function Home() {
               </div>
 
               <div className="pt-6 space-y-2">
-                <Button variant="outline" size="sm" className="w-full py-2.5 rounded-lg text-xs" onClick={scrollToWaitlist}>
+                <Button variant="outline" size="sm" className="w-full py-2.5 rounded-lg text-xs" onClick={openSignup}>
                   Start for free
                 </Button>
                 <p className="text-[9px] text-zinc-500 text-center tracking-wide">
@@ -405,7 +402,7 @@ export default function Home() {
               </div>
 
               <div className="pt-6 space-y-2">
-                <Button variant="primary" size="sm" className="w-full py-2.5 rounded-lg text-xs" onClick={scrollToWaitlist}>
+                <Button variant="primary" size="sm" className="w-full py-2.5 rounded-lg text-xs" onClick={openSignup}>
                   Start 7-day free trial
                 </Button>
                 <p className="text-[9px] text-zinc-500 text-center tracking-wide">
@@ -413,22 +410,6 @@ export default function Home() {
                 </p>
               </div>
             </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* 8. WAITLIST CTA SECTION */}
-      <section id="waitlist-section" className="relative py-28 md:py-36 z-10 max-w-4xl mx-auto px-4 md:px-8 text-center">
-        {/* Card wrapper */}
-        <div className="relative rounded-3xl bg-zinc-950 border border-zinc-900 p-8 md:p-16 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-tr from-[#10B981]/5 to-blue-900/5 pointer-events-none" />
-
-          <div className="relative space-y-8 max-w-xl mx-auto z-10">
-            <p className="text-sm md:text-base text-zinc-400">
-              Sign up free and turn your first idea into a ready-to-post video — script, edit, and auto-post in one flow.
-            </p>
-
-            <WaitlistForm />
           </div>
         </div>
       </section>
@@ -460,6 +441,65 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* SIGN-UP MODAL — opened by every "Get started" CTA */}
+      <AnimatePresence>
+        {signupOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              onClick={() => setSignupOpen(false)}
+              className="absolute inset-0 bg-black/75 backdrop-blur-[8px]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border border-[#10B981]/30 bg-zinc-950/95 backdrop-blur-xl p-6 sm:p-8 shadow-2xl"
+              style={{ boxShadow: "0 0 40px rgba(16,185,129,0.12)" }}
+            >
+              <div
+                className="pointer-events-none absolute -top-24 left-1/2 h-52 w-52 -translate-x-1/2 rounded-full blur-3xl"
+                style={{ background: "radial-gradient(circle, rgba(16,185,129,0.18) 0%, rgba(16,185,129,0) 70%)" }}
+              />
+              <button
+                onClick={() => setSignupOpen(false)}
+                aria-label="Close"
+                className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors z-10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="relative text-center space-y-2 mb-6">
+                <div className="flex items-center justify-center gap-2">
+                  <Image
+                    src="/Clipr-logo.png"
+                    alt="Clipr"
+                    width={28}
+                    height={28}
+                    className="w-7 h-7 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.5)]"
+                  />
+                  <span className="text-xl font-bold tracking-tight text-white">
+                    Clipr<span className="text-[#10B981] font-mono">.</span>
+                  </span>
+                </div>
+                <h3 className="text-2xl font-black tracking-tight text-white pt-1">Get started free</h3>
+                <p className="text-sm text-zinc-400">
+                  Turn your first idea into a ready-to-post video today.
+                </p>
+              </div>
+
+              <div className="relative">
+                <WaitlistForm />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
