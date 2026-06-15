@@ -10,6 +10,7 @@ import {
   getTwitterStatus,
   startTwitterConnect,
   postToTwitter,
+  X_ENABLED,
   type TwitterStatus,
   type TwitterPostResult,
 } from "@/lib/api";
@@ -79,7 +80,7 @@ export function RenderStep({
   const [postError, setPostError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!isDone) return;
+    if (!isDone || !X_ENABLED) return;
     let alive = true;
     getTwitterStatus()
       .then((s) => alive && setXStatus(s))
@@ -324,7 +325,7 @@ export function RenderStep({
                     Download
                   </a>
 
-                  {postResult ? (
+                  {X_ENABLED && (postResult ? (
                     <a
                       href={postResult.url}
                       target="_blank"
@@ -367,10 +368,10 @@ export function RenderStep({
                         </>
                       )}
                     </button>
-                  )}
+                  ))}
                 </div>
 
-                {postError && (
+                {X_ENABLED && postError && (
                   <p className="mt-2.5 text-xs text-[#EF8B8B] leading-relaxed">{postError}</p>
                 )}
               </div>

@@ -32,6 +32,7 @@ import {
   startTwitterConnect,
   disconnectTwitter,
   postToTwitter,
+  X_ENABLED,
   type TwitterStatus,
 } from "@/lib/api";
 import type { TemplateOption } from "@/lib/types";
@@ -349,7 +350,16 @@ export default function Dashboard() {
       const qs = params.toString();
       window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
     }
-    getTwitterStatus().then(setXStatus).catch(() => setXStatus({ connected: false }));
+    if (X_ENABLED) {
+      getTwitterStatus().then(setXStatus).catch(() => setXStatus({ connected: false }));
+    } else {
+      // X is hidden on this deploy — make sure no client id lingers in localStorage.
+      try {
+        localStorage.removeItem("clipr_cid");
+      } catch {
+        /* ignore */
+      }
+    }
   }, []);
 
   // Auto-dismiss the toast.
@@ -361,7 +371,7 @@ export default function Dashboard() {
 
   // Refresh the connection each time Settings opens, in case it changed elsewhere.
   useEffect(() => {
-    if (activeTab !== "Settings") return;
+    if (!X_ENABLED || activeTab !== "Settings") return;
     getTwitterStatus().then(setXStatus).catch(() => setXStatus({ connected: false }));
   }, [activeTab]);
 
@@ -975,6 +985,7 @@ export default function Dashboard() {
             >
               ↻ Onboarding
             </button>
+            {X_ENABLED && (
             <div className="relative hidden md:block" ref={connectMenuRef}>
               <button
                 onClick={() => setConnectMenuOpen((v) => !v)}
@@ -1063,6 +1074,7 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+            )}
 
             {/* MOBILE: profile avatar -> Settings */}
             <button
@@ -1465,18 +1477,20 @@ export default function Dashboard() {
                             <div className="flex justify-between items-center pt-2 border-t border-[#152226]">
                               <span className="text-[10px] text-[#6B7C85] font-mono">{item.date}</span>
                               <div className="flex items-center gap-1.5">
-                                <button
-                                  onClick={() => handlePostSavedToX(item)}
-                                  disabled={xPostingId === item.id}
-                                  title={xStatus?.connected ? "Post to X" : "Connect X to post"}
-                                  className="p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors disabled:opacity-50"
-                                >
-                                  {xPostingId === item.id ? (
-                                    <span className="block w-3.5 h-3.5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
-                                  ) : (
-                                    <XLogo className="w-3.5 h-3.5" />
-                                  )}
-                                </button>
+                                {X_ENABLED && (
+                                  <button
+                                    onClick={() => handlePostSavedToX(item)}
+                                    disabled={xPostingId === item.id}
+                                    title={xStatus?.connected ? "Post to X" : "Connect X to post"}
+                                    className="p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors disabled:opacity-50"
+                                  >
+                                    {xPostingId === item.id ? (
+                                      <span className="block w-3.5 h-3.5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <XLogo className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                )}
                                 <a
                                   href={resolveBackendUrl(item.output_url)}
                                   download
@@ -1725,44 +1739,51 @@ export default function Dashboard() {
                         </span>
                       </div>
 
-                      {/* X (Twitter) — the live one: real OAuth connect + auto-post */}
+                      {/* X (Twitter) — live connect when enabled, else shown as in-development */}
                       <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5">
                         <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">
                           <XLogo className="w-3.5 h-3.5 text-[#EFEFEF]" />
                           <span>X (Twitter)</span>
-                          {xStatus?.connected && xStatus.username && (
+                          {X_ENABLED && xStatus?.connected && xStatus.username && (
                             <span className="text-[#6B7C85]">@{xStatus.username}</span>
                           )}
                         </span>
-                        {xStatus?.connected ? (
-                          <div className="flex items-center gap-2.5">
-                            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#10B981]">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                              Connected
-                            </span>
+                        {X_ENABLED ? (
+                          xStatus?.connected ? (
+                            <div className="flex items-center gap-2.5">
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#10B981]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                                Connected
+                              </span>
+                              <button
+                                onClick={handleDisconnectX}
+                                className="text-[11px] text-[#6B7C85] hover:text-[#EF8B8B] border border-[#152226] hover:border-[#EF8B8B]/40 px-2.5 py-1 rounded-lg transition-colors"
+                              >
+                                Disconnect
+                              </button>
+                            </div>
+                          ) : (
                             <button
-                              onClick={handleDisconnectX}
-                              className="text-[11px] text-[#6B7C85] hover:text-[#EF8B8B] border border-[#152226] hover:border-[#EF8B8B]/40 px-2.5 py-1 rounded-lg transition-colors"
+                              onClick={() =>
+                                startTwitterConnect().catch((e) =>
+                                  setXToast({
+                                    kind: "error",
+                                    text: `Couldn't start X connect: ${
+                                      e instanceof Error ? e.message : "try again"
+                                    }`,
+                                  })
+                                )
+                              }
+                              className="text-[11px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-3 py-1.5 rounded-lg transition-colors shadow-[0_0_12px_rgba(16,185,129,0.25)]"
                             >
-                              Disconnect
+                              Connect
                             </button>
-                          </div>
+                          )
                         ) : (
-                          <button
-                            onClick={() =>
-                              startTwitterConnect().catch((e) =>
-                                setXToast({
-                                  kind: "error",
-                                  text: `Couldn't start X connect: ${
-                                    e instanceof Error ? e.message : "try again"
-                                  }`,
-                                })
-                              )
-                            }
-                            className="text-[11px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-3 py-1.5 rounded-lg transition-colors shadow-[0_0_12px_rgba(16,185,129,0.25)]"
-                          >
-                            Connect
-                          </button>
+                          <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] uppercase tracking-wider font-mono text-[#6B7C85] border border-[#152226] bg-[#0D1416] px-2.5 py-1 rounded-lg cursor-not-allowed select-none">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#6B7C85]/70" />
+                            In development
+                          </span>
                         )}
                       </div>
 

@@ -138,6 +138,14 @@ export interface TwitterPostResult {
 }
 
 /**
+ * Whether the X / Twitter integration is shown at all. OFF unless
+ * NEXT_PUBLIC_X_ENABLED is exactly "true", so the whole feature is hidden on
+ * public deploys (no connect, no account, no post buttons) until per-user auth
+ * exists. Flip the env var on to bring it back.
+ */
+export const X_ENABLED = process.env.NEXT_PUBLIC_X_ENABLED === "true";
+
+/**
  * A stable per-browser client id. X connections are scoped to it server-side, so
  * one browser's connected account isn't visible to other visitors on the deploy.
  * (Not real auth — it just prevents the accidental global leak until user auth exists.)
