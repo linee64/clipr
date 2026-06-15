@@ -10,8 +10,10 @@ is parked at `twitter/oauth_state/<state>.json` for the few seconds the dance ta
 Everything here is coded against the verified X API v2 contract:
   - OAuth2 Authorization Code + PKCE, confidential client (Basic auth on /token).
   - Refresh tokens ROTATE — every refresh returns a new refresh_token; persist it.
-  - Video upload is the v2 CHUNKED flow INIT -> APPEND(1MB) -> FINALIZE -> poll STATUS
-    on https://api.x.com/2/media/upload (multipart; the client sets the boundary).
+  - Video upload is the GA v2 CHUNKED flow using dedicated sub-resource paths:
+    POST /2/media/upload/initialize (JSON) -> POST /2/media/upload/{id}/append
+    (multipart) -> POST /2/media/upload/{id}/finalize -> poll GET /2/media/upload
+    ?command=STATUS. (The bare /2/media/upload is the image-only one-shot upload.)
   - Create post: POST /2/tweets { text, media: { media_ids: [id] } }.
 """
 
@@ -50,7 +52,10 @@ ACCOUNT_KEY = "twitter/account.json"
 STATE_PREFIX = "twitter/oauth_state/"
 STATE_TTL_SECS = 600  # an in-flight connect is abandoned if it takes > 10 min
 
-UPLOAD_CHUNK = 1024 * 1024  # 1 MB — the only officially documented chunk size
+UPLOAD_CHUNK = 4 * 1024 * 1024  # 4 MB — safely under the 5 MB per-segment cap
+# Standard category for a normal user's in-tweet MP4 (<=140s). amplify_video is
+# gated behind X Ads/Amplify access and 400s for a normal account.
+MEDIA_CATEGORY = "tweet_video"
 PROCESS_POLL_TIMEOUT = 150.0  # cap on waiting for X to transcode the video
 TWEET_MAX_CHARS = 280
 
@@ -409,26 +414,29 @@ async def _upload_video(access_token: str, file_path: str) -> str:
     auth = {"Authorization": f"Bearer {access_token}"}
 
     async with httpx.AsyncClient(timeout=120) as client:
-        # INIT — declare the upload. total_bytes must be the EXACT file size.
+        # 1. INITIALIZE — JSON body. The /initialize sub-path is what selects the
+        # chunked flow; posting these fields to the bare /media/upload hits the
+        # image-only one-shot validator and 400s ("media_category not in enum").
         init = await client.post(
-            MEDIA_UPLOAD_URL,
-            headers=auth,
-            files={
-                "command": (None, "INIT"),
-                "media_type": (None, "video/mp4"),
-                "media_category": (None, "amplify_video"),
-                "total_bytes": (None, str(total_bytes)),
+            f"{MEDIA_UPLOAD_URL}/initialize",
+            headers={**auth, "Content-Type": "application/json"},
+            json={
+                "media_type": "video/mp4",
+                "total_bytes": total_bytes,
+                "media_category": MEDIA_CATEGORY,
             },
         )
         if init.status_code == 401:
-            raise TwitterAuthExpired("X rejected the access token on INIT.")
+            raise TwitterAuthExpired("X rejected the access token on initialize.")
         if init.status_code not in (200, 201, 202):
-            raise TwitterError(f"Media INIT failed ({init.status_code}): {init.text[:300]}")
+            raise TwitterError(f"Media initialize failed ({init.status_code}): {init.text[:300]}")
         media_id = _media_id_from(init.json())
         if not media_id:
-            raise TwitterError("X did not return a media id on INIT.")
+            raise TwitterError("X did not return a media id on initialize.")
 
-        # APPEND — stream the file in 1 MB segments, indexed 0,1,2,... with no gaps.
+        # 2. APPEND — one multipart call per chunk; media_id is in the PATH. Let
+        # httpx set the multipart boundary (don't hand-set Content-Type).
+        append_url = f"{MEDIA_UPLOAD_URL}/{media_id}/append"
         segment = 0
         with open(file_path, "rb") as f:
             while True:
@@ -436,34 +444,27 @@ async def _upload_video(access_token: str, file_path: str) -> str:
                 if not chunk:
                     break
                 ap = await client.post(
-                    MEDIA_UPLOAD_URL,
+                    append_url,
                     headers=auth,
-                    files={
-                        "command": (None, "APPEND"),
-                        "media_id": (None, media_id),
-                        "segment_index": (None, str(segment)),
-                        "media": ("chunk", chunk, "application/octet-stream"),
-                    },
+                    data={"segment_index": str(segment)},
+                    files={"media": ("chunk", chunk, "application/octet-stream")},
                 )
                 if ap.status_code == 401:
-                    raise TwitterAuthExpired("X rejected the access token on APPEND.")
+                    raise TwitterAuthExpired("X rejected the access token on append.")
                 if ap.status_code not in (200, 201, 204):
                     raise TwitterError(
-                        f"Media APPEND #{segment} failed ({ap.status_code}): {ap.text[:200]}"
+                        f"Media append #{segment} failed ({ap.status_code}): {ap.text[:200]}"
                     )
                 segment += 1
 
-        # FINALIZE — close the upload; video then transcodes asynchronously.
-        fin = await client.post(
-            MEDIA_UPLOAD_URL,
-            headers=auth,
-            files={"command": (None, "FINALIZE"), "media_id": (None, media_id)},
-        )
+        # 3. FINALIZE — no request body; video then transcodes asynchronously.
+        fin = await client.post(f"{MEDIA_UPLOAD_URL}/{media_id}/finalize", headers=auth)
         if fin.status_code == 401:
-            raise TwitterAuthExpired("X rejected the access token on FINALIZE.")
+            raise TwitterAuthExpired("X rejected the access token on finalize.")
         if fin.status_code not in (200, 201):
-            raise TwitterError(f"Media FINALIZE failed ({fin.status_code}): {fin.text[:300]}")
+            raise TwitterError(f"Media finalize failed ({fin.status_code}): {fin.text[:300]}")
 
+        # 4. STATUS — poll until X finishes transcoding (bare path + query params).
         await _await_processing(client, auth, media_id, _processing_info(fin.json()))
 
     return media_id
