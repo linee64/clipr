@@ -137,9 +137,34 @@ export interface TwitterPostResult {
   url: string;
 }
 
-/** Whether an X account is connected, and which handle. */
+/**
+ * A stable per-browser client id. X connections are scoped to it server-side, so
+ * one browser's connected account isn't visible to other visitors on the deploy.
+ * (Not real auth — it just prevents the accidental global leak until user auth exists.)
+ */
+function getClientId(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    let cid = localStorage.getItem("clipr_cid");
+    if (!cid) {
+      cid =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `c${Date.now()}${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem("clipr_cid", cid);
+    }
+    return cid;
+  } catch {
+    return "";
+  }
+}
+
+/** Whether an X account is connected for this browser, and which handle. */
 export async function getTwitterStatus(): Promise<TwitterStatus> {
-  const res = await fetch(`${API_BASE}/api/twitter/status`, { cache: "no-store" });
+  const res = await fetch(
+    `${API_BASE}/api/twitter/status?cid=${encodeURIComponent(getClientId())}`,
+    { cache: "no-store" }
+  );
   return parseJson(res);
 }
 
@@ -149,7 +174,10 @@ export async function getTwitterStatus(): Promise<TwitterStatus> {
  * the backend, which finishes the exchange and returns to /dashboard.
  */
 export async function startTwitterConnect(): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/twitter/login`, { cache: "no-store" });
+  const res = await fetch(
+    `${API_BASE}/api/twitter/login?cid=${encodeURIComponent(getClientId())}`,
+    { cache: "no-store" }
+  );
   const { authorize_url } = await parseJson<{ authorize_url: string }>(res);
   window.location.href = authorize_url;
 }
@@ -162,13 +190,16 @@ export async function postToTwitter(payload: {
   const res = await fetch(`${API_BASE}/api/twitter/post`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, cid: getClientId() }),
   });
   return parseJson(res);
 }
 
-/** Forget the connected X account. */
+/** Forget the connected X account for this browser. */
 export async function disconnectTwitter(): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/twitter/disconnect`, { method: "POST" });
+  const res = await fetch(
+    `${API_BASE}/api/twitter/disconnect?cid=${encodeURIComponent(getClientId())}`,
+    { method: "POST" }
+  );
   await parseJson(res);
 }

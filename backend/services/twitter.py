@@ -1,11 +1,14 @@
 """X (Twitter) auto-posting: OAuth 2.0 PKCE, durable token store, video upload, post.
 
-The app has no per-user auth yet (it's a solo-creator tool), so there is exactly
-ONE connected X account for the whole backend. Its tokens live in the same storage
-bucket the renderer already uses, at `twitter/account.json`, mirroring the jobstore
-pattern — so a process restart (the Railway box gets OOM-killed often) doesn't drop
-the connection. Transient OAuth state (the PKCE verifier for an in-flight connect)
-is parked at `twitter/oauth_state/<state>.json` for the few seconds the dance takes.
+The app has no per-user auth yet, so X connections are scoped PER BROWSER by a
+client id (cid) the frontend generates and stores locally. Each cid's tokens live
+in the storage bucket at `twitter/accounts/<cid>.json` (mirroring the jobstore
+pattern, so a Railway restart doesn't drop the connection). This keeps one
+tester's connected account from being visible to every visitor on a shared deploy.
+It is NOT real security (a cid is guessable/shareable) — it just stops the
+accidental global leak until proper user auth exists. Transient OAuth state (the
+PKCE verifier + the cid for an in-flight connect) is parked at
+`twitter/oauth_state/<state>.json` for the few seconds the dance takes.
 
 Everything here is coded against the verified X API v2 contract:
   - OAuth2 Authorization Code + PKCE, confidential client (Basic auth on /token).
@@ -23,6 +26,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import secrets
 import time
 from pathlib import Path
@@ -48,7 +52,11 @@ ME_URL = "https://api.x.com/2/users/me"
 # token we need to post unattended; the rest are required companions for posting.
 SCOPES = "tweet.read tweet.write users.read media.write offline.access"
 
-ACCOUNT_KEY = "twitter/account.json"
+# Per-browser account: tokens are stored at twitter/accounts/<cid>.json so one
+# browser's connected X account can't be seen/used by every visitor on a shared
+# deploy (there's no per-user auth yet). cid is the attacker-supplied client id,
+# so it's strictly validated before it ever touches a storage path.
+ACCOUNT_PREFIX = "twitter/accounts/"
 STATE_PREFIX = "twitter/oauth_state/"
 STATE_TTL_SECS = 600  # an in-flight connect is abandoned if it takes > 10 min
 
@@ -79,6 +87,20 @@ class TwitterAuthExpired(TwitterError):
 # Serializes token refreshes so two overlapping posts can't both spend the same
 # (rotating, single-use) refresh token and invalidate each other.
 _refresh_lock = asyncio.Lock()
+
+_CID_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+
+
+def _safe_cid(cid: str | None) -> str:
+    """Validate the client id before it touches a storage path (it's user-supplied)."""
+    cid = (cid or "").strip()
+    if not _CID_RE.match(cid):
+        raise TwitterError("Missing or invalid client id — please reconnect.")
+    return cid
+
+
+def _account_key(cid: str) -> str:
+    return f"{ACCOUNT_PREFIX}{_safe_cid(cid)}.json"
 
 
 # ---------------------------------------------------------------------------
@@ -208,14 +230,19 @@ def _make_pkce() -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 # OAuth: connect
 # ---------------------------------------------------------------------------
-async def build_authorize_url() -> str:
-    """Start an OAuth connect: mint a state + PKCE pair, persist them, return the URL."""
+async def build_authorize_url(cid: str) -> str:
+    """Start an OAuth connect: mint a state + PKCE pair, persist them, return the URL.
+
+    The cid is stashed with the state so the callback stores the tokens under the
+    browser that started the flow — not in a single global account.
+    """
     _require_configured()
+    cid = _safe_cid(cid)
     state = secrets.token_urlsafe(24)
     verifier, challenge = _make_pkce()
     await _write_json(
         f"{STATE_PREFIX}{state}.json",
-        {"code_verifier": verifier, "created": time.time()},
+        {"code_verifier": verifier, "created": time.time(), "cid": cid},
     )
     params = {
         "response_type": "code",
@@ -239,6 +266,9 @@ async def exchange_code(code: str, state: str) -> dict:
     if time.time() - float(saved.get("created") or 0) > STATE_TTL_SECS:
         await _delete(state_key)
         raise TwitterError("This connect link expired — please connect again.")
+    cid = saved.get("cid")
+    if not cid:
+        raise TwitterError("Invalid OAuth state — please connect again.")
 
     body = {
         "grant_type": "authorization_code",
@@ -287,7 +317,7 @@ async def exchange_code(code: str, state: str) -> dict:
     except Exception:
         pass
 
-    await _write_json(ACCOUNT_KEY, account)
+    await _write_json(_account_key(cid), account)
     await _delete(state_key)
     return _public_account(account)
 
@@ -310,7 +340,7 @@ async def _fetch_me(access_token: str) -> dict:
 # ---------------------------------------------------------------------------
 # OAuth: token lifecycle
 # ---------------------------------------------------------------------------
-async def _refresh(account: dict) -> dict:
+async def _refresh(account: dict, cid: str) -> dict:
     """Exchange the (rotating) refresh token for a fresh access + refresh token."""
     refresh_token = account.get("refresh_token")
     if not refresh_token:
@@ -343,12 +373,13 @@ async def _refresh(account: dict) -> dict:
         account["refresh_token"] = tok["refresh_token"]
     account["scope"] = tok.get("scope", account.get("scope", SCOPES))
     account["expires_at"] = time.time() + float(tok.get("expires_in", 7200))
-    await _write_json(ACCOUNT_KEY, account)
+    await _write_json(_account_key(cid), account)
     return account
 
 
-async def _get_valid_account() -> dict:
-    account = await _read_json(ACCOUNT_KEY)
+async def _get_valid_account(cid: str) -> dict:
+    key = _account_key(cid)
+    account = await _read_json(key)
     if not account or not account.get("access_token"):
         raise TwitterNotConnected("No X account connected. Connect one in Settings first.")
     # Refresh a minute before expiry so the upload/post never races the clock.
@@ -357,19 +388,19 @@ async def _get_valid_account() -> dict:
     # Serialize the refresh + re-read inside the lock: a concurrent post may have
     # already rotated the token, so don't spend the now-stale refresh token again.
     async with _refresh_lock:
-        account = await _read_json(ACCOUNT_KEY) or account
+        account = await _read_json(key) or account
         if time.time() >= float(account.get("expires_at") or 0) - 60:
-            account = await _refresh(account)
+            account = await _refresh(account, cid)
         return account
 
 
-async def _force_refresh() -> dict:
+async def _force_refresh(cid: str) -> dict:
     """Reactive refresh (after a 401), serialized like the proactive path."""
     async with _refresh_lock:
-        account = await _read_json(ACCOUNT_KEY)
+        account = await _read_json(_account_key(cid))
         if not account or not account.get("access_token"):
             raise TwitterNotConnected("No X account connected. Connect one in Settings first.")
-        return await _refresh(account)
+        return await _refresh(account, cid)
 
 
 # ---------------------------------------------------------------------------
@@ -383,15 +414,24 @@ def _public_account(account: dict) -> dict:
     }
 
 
-async def get_status() -> dict:
-    account = await _read_json(ACCOUNT_KEY)
+async def get_status(cid: str | None) -> dict:
+    try:
+        key = _account_key(cid)
+    except TwitterError:
+        # No/invalid cid → nothing is connected for this browser.
+        return {"connected": False, "configured": is_configured()}
+    account = await _read_json(key)
     if not account or not account.get("access_token"):
         return {"connected": False, "configured": is_configured()}
     return {**_public_account(account), "configured": is_configured()}
 
 
-async def disconnect() -> None:
-    await _delete(ACCOUNT_KEY)
+async def disconnect(cid: str | None) -> None:
+    try:
+        key = _account_key(cid)
+    except TwitterError:
+        return
+    await _delete(key)
 
 
 # ---------------------------------------------------------------------------
@@ -530,17 +570,18 @@ async def _upload_and_post(account: dict, file_path: str, text: str) -> dict:
     return {"id": tweet_id, "url": url}
 
 
-async def post_video(file_path: str, caption: str) -> dict:
+async def post_video(file_path: str, caption: str, cid: str) -> dict:
     """Upload a rendered video and publish it as a post. Returns {id, url}.
 
-    If a token is revoked before its expiry (X returns 401), do one reactive
-    refresh-and-retry rather than failing the whole post on a recoverable state.
+    Scoped to the browser's cid. If a token is revoked before its expiry (X
+    returns 401), do one reactive refresh-and-retry rather than failing the post.
     """
     _require_configured()
-    account = await _get_valid_account()
+    cid = _safe_cid(cid)
+    account = await _get_valid_account(cid)
     text = (caption or "").strip()[:TWEET_MAX_CHARS]
     try:
         return await _upload_and_post(account, file_path, text)
     except TwitterAuthExpired:
-        account = await _force_refresh()
+        account = await _force_refresh(cid)
         return await _upload_and_post(account, file_path, text)

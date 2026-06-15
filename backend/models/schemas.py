@@ -127,3 +127,5 @@ class TwitterPostRequest(BaseModel):
     # path in local dev). caption becomes the post text (trimmed to 280 chars).
     output_url: str
     caption: str = ""
+    # Per-browser client id — scopes the post to that browser's connected X account.
+    cid: str = ""

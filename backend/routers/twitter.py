@@ -43,12 +43,17 @@ def _supabase_public_prefix() -> str:
 
 
 @router.get("/login")
-async def login():
-    """Return the X authorize URL to send the user to (frontend redirects)."""
+async def login(cid: str = ""):
+    """Return the X authorize URL to send the user to (frontend redirects).
+
+    cid scopes the connection to this browser (see services.twitter).
+    """
     try:
-        return {"authorize_url": await twitter.build_authorize_url()}
+        return {"authorize_url": await twitter.build_authorize_url(cid)}
     except twitter.TwitterNotConfigured as e:
         raise HTTPException(status_code=503, detail=str(e))
+    except twitter.TwitterError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
 
@@ -80,13 +85,13 @@ async def callback(code: str = "", state: str = "", error: str = ""):
 
 
 @router.get("/status")
-async def status():
-    return await twitter.get_status()
+async def status(cid: str = ""):
+    return await twitter.get_status(cid)
 
 
 @router.post("/disconnect")
-async def disconnect():
-    await twitter.disconnect()
+async def disconnect(cid: str = ""):
+    await twitter.disconnect(cid)
     return {"connected": False}
 
 
@@ -126,7 +131,7 @@ async def post(request: TwitterPostRequest):
     local_path = os.path.join(TEMP_DIR, f"xpost_{uuid.uuid4().hex}.mp4")
     try:
         await _download_video(request.output_url, local_path)
-        result = await twitter.post_video(local_path, request.caption)
+        result = await twitter.post_video(local_path, request.caption, request.cid)
         return result
     except twitter.TwitterNotConfigured as e:
         raise HTTPException(status_code=503, detail=str(e))
