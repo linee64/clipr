@@ -465,7 +465,7 @@ export function CreateFlow({
 
   return (
     <div className="flex flex-col h-full overflow-y-auto scrollbar-thin bg-[#070B0D]">
-      <div className="flex items-center gap-3 px-6 py-3 border-b border-[#152226] shrink-0">
+      <div className="flex items-center gap-3 px-4 sm:px-6 py-3 border-b border-[#152226] shrink-0">
         <button
           type="button"
           onClick={onBack}

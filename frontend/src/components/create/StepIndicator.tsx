@@ -38,7 +38,7 @@ export function StepIndicator({ currentStep }: StepIndicatorProps) {
   const progress = (currentStep - 1) / (STEPS.length - 1); // 0 .. 1
 
   return (
-    <div className="shrink-0 border-b border-[#152226]/80 bg-zinc-950/45 backdrop-blur-md px-8 py-5 shadow-[0_4px_30px_rgba(0,0,0,0.2)]">
+    <div className="shrink-0 border-b border-[#152226]/80 bg-zinc-950/45 backdrop-blur-md px-3 sm:px-8 py-4 sm:py-5 shadow-[0_4px_30px_rgba(0,0,0,0.2)]">
       <div className="relative mx-auto max-w-2xl">
         {/* ---- Rail overlay ---- */}
         <div
@@ -70,7 +70,7 @@ export function StepIndicator({ currentStep }: StepIndicatorProps) {
 
                 {/* single-line label — truncates instead of wrapping */}
                 <span
-                  className="mt-3 block max-w-full truncate px-1 text-[10px] uppercase font-bold tracking-[0.15em] transition-all duration-300"
+                  className="mt-2 sm:mt-3 block max-w-full truncate px-0.5 sm:px-1 text-[9px] sm:text-[10px] uppercase font-bold tracking-[0.04em] sm:tracking-[0.15em] transition-all duration-300"
                   style={{
                     fontFamily: MONO,
                     color:

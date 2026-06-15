@@ -105,7 +105,7 @@ export function RenderStep({
   };
 
   return (
-    <div className="w-full p-6">
+    <div className="w-full p-4 sm:p-6">
       {onJumpTo && (isDone || isError) && (
         <div className={`${isDone ? "max-w-4xl" : "max-w-lg"} mx-auto mb-4 flex flex-wrap items-center gap-2`}>
           <span className="text-[11px] uppercase tracking-wider font-mono text-[#6B7C85] mr-1">
@@ -126,11 +126,11 @@ export function RenderStep({
       )}
       <div className={`${isDone ? "max-w-4xl" : "max-w-lg"} mx-auto`}>
         {!isDone && !isError && (
-          <div className="bg-[#0D1416] border border-[#152226] rounded-xl p-8">
+          <div className="bg-[#0D1416] border border-[#152226] rounded-xl p-5 sm:p-8">
             {(() => {
               const pct = Math.max(0, Math.min(100, progress));
               return (
-                <div className="relative flex flex-col items-center text-center px-6 py-2">
+                <div className="relative flex flex-col items-center text-center px-2 sm:px-6 py-2">
                   {/* atmospheric mint glow behind the phone */}
                   <div
                     className="pointer-events-none absolute left-1/2 top-[120px] h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
@@ -379,7 +379,7 @@ export function RenderStep({
         )}
 
         {isError && (
-          <div className="bg-[#0D1416] border border-[#152226] rounded-xl p-8 space-y-4">
+          <div className="bg-[#0D1416] border border-[#152226] rounded-xl p-5 sm:p-8 space-y-4">
             <X className="w-8 h-8 text-red-400" />
             <p className="text-lg font-medium text-[#EFEFEF]">Rendering failed</p>
             <p className="text-sm text-[#6B7C85]">

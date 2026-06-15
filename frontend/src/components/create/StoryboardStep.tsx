@@ -73,7 +73,7 @@ export function StoryboardStep({
   ];
 
   return (
-    <div className="w-full p-6">
+    <div className="w-full p-4 sm:p-6">
       <div className="max-w-3xl mx-auto">
         <h2 className="text-xl font-semibold text-[#EFEFEF]">Your storyboard</h2>
         <p className="text-sm text-[#6B7C85] mt-1">Film these scenes in order</p>
@@ -83,7 +83,7 @@ export function StoryboardStep({
             const isAccent = scene.role === "hook" || scene.role === "punch";
             return (
               <div key={scene.order}>
-                <div className="bg-[#0D1416] border border-[#152226] rounded-xl p-5 transition-colors hover:border-[#1E343A]">
+                <div className="bg-[#0D1416] border border-[#152226] rounded-xl p-4 sm:p-5 transition-colors hover:border-[#1E343A]">
                   {/* Header: number + role + duration */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
@@ -175,7 +175,7 @@ export function StoryboardStep({
           ))}
         </div>
 
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex flex-wrap gap-3">
           <button
             type="button"
             onClick={onBack}
@@ -187,14 +187,14 @@ export function StoryboardStep({
           <button
             type="button"
             onClick={onRegenerate}
-            className="flex-1 py-3 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg text-sm font-medium hover:bg-[#11191B] transition-colors"
+            className="flex-1 min-w-[140px] py-3 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg text-sm font-medium hover:bg-[#11191B] transition-colors"
           >
             Regenerate storyboard
           </button>
           <button
             type="button"
             onClick={onContinue}
-            className="flex-1 py-3 bg-[#10B981] text-white rounded-lg text-sm font-medium hover:bg-[#12cf90] transition-colors"
+            className="flex-1 min-w-[140px] py-3 bg-[#10B981] text-white rounded-lg text-sm font-medium hover:bg-[#12cf90] transition-colors"
           >
             I filmed these →
           </button>

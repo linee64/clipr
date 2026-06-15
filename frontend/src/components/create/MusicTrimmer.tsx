@@ -165,7 +165,7 @@ export function MusicTrimmer({
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.2 }}
-        className="relative w-full max-w-lg rounded-2xl border border-[#1E343A] bg-[#0D1416] p-5 shadow-[0_0_40px_rgba(0,0,0,0.6)]"
+        className="relative w-full max-w-lg rounded-2xl border border-[#1E343A] bg-[#0D1416] p-4 sm:p-5 shadow-[0_0_40px_rgba(0,0,0,0.6)]"
       >
         <audio
           ref={audioRef}

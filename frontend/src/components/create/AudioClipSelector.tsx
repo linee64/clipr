@@ -341,8 +341,8 @@ export function AudioClipSelector({
 
             {/* left handle */}
             <div
-              className="absolute left-0 top-0 bottom-0 flex items-center justify-center"
-              style={{ width: 22, transform: "translateX(-50%)", cursor: "ew-resize", touchAction: "none" }}
+              className="absolute left-0 top-0 bottom-0 flex items-center justify-center w-10 sm:w-[22px]"
+              style={{ transform: "translateX(-50%)", cursor: "ew-resize", touchAction: "none" }}
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -357,8 +357,8 @@ export function AudioClipSelector({
 
             {/* right handle */}
             <div
-              className="absolute right-0 top-0 bottom-0 flex items-center justify-center"
-              style={{ width: 22, transform: "translateX(50%)", cursor: "ew-resize", touchAction: "none" }}
+              className="absolute right-0 top-0 bottom-0 flex items-center justify-center w-10 sm:w-[22px]"
+              style={{ transform: "translateX(50%)", cursor: "ew-resize", touchAction: "none" }}
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

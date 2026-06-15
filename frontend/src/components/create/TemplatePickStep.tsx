@@ -86,7 +86,7 @@ export function TemplatePickStep({
     !isStartingRender && (noTemplates || (!!selectedTemplateId && !needsMusic));
 
   return (
-    <div className="w-full p-6">
+    <div className="w-full p-4 sm:p-6">
       <div className="max-w-3xl mx-auto">
         <h2 className="text-xl font-semibold text-[#EFEFEF]">Pick a style</h2>
         <p className="text-sm text-[#6B7C85] mt-1">
@@ -95,9 +95,9 @@ export function TemplatePickStep({
         </p>
 
         {selectedTemplateId && needsMusic ? (
-          <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#10B981]/30 bg-[#10B981]/5 px-3 py-2 text-xs">
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#10B981]/30 bg-[#10B981]/5 px-3 py-2 text-xs">
             <Music className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
-            <span className="text-[#EFEFEF]">
+            <span className="min-w-0 flex-1 text-[#EFEFEF]">
               This style needs music — pick a track from the library or upload your own.
             </span>
             {onChangeMusic && (
@@ -112,9 +112,9 @@ export function TemplatePickStep({
           </div>
         ) : (
           selectedTemplateId && musicLabel && (
-            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#152226] bg-[#0D1416] px-3 py-1.5 text-xs">
-              <Music className="w-3.5 h-3.5 text-[#10B981]" />
-              <span className="text-[#EFEFEF] font-medium">{musicLabel}</span>
+            <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl sm:rounded-full border border-[#152226] bg-[#0D1416] px-3 py-1.5 text-xs">
+              <Music className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
+              <span className="text-[#EFEFEF] font-medium truncate max-w-[180px] sm:max-w-none">{musicLabel}</span>
               <span className="text-[#6B7C85]">
                 {musicIsCustom ? "· your pick" : "· matched to this style"}
               </span>
