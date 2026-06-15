@@ -424,10 +424,6 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-tr from-[#10B981]/5 to-blue-900/5 pointer-events-none" />
 
           <div className="relative space-y-8 max-w-xl mx-auto z-10">
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">
-              Start creating in minutes
-            </h2>
-
             <p className="text-sm md:text-base text-zinc-400">
               Sign up free and turn your first idea into a ready-to-post video — script, edit, and auto-post in one flow.
             </p>
