@@ -6,6 +6,7 @@ pydantic
 python-multipart
 aiofiles
 boto3
+httpx
 supabase
 librosa
 numpy

@@ -24,8 +24,26 @@ import {
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { CreateFlow } from "@/components/create/CreateFlow";
 import type { FlowStep } from "@/components/create/StepIndicator";
-import { API_BASE, listReferences, resolveBackendUrl } from "@/lib/api";
+import {
+  API_BASE,
+  listReferences,
+  resolveBackendUrl,
+  getTwitterStatus,
+  startTwitterConnect,
+  disconnectTwitter,
+  postToTwitter,
+  type TwitterStatus,
+} from "@/lib/api";
 import type { TemplateOption } from "@/lib/types";
+
+// X (Twitter) wordmark — the stylised "X".
+function XLogo({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
+    </svg>
+  );
+}
 
 // ----------------------------------------------------
 // MOCK DATA & CONFIG
@@ -273,6 +291,83 @@ export default function Dashboard() {
   const [references, setReferences] = useState<TemplateOption[]>([]);
   const [refsLoading, setRefsLoading] = useState(false);
   const [refsError, setRefsError] = useState<string | null>(null);
+
+  // X (Twitter) connection state for the Settings tab + post-OAuth toast.
+  const [xStatus, setXStatus] = useState<TwitterStatus | null>(null);
+  const [xToast, setXToast] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+
+  // On load, surface the result of an OAuth round-trip (the backend redirects back
+  // to /dashboard?x_connected=1 or ?x_error=...), then scrub it from the URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("x_connected")) {
+      setXToast({ kind: "ok", text: "X account connected." });
+    } else if (params.has("x_error")) {
+      setXToast({ kind: "error", text: `Couldn't connect X: ${params.get("x_error")}` });
+    }
+    if (params.has("x_connected") || params.has("x_error")) {
+      params.delete("x_connected");
+      params.delete("x_error");
+      const qs = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    }
+    getTwitterStatus().then(setXStatus).catch(() => setXStatus({ connected: false }));
+  }, []);
+
+  // Auto-dismiss the toast.
+  useEffect(() => {
+    if (!xToast) return;
+    const t = setTimeout(() => setXToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [xToast]);
+
+  // Refresh the connection each time Settings opens, in case it changed elsewhere.
+  useEffect(() => {
+    if (activeTab !== "Settings") return;
+    getTwitterStatus().then(setXStatus).catch(() => setXStatus({ connected: false }));
+  }, [activeTab]);
+
+  const handleDisconnectX = async () => {
+    try {
+      await disconnectTwitter();
+    } catch {
+      /* ignore — fall through to optimistic update */
+    }
+    setXStatus({ connected: false });
+    setXToast({ kind: "ok", text: "X account disconnected." });
+  };
+
+  // Which saved video is currently being posted to X (for the My Content buttons).
+  const [xPostingId, setXPostingId] = useState<string | null>(null);
+
+  const handlePostSavedToX = async (item: SavedVideo) => {
+    if (!xStatus?.connected) {
+      // Not connected yet — kick off the OAuth flow instead of a dead click.
+      startTwitterConnect().catch((e) =>
+        setXToast({
+          kind: "error",
+          text: `Couldn't start X connect: ${e instanceof Error ? e.message : "try again"}`,
+        })
+      );
+      return;
+    }
+    setXPostingId(item.id);
+    try {
+      const result = await postToTwitter({
+        output_url: item.output_url,
+        caption: item.caption || item.title,
+      });
+      setXToast({ kind: "ok", text: "Posted to X." });
+      if (result.url) window.open(result.url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      setXToast({
+        kind: "error",
+        text: e instanceof Error ? e.message : "Couldn't post to X. Try again.",
+      });
+    } finally {
+      setXPostingId(null);
+    }
+  };
 
   useEffect(() => {
     if (activeTab !== "References" || references.length > 0 || refsLoading) return;
@@ -1156,6 +1251,18 @@ export default function Dashboard() {
                             <div className="flex justify-between items-center pt-2 border-t border-[#152226]">
                               <span className="text-[10px] text-[#6B7C85] font-mono">{item.date}</span>
                               <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => handlePostSavedToX(item)}
+                                  disabled={xPostingId === item.id}
+                                  title={xStatus?.connected ? "Post to X" : "Connect X to post"}
+                                  className="p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors disabled:opacity-50"
+                                >
+                                  {xPostingId === item.id ? (
+                                    <span className="block w-3.5 h-3.5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <XLogo className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
                                 <a
                                   href={resolveBackendUrl(item.output_url)}
                                   download
@@ -1334,6 +1441,46 @@ export default function Dashboard() {
                   <section className="rounded-xl bg-[#0D1416] border border-[#152226] p-5 space-y-4">
                     <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Connected accounts</h3>
                     <div className="space-y-2">
+                      {/* X (Twitter) — the live one: real OAuth connect + auto-post */}
+                      <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5">
+                        <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">
+                          <XLogo className="w-3.5 h-3.5 text-[#EFEFEF]" />
+                          <span>X (Twitter)</span>
+                          {xStatus?.connected && xStatus.username && (
+                            <span className="text-[#6B7C85]">@{xStatus.username}</span>
+                          )}
+                        </span>
+                        {xStatus?.connected ? (
+                          <div className="flex items-center gap-2.5">
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#10B981]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                              Connected
+                            </span>
+                            <button
+                              onClick={handleDisconnectX}
+                              className="text-[11px] text-[#6B7C85] hover:text-[#EF8B8B] border border-[#152226] hover:border-[#EF8B8B]/40 px-2.5 py-1 rounded-lg transition-colors"
+                            >
+                              Disconnect
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              startTwitterConnect().catch((e) =>
+                                setXToast({
+                                  kind: "error",
+                                  text: `Couldn't start X connect: ${
+                                    e instanceof Error ? e.message : "try again"
+                                  }`,
+                                })
+                              )
+                            }
+                            className="text-[11px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-3 py-1.5 rounded-lg transition-colors shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                          >
+                            Connect
+                          </button>
+                        )}
+                      </div>
                       {(["TikTok", "Instagram", "LinkedIn"] as const).map((plat) => (
                         <div key={plat} className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5">
                           <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">{getPlatformIcon(plat, 14)}<span>{plat}</span></span>
@@ -1739,6 +1886,46 @@ export default function Dashboard() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* X connect / disconnect toast (post-OAuth round-trip) */}
+      <AnimatePresence>
+        {xToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.96 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="fixed bottom-6 right-6 z-[60] max-w-sm"
+          >
+            <div
+              className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-2xl backdrop-blur-md ${
+                xToast.kind === "ok"
+                  ? "bg-[#0D1416]/95 border-[#10B981]/40"
+                  : "bg-[#1A1012]/95 border-[#EF8B8B]/40"
+              }`}
+            >
+              <div
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+                  xToast.kind === "ok" ? "bg-[#10B981]/15" : "bg-[#EF8B8B]/15"
+                }`}
+              >
+                {xToast.kind === "ok" ? (
+                  <Check className="h-3 w-3 text-[#10B981]" />
+                ) : (
+                  <X className="h-3 w-3 text-[#EF8B8B]" />
+                )}
+              </div>
+              <p className="text-xs leading-relaxed text-[#EFEFEF]">{xToast.text}</p>
+              <button
+                onClick={() => setXToast(null)}
+                className="ml-1 shrink-0 text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

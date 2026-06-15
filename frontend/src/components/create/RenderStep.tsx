@@ -5,7 +5,23 @@ import { motion } from "framer-motion";
 import { Check, ChevronLeft, X } from "lucide-react";
 import type { RenderStatus } from "@/lib/types";
 import type { FlowStep } from "./StepIndicator";
-import { resolveBackendUrl } from "@/lib/api";
+import {
+  resolveBackendUrl,
+  getTwitterStatus,
+  startTwitterConnect,
+  postToTwitter,
+  type TwitterStatus,
+  type TwitterPostResult,
+} from "@/lib/api";
+
+// X (Twitter) wordmark — the stylised "X".
+function XLogo({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
+    </svg>
+  );
+}
 
 // Quick "go back to edit" jumps shown on the download / error screens.
 const BACK_TARGETS: { label: string; step: FlowStep }[] = [
@@ -54,6 +70,39 @@ export function RenderStep({
 
   const title = videoTitle?.trim() || "Your Clipr video";
   const captionText = caption?.trim() || renderStatus?.description?.trim() || title;
+
+  // X (Twitter) auto-post state. We check the connection once the render lands so
+  // the button can offer "Connect X" vs "Post to X" without an extra click.
+  const [xStatus, setXStatus] = React.useState<TwitterStatus | null>(null);
+  const [posting, setPosting] = React.useState(false);
+  const [postResult, setPostResult] = React.useState<TwitterPostResult | null>(null);
+  const [postError, setPostError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!isDone) return;
+    let alive = true;
+    getTwitterStatus()
+      .then((s) => alive && setXStatus(s))
+      .catch(() => alive && setXStatus({ connected: false }));
+    return () => {
+      alive = false;
+    };
+  }, [isDone]);
+
+  const handlePostToX = async () => {
+    const url = renderStatus?.output_url;
+    if (!url) return;
+    setPosting(true);
+    setPostError(null);
+    try {
+      const result = await postToTwitter({ output_url: url, caption: captionText });
+      setPostResult(result);
+    } catch (e) {
+      setPostError(e instanceof Error ? e.message : "Couldn't post to X. Try again.");
+    } finally {
+      setPosting(false);
+    }
+  };
 
   return (
     <div className="w-full p-6">
@@ -274,18 +323,56 @@ export function RenderStep({
                   >
                     Download
                   </a>
-                  <button
-                    type="button"
-                    disabled
-                    title="Scheduling & auto-posting are coming soon"
-                    className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#6B7C85] rounded-lg py-3 text-sm font-medium cursor-not-allowed"
-                  >
-                    Schedule &amp; post
-                    <span className="text-[9px] uppercase tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-1.5 py-0.5 rounded-full">
-                      soon
-                    </span>
-                  </button>
+
+                  {postResult ? (
+                    <a
+                      href={postResult.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#10B981]/40 text-[#10B981] rounded-lg py-3 text-sm font-medium hover:bg-[#10B981]/10 transition-colors"
+                    >
+                      <Check className="w-4 h-4" />
+                      Posted — view on X
+                    </a>
+                  ) : xStatus && !xStatus.connected ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        startTwitterConnect().catch((e) =>
+                          setPostError(e instanceof Error ? e.message : "Couldn't open X. Try again.")
+                        )
+                      }
+                      title="Connect your X account to post"
+                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors"
+                    >
+                      <XLogo className="w-3.5 h-3.5" />
+                      Connect X to post
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handlePostToX}
+                      disabled={posting || !xStatus}
+                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {posting ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+                          Posting to X…
+                        </>
+                      ) : (
+                        <>
+                          <XLogo className="w-3.5 h-3.5" />
+                          Post to X
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
+
+                {postError && (
+                  <p className="mt-2.5 text-xs text-[#EF8B8B] leading-relaxed">{postError}</p>
+                )}
               </div>
             </div>
           </div>

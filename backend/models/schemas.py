@@ -119,3 +119,11 @@ class SilenceDetectRequest(BaseModel):
 class SilenceRemoveRequest(BaseModel):
     clip_ids: List[str]
     threshold: float = -35.0
+
+
+class TwitterPostRequest(BaseModel):
+    # The rendered video to publish — the same output_url the render returns and the
+    # frontend persists in "My Content" (a Supabase public URL, or a /api/video/files
+    # path in local dev). caption becomes the post text (trimmed to 280 chars).
+    output_url: str
+    caption: str = ""

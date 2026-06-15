@@ -119,3 +119,56 @@ export async function generateVisualScript(
   });
   return parseJson(res);
 }
+
+// ----------------------------------------------------------------------------
+// X / Twitter auto-posting
+// ----------------------------------------------------------------------------
+
+export interface TwitterStatus {
+  connected: boolean;
+  username?: string;
+  name?: string;
+  /** false when the backend is missing X credentials (connect can't work yet) */
+  configured?: boolean;
+}
+
+export interface TwitterPostResult {
+  id: string;
+  url: string;
+}
+
+/** Whether an X account is connected, and which handle. */
+export async function getTwitterStatus(): Promise<TwitterStatus> {
+  const res = await fetch(`${API_BASE}/api/twitter/status`, { cache: "no-store" });
+  return parseJson(res);
+}
+
+/**
+ * Kick off the OAuth connect: ask the backend for the X authorize URL, then send
+ * the browser there. X redirects back through the frontend passthrough route to
+ * the backend, which finishes the exchange and returns to /dashboard.
+ */
+export async function startTwitterConnect(): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/twitter/login`, { cache: "no-store" });
+  const { authorize_url } = await parseJson<{ authorize_url: string }>(res);
+  window.location.href = authorize_url;
+}
+
+/** Publish a rendered video to X with the given caption. */
+export async function postToTwitter(payload: {
+  output_url: string;
+  caption: string;
+}): Promise<TwitterPostResult> {
+  const res = await fetch(`${API_BASE}/api/twitter/post`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parseJson(res);
+}
+
+/** Forget the connected X account. */
+export async function disconnectTwitter(): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/twitter/disconnect`, { method: "POST" });
+  await parseJson(res);
+}
