@@ -8,15 +8,17 @@ import {
   ChevronRight, 
   ChevronLeft, 
   Check, 
-  Smile, 
-  Briefcase, 
-  Users, 
-  FileText, 
-  MessageSquare
+  Smile,
+  Briefcase,
+  Users,
+  FileText,
+  MessageSquare,
+  User
 } from "lucide-react";
 
 interface OnboardingFlowProps {
   onComplete: (data: {
+    name: string;
     product: string;
     audience: string;
     tone: "formal" | "casual";
@@ -27,6 +29,7 @@ interface OnboardingFlowProps {
 
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [step, setStep] = useState(1);
+  const [name, setName] = useState("");
   const [product, setProduct] = useState("");
   const [audience, setAudience] = useState("");
   const [tone, setTone] = useState<"formal" | "casual">("casual");
@@ -38,6 +41,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [generationStep, setGenerationStep] = useState(0);
 
   const stepsData = [
+    { title: "Your Name", desc: "How we address you" },
     { title: "Product / Idea", desc: "Tell us about yourself" },
     { title: "Audience", desc: "Who is the content for" },
     { title: "Tone of Voice", desc: "Communication style" },
@@ -46,7 +50,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   ];
 
   const handleNext = () => {
-    if (step < 5) {
+    if (step < 6) {
       setStep(step + 1);
     } else {
       triggerGeneration();
@@ -70,6 +74,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         if (index === intervals.length - 1) {
           setTimeout(() => {
             onComplete({
+              name: name.trim(),
               product,
               audience,
               tone,
@@ -136,8 +141,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   const isNextDisabled = () => {
-    if (step === 1 && !product.trim()) return true;
-    if (step === 2 && !audience.trim()) return true;
+    if (step === 1 && !name.trim()) return true;
+    if (step === 2 && !product.trim()) return true;
+    if (step === 3 && !audience.trim()) return true;
     return false;
   };
 
@@ -235,7 +241,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <div className="space-y-1">
             <h1 className="text-lg font-bold text-white tracking-tight">Create Clipr DNA</h1>
             <p className="text-xs text-[#6B7C85] leading-relaxed">
-              Answer 5 simple questions. Then, all video content will be generated specifically for your product and in your personal style.
+              Answer 6 simple questions. Then, all video content will be generated specifically for your product and in your personal style.
             </p>
           </div>
 
@@ -280,7 +286,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <div className="flex-1 flex flex-col justify-between p-6 md:p-12 relative z-10 min-h-[450px]">
         {/* Mobile step bar indicator */}
         <div className="md:hidden w-full bg-[#152226] h-1 rounded-full mb-6 overflow-hidden">
-          <div className="bg-[#10B981] h-full" style={{ width: `${(step / 5) * 100}%` }} />
+          <div className="bg-[#10B981] h-full" style={{ width: `${(step / 6) * 100}%` }} />
         </div>
 
         <div className="max-w-xl w-full mx-auto my-auto space-y-6">
@@ -289,7 +295,37 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <motion.div key="step1" {...stepsTransitions} className="space-y-4">
                 <div className="space-y-2">
                   <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold flex items-center gap-1.5">
-                    <Briefcase className="w-3.5 h-3.5" /> Step 1 of 5
+                    <User className="w-3.5 h-3.5" /> Step 1 of 6
+                  </span>
+                  <h2 className="text-2xl font-black text-white tracking-tight">
+                    What should we call you?
+                  </h2>
+                  <p className="text-sm text-[#6B7C85]">
+                    We&apos;ll use your name across your dashboard. You can change it later in Settings.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && name.trim()) handleNext();
+                    }}
+                    className="w-full bg-[#0D1416] border border-[#152226] hover:border-[#1E343A] focus:border-[#10B981] rounded-xl px-4 py-3.5 text-white text-sm outline-none focus:ring-1 focus:ring-[#10B981]/30 transition-all placeholder:text-[#6B7C85]"
+                    placeholder="For example: Alex Rivera"
+                    autoFocus
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {step === 2 && (
+              <motion.div key="step2" {...stepsTransitions} className="space-y-4">
+                <div className="space-y-2">
+                  <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold flex items-center gap-1.5">
+                    <Briefcase className="w-3.5 h-3.5" /> Step 2 of 6
                   </span>
                   <h2 className="text-2xl font-black text-white tracking-tight">
                     Tell us about your product, UGC niche, or blog topic
@@ -315,11 +351,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </motion.div>
             )}
 
-            {step === 2 && (
-              <motion.div key="step2" {...stepsTransitions} className="space-y-4">
+            {step === 3 && (
+              <motion.div key="step3" {...stepsTransitions} className="space-y-4">
                 <div className="space-y-2">
                   <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5" /> Step 2 of 5
+                    <Users className="w-3.5 h-3.5" /> Step 3 of 6
                   </span>
                   <h2 className="text-2xl font-black text-white tracking-tight">
                     Who are you making content for?
@@ -358,11 +394,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </motion.div>
             )}
 
-            {step === 3 && (
-              <motion.div key="step3" {...stepsTransitions} className="space-y-4">
+            {step === 4 && (
+              <motion.div key="step4" {...stepsTransitions} className="space-y-4">
                 <div className="space-y-2">
                   <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold flex items-center gap-1.5">
-                    <Smile className="w-3.5 h-3.5" /> Step 3 of 5
+                    <Smile className="w-3.5 h-3.5" /> Step 4 of 6
                   </span>
                   <h2 className="text-2xl font-black text-white tracking-tight">
                     What is your communication style?
@@ -414,11 +450,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </motion.div>
             )}
 
-            {step === 4 && (
-              <motion.div key="step4" {...stepsTransitions} className="space-y-4">
+            {step === 5 && (
+              <motion.div key="step5" {...stepsTransitions} className="space-y-4">
                 <div className="space-y-2">
                   <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5" /> Step 4 of 5
+                    <FileText className="w-3.5 h-3.5" /> Step 5 of 6
                   </span>
                   <h2 className="text-2xl font-black text-white tracking-tight">
                     Paste a post sample (voice model)
@@ -443,11 +479,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </motion.div>
             )}
 
-            {step === 5 && (
-              <motion.div key="step5" {...stepsTransitions} className="space-y-4">
+            {step === 6 && (
+              <motion.div key="step6" {...stepsTransitions} className="space-y-4">
                 <div className="space-y-2">
                   <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold flex items-center gap-1.5">
-                    <MessageSquare className="w-3.5 h-3.5" /> Step 5 of 5
+                    <MessageSquare className="w-3.5 h-3.5" /> Step 6 of 6
                   </span>
                   <h2 className="text-2xl font-black text-white tracking-tight">
                     Which platform are you focusing on first?
@@ -498,11 +534,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
-                if (step === 1) { if (!product.trim()) setProduct("AI-powered content workflow tool for founders and creators"); }
-                if (step === 2) { if (!audience.trim()) setAudience("Startup Founders"); }
-                if (step === 3) { /* tone already has default */ }
-                if (step === 4) { /* sample is optional */ }
-                if (step === 5) { /* platform already has default */ }
+                // Step 1 (name) is optional — skipping falls back to the email-derived name.
+                if (step === 2) { if (!product.trim()) setProduct("AI-powered content workflow tool for founders and creators"); }
+                if (step === 3) { if (!audience.trim()) setAudience("Startup Founders"); }
                 handleNext();
               }}
               className="text-[11px] text-[#6B7C85] hover:text-white underline underline-offset-2 transition-all"
@@ -515,8 +549,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               disabled={isNextDisabled()}
               className={`bg-[#10B981] disabled:opacity-30 disabled:pointer-events-none hover:bg-[#12cf90] text-[#070B0D] text-xs font-semibold px-5 py-2.5 rounded-lg flex items-center space-x-1.5 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]`}
             >
-              <span>{step === 5 ? "Create DNA" : "Next"}</span>
-              {step === 5 ? <Sparkles className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              <span>{step === 6 ? "Create DNA" : "Next"}</span>
+              {step === 6 ? <Sparkles className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
           </div>
         </div>

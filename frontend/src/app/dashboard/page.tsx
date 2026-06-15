@@ -602,6 +602,7 @@ export default function Dashboard() {
   }, []);
 
   const handleOnboardingComplete = (data: {
+    name: string;
     product: string;
     audience: string;
     tone: "formal" | "casual";
@@ -609,6 +610,12 @@ export default function Dashboard() {
     platform: "TikTok" | "Instagram Reels" | "LinkedIn" | "YouTube Shorts" | "Twitter / X";
   }) => {
     localStorage.setItem("clipr_dna", JSON.stringify(data));
+    // Persist the name the user gave in onboarding and reflect it in the profile.
+    if (data.name?.trim()) {
+      const n = data.name.trim();
+      localStorage.setItem("clipr_name", n);
+      setProfile((p) => ({ ...p, name: n, initial: (n.charAt(0) || p.initial).toUpperCase() }));
+    }
     setVoiceTone(data.tone === "casual" ? "Как с другом" : "Формальный эксперт");
     setVoicePreview(
       `Тема: ${data.product.length > 60 ? data.product.substring(0, 60) + "..." : data.product}. Целевая аудитория: ${data.audience}.`
