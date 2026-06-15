@@ -215,11 +215,11 @@ export function WaitlistForm() {
                   {status === "loading" ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Sending...
+                      Setting up...
                     </>
                   ) : (
                     <>
-                      Get early access
+                      Get started
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </>
                   )}
@@ -274,15 +274,25 @@ export function WaitlistForm() {
         </motion.p>
       )}
 
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-mono text-zinc-500 pt-4 border-t border-zinc-900/60 mt-4">
-        <div className="flex items-center space-x-2">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span>{200 + dbCount} founders already joined</span>
+      <div className="space-y-3 pt-4 border-t border-zinc-900/60 mt-4">
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] font-mono text-zinc-500">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            {200 + dbCount} creators on board
+          </span>
+          <span className="text-zinc-800">•</span>
+          <span>Free 7-day trial · No card</span>
         </div>
-        <span className="text-zinc-800">•</span>
-        <div className="flex items-center space-x-1.5 text-[#10B981] font-semibold">
-          <span>🚀 Launching soon</span>
-        </div>
+        <p className="text-xs text-zinc-400 text-center">
+          Already have an account?{" "}
+          <button
+            type="button"
+            onClick={() => { window.location.href = "/dashboard"; }}
+            className="text-[#10B981] font-semibold hover:underline"
+          >
+            Log in
+          </button>
+        </p>
       </div>
     </div>
   );

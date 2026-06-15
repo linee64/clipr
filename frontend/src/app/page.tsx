@@ -82,9 +82,15 @@ export default function Home() {
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
           </nav>
 
-          <div>
-            <Button variant="glass" size="sm" onClick={scrollToWaitlist} className="border border-zinc-800 text-zinc-200">
-              Join waitlist
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button
+              onClick={() => { window.location.href = "/dashboard"; }}
+              className="text-sm font-medium text-zinc-300 hover:text-white transition-colors px-2 sm:px-3 py-1.5"
+            >
+              Log in
+            </button>
+            <Button variant="primary" size="sm" onClick={scrollToWaitlist} className="rounded-full">
+              Get started
             </Button>
           </div>
         </div>
@@ -104,7 +110,7 @@ export default function Home() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
-            <span>Now in beta</span>
+            <span>Now live</span>
             <span className="text-zinc-600">•</span>
             <span className="text-zinc-300 font-semibold">Join 200+ founders</span>
           </motion.div>
@@ -419,11 +425,11 @@ export default function Home() {
 
           <div className="relative space-y-8 max-w-xl mx-auto z-10">
             <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">
-              Be the first to ship more content, faster
+              Start creating in minutes
             </h2>
 
             <p className="text-sm md:text-base text-zinc-400">
-              Join the waitlist today. We are rolling out private access slots to 15 creators every Monday.
+              Sign up free and turn your first idea into a ready-to-post video — script, edit, and auto-post in one flow.
             </p>
 
             <WaitlistForm />
