@@ -1,6 +1,6 @@
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class IdeaRequest(BaseModel):
@@ -119,6 +119,34 @@ class SilenceDetectRequest(BaseModel):
 class SilenceRemoveRequest(BaseModel):
     clip_ids: List[str]
     threshold: float = -35.0
+
+
+class PexelsVideo(BaseModel):
+    id: int
+    image: str  # thumbnail/poster for the picker grid
+    preview: str = ""  # small mp4 for inline hover/click preview
+    duration: int = 0
+    width: int = 0
+    height: int = 0
+    user_name: str = ""  # creator credit (Pexels attribution is appreciated)
+
+
+class PexelsSearchResponse(BaseModel):
+    videos: list[PexelsVideo]
+    page: int = 1
+    total_results: int = 0
+
+
+class PexelsImportRequest(BaseModel):
+    # The frontend only sends the Pexels video id; the backend re-resolves the actual
+    # mp4 link from Pexels itself (never downloads a client-supplied URL).
+    video_id: int = Field(..., gt=0)
+
+
+class ClipUploadResponse(BaseModel):
+    clip_id: str
+    url: str
+    storage: str = ""  # "local" | "supabase"
 
 
 class TwitterPostRequest(BaseModel):

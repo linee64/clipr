@@ -4,12 +4,15 @@ import uuid
 from pathlib import Path
 
 import aiofiles
+import httpx
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from models.schemas import (
     BeatSyncRequest,
     BrollRenderRequest,
+    ClipUploadResponse,
+    PexelsImportRequest,
     RenderRequest,
     RenderStatus,
     SilenceDetectRequest,
@@ -19,6 +22,7 @@ from models.schemas import (
 from services.editor import (
     apply_beat_sync_transitions,
     burn_subtitles_ass,
+    compress_clip_for_upload,
     detect_beats,
     detect_silence,
     generate_ass_simple,
@@ -28,15 +32,47 @@ from services.editor import (
     transcode_to_mp3,
     transcribe_audio,
 )
-from services import jobstore
+from services import jobstore, pexels
 from services.storage import download_file, local_file_path, upload_file, use_local_storage
-from services.tracks import ensure_track_seeded, get_tracks_with_urls
+from services.tracks import get_tracks_with_urls
 from workers.render import render_jobs, run_broll_render, run_render_job
 
 router = APIRouter(prefix="/api/video", tags=["video"])
 
 TEMP_DIR = str(Path(__file__).resolve().parent.parent / "temp")
 os.makedirs(TEMP_DIR, exist_ok=True)
+
+
+# Clips larger than this are downscaled/re-encoded to 1080p before upload. Phone
+# footage (4K HEVC) otherwise exceeds the storage bucket's per-file size limit
+# (Supabase free tier = 50 MB -> a 413 that reads as a frozen upload) and takes
+# minutes to transfer. The render only works at <=1080p, so this is lossless to the
+# output. Small clips pass through untouched (byte-identical to before).
+_COMPRESS_OVER_BYTES = 8 * 1024 * 1024
+# Hard cap on a Pexels download so a huge/hostile response can't exhaust memory or
+# fill the disk. Real portrait HD clips are well under this; it's just a safety net.
+_PEXELS_MAX_BYTES = 300 * 1024 * 1024
+
+
+async def _store_clip_from_temp(clip_id: str, temp_path: str) -> str:
+    """Compress (if over the size threshold) then upload temp_path to
+    clips/<clip_id>.mp4, returning the stored URL. Always cleans up the temp files.
+    Shared by the file-upload route and the Pexels import route so both paths produce
+    an identical clips/<id>.mp4 the render can download."""
+    upload_path = temp_path
+    compressed_path = None
+    if os.path.getsize(temp_path) > _COMPRESS_OVER_BYTES:
+        compressed_path = os.path.join(TEMP_DIR, f"{clip_id}_c.mp4")
+        await asyncio.to_thread(compress_clip_for_upload, temp_path, compressed_path)
+        upload_path = compressed_path
+
+    remote_path = f"clips/{clip_id}.mp4"
+    try:
+        return await upload_file(upload_path, remote_path)
+    finally:
+        for p in (temp_path, compressed_path):
+            if p and os.path.exists(p):
+                os.remove(p)
 
 
 async def _upload_one_clip(file: UploadFile) -> dict:
@@ -47,10 +83,7 @@ async def _upload_one_clip(file: UploadFile) -> dict:
         content = await file.read()
         await f.write(content)
 
-    remote_path = f"clips/{clip_id}.mp4"
-    url = await upload_file(temp_path, remote_path)
-    os.remove(temp_path)
-
+    url = await _store_clip_from_temp(clip_id, temp_path)
     return {"clip_id": clip_id, "url": url, "filename": file.filename or ""}
 
 
@@ -93,6 +126,55 @@ async def upload_clips(files: list[UploadFile] = File(...)):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/pexels-import", response_model=ClipUploadResponse)
+async def pexels_import(request: PexelsImportRequest):
+    """Import a picked Pexels stock video as a render clip.
+
+    The frontend sends only the Pexels video id; the server re-resolves the mp4 link
+    from Pexels (never downloads a client-supplied URL), streams it to disk under a
+    size cap, then runs it through the same compress+store path as an upload. Returns
+    the same {clip_id, url, storage} shape as /upload/clip, so a Pexels pick is
+    interchangeable with an uploaded file.
+    """
+    clip_id = str(uuid.uuid4())
+    temp_path = os.path.join(TEMP_DIR, f"{clip_id}_pexels.mp4")
+    try:
+        link = await pexels.get_download_url(request.video_id)
+        # Stream to disk (never buffer the whole body in RAM) and abort if it blows
+        # past the cap, so a huge/hostile response can't exhaust memory or disk.
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(120.0), follow_redirects=True
+        ) as client:
+            async with client.stream("GET", link) as resp:
+                resp.raise_for_status()
+                written = 0
+                async with aiofiles.open(temp_path, "wb") as f:
+                    async for chunk in resp.aiter_bytes(256 * 1024):
+                        written += len(chunk)
+                        if written > _PEXELS_MAX_BYTES:
+                            raise pexels.PexelsError("Pexels video is too large to import.")
+                        await f.write(chunk)
+        url = await _store_clip_from_temp(clip_id, temp_path)
+    except pexels.PexelsNotConfigured as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except (pexels.PexelsError, httpx.HTTPError) as e:
+        raise HTTPException(status_code=502, detail=f"Couldn't import the Pexels video: {e}")
+    except Exception as e:
+        # Storage/processing failure (e.g. upload_file raising) — surface a clean 502
+        # rather than a generic 500. (HTTPExceptions raised above pass straight through.)
+        raise HTTPException(status_code=502, detail=f"Couldn't import the Pexels video: {e}")
+    finally:
+        # _store_clip_from_temp deletes temp_path on the success path; this is the
+        # fallback for the paths where the download failed before it ran.
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+    return {
+        "clip_id": clip_id,
+        "url": url,
+        "storage": "local" if use_local_storage() else "supabase",
+    }
 
 
 @router.post("/upload/audio")
@@ -358,11 +440,10 @@ async def apply_subtitles(request: SubtitleStyleRequest, background_tasks: Backg
 @router.post("/broll-render")
 async def broll_render(request: BrollRenderRequest, background_tasks: BackgroundTasks):
     """Full aesthetic b-roll render: clips + phrases + music → graded video with text."""
-    # If a template track was picked, make sure it's in storage before the
-    # worker tries to download audio/<id>.mp3.
-    if request.audio_file_id:
-        await ensure_track_seeded(request.audio_file_id)
-
+    # Note: seeding a template track into storage (an upload that can take seconds on
+    # a cold worker) happens inside run_broll_render now, not here — so this request
+    # returns immediately and the client starts polling real progress right away
+    # instead of waiting on the seed before the job even exists.
     render_jobs[request.job_id] = {
         "status": "pending",
         "progress": 0,

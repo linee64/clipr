@@ -2,20 +2,31 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronLeft, Music, Play, Scissors, Search, Upload, X } from "lucide-react";
+import { Check, ChevronLeft, Film, Music, Play, Scissors, Search, Upload, X } from "lucide-react";
 import type {
   AudioSelection,
+  PexelsVideo,
   Scene,
   TemplateTrack,
   UploadedClipSlot,
   VisualScriptResponse,
 } from "@/lib/types";
 import { MusicTrimmer } from "./MusicTrimmer";
+import { PexelsSearchModal } from "./PexelsSearchModal";
 
 function fmtSecs(s: number): string {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
   return `${m}:${sec.toString().padStart(2, "0")}`;
+}
+
+/** An AI "what to film" line is a shooting instruction ("close-up of hands, soft
+ *  window light"), not a stock-search keyword. Seed the Pexels search with a short
+ *  head of it — before the first clause break, capped to a few words — so the first
+ *  auto-search returns footage. The user can still refine it in the modal. */
+function toStockQuery(suggestion: string): string {
+  const head = (suggestion || "").split(/[:,.;—–\n]/)[0].trim();
+  return head.split(/\s+/).filter(Boolean).slice(0, 6).join(" ");
 }
 
 /** Animated equalizer bars shown on a track that's currently previewing. */
@@ -112,6 +123,8 @@ interface UploadBySlotStepProps {
   selectedMusicVibe: string;
   onClipUpload: (sceneOrder: number, file: File) => void;
   onClipReplace: (sceneOrder: number, file: File) => void;
+  /** Import a Pexels stock video into a scene's clip slot (server-side). */
+  onPexelsSelect: (sceneOrder: number, video: PexelsVideo) => Promise<void>;
   onAudioSelect: (file: File) => void;
   onTrackSelect: (track: TemplateTrack) => void;
   onMusicVibeSelect: (vibe: string) => void;
@@ -128,6 +141,7 @@ export function UploadBySlotStep({
   tracks,
   onClipUpload,
   onClipReplace,
+  onPexelsSelect,
   onAudioSelect,
   onTrackSelect,
   onContinue,
@@ -141,6 +155,8 @@ export function UploadBySlotStep({
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [trimmerOpen, setTrimmerOpen] = useState(false);
+  // Which scene's "search stock video" (Pexels) modal is open, or null.
+  const [pexelsScene, setPexelsScene] = useState<number | null>(null);
 
   // The video length is what the trimmer window represents (capped at 25s).
   const videoSeconds = Math.min(
@@ -239,6 +255,18 @@ export function UploadBySlotStep({
           onClose={() => setTrimmerOpen(false)}
         />
       )}
+
+      <AnimatePresence>
+        {pexelsScene !== null && (
+          <PexelsSearchModal
+            initialQuery={toStockQuery(
+              scenes.find((s) => s.order === pexelsScene)?.film_suggestion ?? ""
+            )}
+            onImport={(video) => onPexelsSelect(pexelsScene, video)}
+            onClose={() => setPexelsScene(null)}
+          />
+        )}
+      </AnimatePresence>
       <div className="max-w-2xl mx-auto">
         <h2 className="text-xl font-semibold text-[#EFEFEF]">Upload your clips</h2>
         <p className="text-sm text-[#6B7C85] mt-1">Match each clip to its scene</p>
@@ -279,42 +307,77 @@ export function UploadBySlotStep({
                 />
 
                 {!uploaded ? (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => fileInputRefs.current[scene.order]?.click()}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && fileInputRefs.current[scene.order]?.click()
-                    }
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const f = e.dataTransfer.files[0];
-                      if (f) handleFile(scene.order, f, false);
-                    }}
-                    className="mt-3 border border-dashed border-[#152226] rounded-lg p-4 text-center cursor-pointer hover:bg-[#070B0D] transition-colors"
-                  >
-                    <Upload className="w-5 h-5 text-[#6B7C85] mx-auto" />
-                    <p className="text-sm text-[#6B7C85] mt-2">
-                      Drop clip here or tap to upload
-                    </p>
+                  <div className="mt-3 space-y-2">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => fileInputRefs.current[scene.order]?.click()}
+                      onKeyDown={(e) =>
+                        e.key === "Enter" && fileInputRefs.current[scene.order]?.click()
+                      }
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const f = e.dataTransfer.files[0];
+                        if (f) handleFile(scene.order, f, false);
+                      }}
+                      className="border border-dashed border-[#152226] rounded-lg p-4 text-center cursor-pointer hover:bg-[#070B0D] transition-colors"
+                    >
+                      <Upload className="w-5 h-5 text-[#6B7C85] mx-auto" />
+                      <p className="text-sm text-[#6B7C85] mt-2">
+                        Drop clip here or tap to upload
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPexelsScene(scene.order)}
+                      className="w-full flex items-center justify-center gap-2 rounded-lg border border-[#152226] bg-[#0D1416] py-2.5 text-xs font-medium text-[#7FA89C] hover:border-[#10B981]/40 hover:text-[#10B981] transition-colors"
+                    >
+                      <Film className="w-3.5 h-3.5" />
+                      No footage? Search stock video
+                    </button>
                   </div>
                 ) : (
                   <div className="mt-3 flex items-center gap-3 bg-[#070B0D] rounded-lg p-3">
-                    <div className="w-16 h-10 bg-[#152226] rounded flex items-center justify-center shrink-0">
-                      <span className="text-[#6B7C85] text-xs">▶</span>
+                    <div className="w-16 h-10 bg-[#152226] rounded overflow-hidden flex items-center justify-center shrink-0">
+                      {uploaded.source === "pexels" && uploaded.previewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={uploaded.previewUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-[#6B7C85] text-xs">▶</span>
+                      )}
                     </div>
-                    <span className="text-xs text-[#6B7C85] truncate flex-1">
-                      {uploaded.file.name}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-xs text-[#6B7C85] truncate">
+                        {uploaded.name ?? uploaded.file?.name ?? "Clip"}
+                      </span>
+                      {uploaded.source === "pexels" && (
+                        <span className="text-[10px] uppercase tracking-wide text-[#7FA89C]">
+                          Pexels stock
+                        </span>
+                      )}
+                    </div>
                     <Check className="w-4 h-4 text-[#10B981] shrink-0" />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRefs.current[scene.order]?.click()}
-                      className="text-xs text-[#6B7C85] underline shrink-0 hover:text-[#EFEFEF]"
-                    >
-                      Replace
-                    </button>
+                    <div className="flex shrink-0 flex-col items-end gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRefs.current[scene.order]?.click()}
+                        className="text-xs text-[#6B7C85] underline hover:text-[#EFEFEF]"
+                      >
+                        Replace
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPexelsScene(scene.order)}
+                        className="text-[11px] text-[#6B7C85] underline hover:text-[#10B981]"
+                      >
+                        Stock
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

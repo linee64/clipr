@@ -1,6 +1,7 @@
 import asyncio
 import os
 import shutil
+import traceback
 from pathlib import Path
 
 from services.editor import (
@@ -31,6 +32,7 @@ from services.editor import (
     trim_clip,
 )
 from services.storage import download_file, upload_file
+from services.tracks import ensure_track_seeded
 from services.templates import (
     DEFAULT_TEMPLATE,
     cap_total_duration,
@@ -62,6 +64,44 @@ def _render_resolution(platform: str, full_res: str) -> str:
     short = round(long_edge * 9 / 16)
     short -= short % 2
     return f"{long_edge}:{short}" if platform == "LinkedIn" else f"{short}:{long_edge}"
+
+
+def _cut_concurrency() -> int:
+    """How many montage cuts to encode at once. Each cut is an independent single-
+    pass ffmpeg encode writing to its own file, so they parallelize cleanly. Bound
+    the fan-out so we don't oversubscribe the CPU (ffmpeg already multithreads each
+    encode). Override with RENDER_CUT_CONCURRENCY; defaults to a modest share of
+    cores. 1 restores the old serial behavior."""
+    raw = (os.getenv("RENDER_CUT_CONCURRENCY") or "").strip()
+    if raw:
+        try:
+            return max(1, int(raw))
+        except ValueError:
+            pass
+    return max(1, min(4, os.cpu_count() or 2))
+
+
+async def _extract_cuts_parallel(specs: list[dict], on_progress=None) -> None:
+    """Run extract_montage_cut for each spec with bounded concurrency. Each spec is
+    the kwargs for one cut; outputs go to distinct paths so order is preserved by the
+    caller's path naming, not by completion order. on_progress(done, total) fires as
+    cuts finish (in completion order)."""
+    if not specs:
+        return
+    sem = asyncio.Semaphore(_cut_concurrency())
+    lock = asyncio.Lock()
+    done = 0
+
+    async def _one(spec: dict):
+        nonlocal done
+        async with sem:
+            await asyncio.to_thread(extract_montage_cut, **spec)
+        if on_progress is not None:
+            async with lock:
+                done += 1
+                on_progress(done, len(specs))
+
+    await asyncio.gather(*(_one(s) for s in specs))
 
 
 async def run_render_job(
@@ -168,6 +208,9 @@ async def run_render_job(
         shutil.rmtree(job_dir, ignore_errors=True)
 
     except Exception as e:
+        # Surface the full traceback to the server console — the job record only keeps
+        # str(e), which on its own is often too thin to diagnose a failed render.
+        print(f"[render_job {job_id}] FAILED:\n{traceback.format_exc()}", flush=True)
         render_jobs[job_id]["status"] = "error"
         render_jobs[job_id]["error"] = str(e)
 
@@ -210,6 +253,12 @@ async def run_broll_render(
         os.makedirs(job_dir, exist_ok=True)
 
         render_jobs[job_id]["progress"] = 5
+
+        # Seed a template track into storage if needed (no-op for uploaded audio /
+        # already-seeded tracks). Done here, inside the job, so the request handler
+        # returns instantly and this shows up as early progress, not a pre-job stall.
+        if audio_file_id:
+            await ensure_track_seeded(audio_file_id)
 
         audio_path = os.path.join(job_dir, "music.mp3")
         await download_file(f"audio/{audio_file_id}.mp3", audio_path)
@@ -310,7 +359,11 @@ async def run_broll_render(
         render_jobs[job_id]["progress"] = 15
 
         # Slice the uploaded clips into beat-synced montage cuts.
+        # Each cut is planned + spec'd serially below (cheap), then all the heavy
+        # encodes run in parallel via _extract_cuts_parallel. Output paths carry the
+        # ordering (cut_NNN.mp4), so concurrent completion doesn't reorder anything.
         cut_paths: list[str] = []
+        cut_specs: list[dict] = []
         scene_cut_counts: list[int] = []
         cut_idx = 0
         total = max(1, len(scenes))
@@ -355,17 +408,16 @@ async def run_broll_render(
                 raw_path = clip_files[cut["clip_index"]]
                 out_path = os.path.join(job_dir, f"cut_{cut_idx:03d}.mp4")
                 do_flash = flash_dur > 0 and (cut_idx % flash_every == 0)
-                await asyncio.to_thread(
-                    extract_montage_cut,
-                    raw_path, out_path, cut["src_offset"], cut["length"],
-                    cut["zoom"], grade_filter, resolution,
+                cut_specs.append(dict(
+                    src_path=raw_path, out_path=out_path,
+                    src_offset=cut["src_offset"], length=cut["length"],
+                    zoom=cut["zoom"], grade=grade_filter, resolution=resolution,
                     exposure=await _exposure_for(raw_path), fit=fit,
                     flash=flash_dur if do_flash else 0.0, card_opts=card_opts,
-                )
+                ))
                 cut_paths.append(out_path)
                 cut_idx += 1
             scene_cut_counts.append(len(plan))
-            render_jobs[job_id]["progress"] = 45
         else:
             # Lay scenes on the video timeline with each scene change snapped to an
             # audible beat (same clock the captions use); each scene = one clip with
@@ -452,17 +504,16 @@ async def run_broll_render(
                     for cut in plan:
                         raw_path = clip_files[cut["clip_index"]]
                         out_path = os.path.join(job_dir, f"cut_{cut_idx:03d}.mp4")
-                        await asyncio.to_thread(
-                            extract_montage_cut,
-                            raw_path, out_path, cut["src_offset"], cut["length"],
-                            cut["zoom"], grade_filter, resolution,
+                        cut_specs.append(dict(
+                            src_path=raw_path, out_path=out_path,
+                            src_offset=cut["src_offset"], length=cut["length"],
+                            zoom=cut["zoom"], grade=grade_filter, resolution=resolution,
                             exposure=await _exposure_for(raw_path), fit=fit,
                             flash=0.0, card_opts=card_opts,
-                        )
+                        ))
                         cut_paths.append(out_path)
                         cut_idx += 1
                     scene_cut_counts.append(len(plan))
-                    render_jobs[job_id]["progress"] = 15 + int(30 * (i + 1) / total)
                     continue
 
                 # Slow section (or no tempo shift): one clip per scene with zoom sub-cuts.
@@ -493,26 +544,31 @@ async def run_broll_render(
                         (ci == 0) if flash_mode == "scene"
                         else (cut_idx % flash_every == 0)
                     )
-                    await asyncio.to_thread(
-                        extract_montage_cut,
-                        raw_path,
-                        out_path,
-                        cut["src_offset"],
-                        cut["length"],
-                        cut["zoom"],
-                        grade_filter,
-                        resolution,
+                    cut_specs.append(dict(
+                        src_path=raw_path,
+                        out_path=out_path,
+                        src_offset=cut["src_offset"],
+                        length=cut["length"],
+                        zoom=cut["zoom"],
+                        grade=grade_filter,
+                        resolution=resolution,
                         exposure=await _exposure_for(raw_path),
                         fit=fit,
                         flash=flash_dur if do_flash else 0.0,
                         card_opts=card_opts,
-                    )
+                    ))
                     cut_paths.append(out_path)
                     cut_idx += 1
 
                 scene_cut_counts.append(len(cuts))
-                render_jobs[job_id]["progress"] = 15 + int(30 * (i + 1) / total)
+                render_jobs[job_id]["progress"] = 15 + int(15 * (i + 1) / total)
 
+        # Encode all planned cuts in parallel (the heavy step). Drive progress across
+        # the 30..45 band as they finish; ordering is already fixed by cut_paths.
+        def _cut_progress(done: int, total_cuts: int):
+            render_jobs[job_id]["progress"] = 30 + int(15 * done / max(1, total_cuts))
+
+        await _extract_cuts_parallel(cut_specs, on_progress=_cut_progress)
         render_jobs[job_id]["progress"] = 45
 
         concat_path = os.path.join(job_dir, "concat.mp4")
@@ -654,5 +710,8 @@ async def run_broll_render(
         shutil.rmtree(job_dir, ignore_errors=True)
 
     except Exception as e:
+        # Surface the full traceback to the server console — the job record only keeps
+        # str(e), which on its own is often too thin to diagnose a failed render.
+        print(f"[broll_render {job_id}] FAILED:\n{traceback.format_exc()}", flush=True)
         render_jobs[job_id]["status"] = "error"
         render_jobs[job_id]["error"] = str(e)

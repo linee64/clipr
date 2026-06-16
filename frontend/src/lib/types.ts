@@ -67,9 +67,29 @@ export interface RenderStatus {
 }
 
 export interface UploadedClipSlot {
-  file: File;
+  /** present for a user-uploaded file; absent for a Pexels-imported clip */
+  file?: File;
   clip_id?: string;
   previewUrl?: string;
+  /** display name shown in the slot (file name, or a Pexels label) */
+  name?: string;
+  source?: "file" | "pexels";
+}
+
+export interface PexelsVideo {
+  id: number;
+  image: string;
+  preview: string;
+  duration: number;
+  width: number;
+  height: number;
+  user_name: string;
+}
+
+export interface PexelsSearchResponse {
+  videos: PexelsVideo[];
+  page: number;
+  total_results: number;
 }
 
 export interface TemplateTrack {

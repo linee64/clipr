@@ -2,6 +2,7 @@ import type {
   BrollRenderRequest,
   IdeaRequest,
   IdeasResponse,
+  PexelsSearchResponse,
   RenderStatus,
   TemplateSampleResponse,
   TemplateTrack,
@@ -38,7 +39,7 @@ export function resolveBackendUrl(url: string): string {
 
 export async function uploadClip(
   file: File
-): Promise<{ clip_id: string; url: string }> {
+): Promise<{ clip_id: string; url: string; storage?: string }> {
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(`${API_BASE}/api/video/upload/clip`, {
@@ -56,6 +57,27 @@ export async function uploadAudio(
   const res = await fetch(`${API_BASE}/api/video/upload/audio`, {
     method: "POST",
     body: form,
+  });
+  return parseJson(res);
+}
+
+export async function searchPexelsVideos(
+  query: string,
+  page = 1
+): Promise<PexelsSearchResponse> {
+  const params = new URLSearchParams({ query, page: String(page) });
+  const res = await fetch(`${API_BASE}/api/pexels/search?${params.toString()}`);
+  return parseJson(res);
+}
+
+/** Import a picked Pexels video server-side and get back a render-ready clip_id. */
+export async function importPexelsClip(
+  videoId: number
+): Promise<{ clip_id: string; url: string; storage?: string }> {
+  const res = await fetch(`${API_BASE}/api/video/pexels-import`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ video_id: videoId }),
   });
   return parseJson(res);
 }

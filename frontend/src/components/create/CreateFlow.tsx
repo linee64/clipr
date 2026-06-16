@@ -7,12 +7,14 @@ import {
   fetchTracks,
   generateVisualScript,
   getRenderStatus,
+  importPexelsClip,
   startBrollRender,
   uploadAudio,
   uploadClip,
 } from "@/lib/api";
 import type {
   AudioSelection,
+  PexelsVideo,
   RenderStatus,
   Scene,
   TemplateTrack,
@@ -371,10 +373,38 @@ export function CreateFlow({
   };
 
   const handleClipUpload = (sceneOrder: number, file: File) => {
-    setUploadedClips((prev) => ({
-      ...prev,
-      [sceneOrder]: { file, previewUrl: URL.createObjectURL(file) },
-    }));
+    const previewUrl = URL.createObjectURL(file);
+    setUploadedClips((prev) => {
+      // Replacing a slot? Revoke the previous object URL so blob: URLs don't leak.
+      const old = prev[sceneOrder]?.previewUrl;
+      if (old && old.startsWith("blob:") && old !== previewUrl) URL.revokeObjectURL(old);
+      return {
+        ...prev,
+        [sceneOrder]: { file, previewUrl, name: file.name, source: "file" },
+      };
+    });
+  };
+
+  // Import a picked Pexels stock video server-side, then slot the returned clip_id
+  // into the scene exactly like an uploaded file (no File object, just a clip_id +
+  // remote thumbnail). Throws on failure so the modal can surface the error.
+  const handlePexelsSelect = async (sceneOrder: number, video: PexelsVideo) => {
+    const { clip_id } = await importPexelsClip(video.id);
+    setUploadedClips((prev) => {
+      // video.image is a remote URL (no revoke needed), but the slot we're replacing
+      // may hold an uploaded file's blob: URL — revoke that so it doesn't leak.
+      const old = prev[sceneOrder]?.previewUrl;
+      if (old && old.startsWith("blob:")) URL.revokeObjectURL(old);
+      return {
+        ...prev,
+        [sceneOrder]: {
+          clip_id,
+          previewUrl: video.image,
+          name: video.user_name ? `Stock · ${video.user_name}` : "Stock video",
+          source: "pexels",
+        },
+      };
+    });
   };
 
   const handleStartRender = async () => {
@@ -395,20 +425,23 @@ export function CreateFlow({
     setCurrentStep(5);
 
     try {
-      const clipIds: string[] = [];
-      for (const scene of scenes) {
-        const slot = uploadedClips[scene.order];
-        if (slot.clip_id) {
-          clipIds.push(slot.clip_id);
-        } else {
+      // Upload every clip in parallel (Promise.all preserves scene order). The
+      // backend storage I/O is non-blocking, so these overlap instead of waiting
+      // one-by-one — the slowest single upload, not their sum, is the wait now.
+      const clipIds: string[] = await Promise.all(
+        scenes.map(async (scene) => {
+          const slot = uploadedClips[scene.order];
+          // Already a clip_id (Pexels import, or a previously-uploaded file) — reuse it.
+          if (slot.clip_id) return slot.clip_id;
+          if (!slot.file) throw new Error(`Scene ${scene.order} has no clip`);
           const { clip_id } = await uploadClip(slot.file);
-          clipIds.push(clip_id);
           setUploadedClips((prev) => ({
             ...prev,
             [scene.order]: { ...prev[scene.order], clip_id },
           }));
-        }
-      }
+          return clip_id;
+        })
+      );
 
       let audioId = audio.audio_file_id;
       if (!audioId && audio.file) {
@@ -502,6 +535,7 @@ export function CreateFlow({
           selectedMusicVibe={selectedMusicVibe}
           onClipUpload={handleClipUpload}
           onClipReplace={handleClipUpload}
+          onPexelsSelect={handlePexelsSelect}
           onAudioSelect={(file) => {
             setAudioFile({ file, name: file.name });
             setAudioUserPicked(true);

@@ -98,6 +98,45 @@ def check_ffmpeg():
     _run(["ffprobe", "-version"])
 
 
+def compress_clip_for_upload(
+    input_path: str, output_path: str, max_long_edge: int = 1920, crf: int = 26
+) -> str:
+    """Downscale + re-encode an uploaded clip so it's small enough to store and fast
+    to upload. Phone clips are often 4K HEVC at tens of MB, which (a) blow past the
+    storage bucket's per-file size limit (Supabase free tier = 50 MB -> a 413 that
+    looks like a frozen upload) and (b) take minutes to transfer. The render only ever
+    works at <=1080p and <=25s, so shrinking the source to 1080p H.264 loses nothing
+    downstream while cutting the bytes by ~4-8x. Only downscales (never upscales).
+    """
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        input_path,
+        "-vf",
+        # fit inside a max_long_edge box (downscale only), then force even dimensions
+        f"scale={max_long_edge}:{max_long_edge}:force_original_aspect_ratio=decrease,"
+        "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        str(crf),
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        "-movflags",
+        "+faststart",
+        output_path,
+    ]
+    _run(cmd)
+    return output_path
+
+
 def transcode_to_mp3(input_path: str, output_path: str, bitrate: str = "192k") -> str:
     """Re-encode any ffmpeg-readable audio (or video's audio track) into a clean mp3.
 
