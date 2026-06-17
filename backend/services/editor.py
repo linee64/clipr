@@ -99,15 +99,25 @@ def check_ffmpeg():
 
 
 def compress_clip_for_upload(
-    input_path: str, output_path: str, max_long_edge: int = 1920, crf: int = 26
+    input_path: str, output_path: str, max_long_edge: int | None = None, crf: int = 26
 ) -> str:
-    """Downscale + re-encode an uploaded clip so it's small enough to store and fast
-    to upload. Phone clips are often 4K HEVC at tens of MB, which (a) blow past the
+    """Downscale + re-encode an uploaded/imported clip so it's small enough to store and
+    fast to upload. Phone clips are often 4K HEVC at tens of MB, which (a) blow past the
     storage bucket's per-file size limit (Supabase free tier = 50 MB -> a 413 that
-    looks like a frozen upload) and (b) take minutes to transfer. The render only ever
-    works at <=1080p and <=25s, so shrinking the source to 1080p H.264 loses nothing
-    downstream while cutting the bytes by ~4-8x. Only downscales (never upscales).
+    looks like a frozen upload) and (b) take minutes to transfer. Only downscales.
+
+    Memory-bounded for small instances: a full-res, multi-threaded libx264 encode of a
+    1080p clip gets OOM-killed on a RAM-constrained box (ffmpeg exit -9, frame=0) — the
+    same constraint that forces renders to 540p. The encode therefore caps the long edge
+    (CLIP_UPLOAD_LONG_EDGE, default 1280) and runs single-threaded; since the render
+    itself outputs <=1080p (and usually 540p via RENDER_LONG_EDGE), the smaller stored
+    source loses nothing downstream. Raise CLIP_UPLOAD_LONG_EDGE on a roomier box.
     """
+    if max_long_edge is None:
+        try:
+            max_long_edge = int(os.getenv("CLIP_UPLOAD_LONG_EDGE", "1280") or "1280")
+        except ValueError:
+            max_long_edge = 1280
     cmd = [
         "ffmpeg",
         "-y",
@@ -123,6 +133,11 @@ def compress_clip_for_upload(
         "veryfast",
         "-crf",
         str(crf),
+        # Single-threaded: caps peak encoder memory so a constrained container can't
+        # OOM-kill the encode (the failure this guards against). Overrides FFMPEG_THREADS
+        # for this one command (since -threads is already present, _run won't re-add it).
+        "-threads",
+        "1",
         "-pix_fmt",
         "yuv420p",
         "-c:a",
