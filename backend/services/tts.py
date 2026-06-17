@@ -165,6 +165,9 @@ def generate_voiceover_for_scenes(
         text_to_speech(phrase, out_path, voice_id, speed)
         results.append(
             {
+                # index into the passed-in `scenes` list, so the caller can line each
+                # clip back up with its scene (e.g. to re-time captions to the voice).
+                "index": i,
                 "audio_path": out_path,
                 "start_time": float(scene.get("start_time", 0.0)),
                 "duration_seconds": float(scene.get("duration_seconds", 0.0)),
