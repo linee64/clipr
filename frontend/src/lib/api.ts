@@ -256,3 +256,74 @@ export async function disconnectTwitter(): Promise<void> {
   );
   await parseJson(res);
 }
+
+// ----------------------------------------------------------------------------
+// LinkedIn connect + auto-posting (mirrors the X integration above)
+// ----------------------------------------------------------------------------
+
+export interface LinkedInStatus {
+  connected: boolean;
+  /** the connected member's display name, when known */
+  name?: string;
+  /** opaque member id (LinkedIn has no public @handle) */
+  member_id?: string;
+  /** false when the backend is missing LinkedIn credentials (connect can't work yet) */
+  configured?: boolean;
+  /** true when a stored session has expired and the user must reconnect */
+  expired?: boolean;
+}
+
+/**
+ * Whether the LinkedIn integration is shown at all. OFF unless
+ * NEXT_PUBLIC_LINKEDIN_ENABLED is exactly "true", so the feature stays hidden on a
+ * deploy until it's ready to expose (same gate pattern as X_ENABLED). Connections are
+ * scoped per browser by the shared client id, like X.
+ */
+export const LINKEDIN_ENABLED = process.env.NEXT_PUBLIC_LINKEDIN_ENABLED === "true";
+
+/** Whether a LinkedIn account is connected for this browser, and which member. */
+export async function getLinkedInStatus(): Promise<LinkedInStatus> {
+  const res = await fetch(
+    `${API_BASE}/api/linkedin/status?cid=${encodeURIComponent(getClientId())}`,
+    { cache: "no-store" }
+  );
+  return parseJson(res);
+}
+
+/** Kick off the LinkedIn OAuth connect (same passthrough pattern as X). */
+export async function startLinkedInConnect(): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/linkedin/login?cid=${encodeURIComponent(getClientId())}`,
+    { cache: "no-store" }
+  );
+  const { authorize_url } = await parseJson<{ authorize_url: string }>(res);
+  window.location.href = authorize_url;
+}
+
+/** Result of publishing to LinkedIn (post URN + a link to the post). */
+export interface LinkedInPostResult {
+  id: string;
+  url: string;
+}
+
+/** Publish a rendered video to LinkedIn with the given caption. */
+export async function postToLinkedIn(payload: {
+  output_url: string;
+  caption: string;
+}): Promise<LinkedInPostResult> {
+  const res = await fetch(`${API_BASE}/api/linkedin/post`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...payload, cid: getClientId() }),
+  });
+  return parseJson(res);
+}
+
+/** Forget the connected LinkedIn account for this browser. */
+export async function disconnectLinkedIn(): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/linkedin/disconnect?cid=${encodeURIComponent(getClientId())}`,
+    { method: "POST" }
+  );
+  await parseJson(res);
+}

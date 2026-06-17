@@ -407,7 +407,9 @@ export function CreateFlow({
         [sceneOrder]: {
           clip_id,
           previewUrl: video.image,
-          name: video.user_name ? `Stock · ${video.user_name}` : "Stock video",
+          // Neutral label — a chosen clip shouldn't reveal it came from a stock
+          // library (no provider name, no creator credit) in the slot UI.
+          name: "Clip",
           source: "pexels",
         },
       };

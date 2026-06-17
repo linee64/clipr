@@ -370,7 +370,7 @@ export function UploadBySlotStep({
                       className="w-full flex items-center justify-center gap-2 rounded-lg border border-[#152226] bg-[#0D1416] py-2.5 text-xs font-medium text-[#7FA89C] hover:border-[#10B981]/40 hover:text-[#10B981] transition-colors"
                     >
                       <Film className="w-3.5 h-3.5" />
-                      No footage? Search stock video
+                      No footage? Search video clips
                     </button>
                   </div>
                 ) : (
@@ -391,11 +391,6 @@ export function UploadBySlotStep({
                       <span className="block text-xs text-[#6B7C85] truncate">
                         {uploaded.name ?? uploaded.file?.name ?? "Clip"}
                       </span>
-                      {uploaded.source === "pexels" && (
-                        <span className="text-[10px] uppercase tracking-wide text-[#7FA89C]">
-                          Pexels stock
-                        </span>
-                      )}
                     </div>
                     <Check className="w-4 h-4 text-[#10B981] shrink-0" />
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
@@ -411,7 +406,7 @@ export function UploadBySlotStep({
                         onClick={() => setPexelsScene(scene.order)}
                         className="text-[11px] text-[#6B7C85] underline hover:text-[#10B981]"
                       >
-                        Stock
+                        Library
                       </button>
                     </div>
                   </div>

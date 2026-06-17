@@ -182,3 +182,11 @@ class TwitterPostRequest(BaseModel):
     caption: str = ""
     # Per-browser client id — scopes the post to that browser's connected X account.
     cid: str = ""
+
+
+class LinkedInPostRequest(BaseModel):
+    # Same shape as TwitterPostRequest: the rendered video to publish, the post text,
+    # and the per-browser client id that scopes it to that browser's LinkedIn account.
+    output_url: str
+    caption: str = ""
+    cid: str = ""

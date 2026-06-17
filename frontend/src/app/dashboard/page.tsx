@@ -34,6 +34,12 @@ import {
   postToTwitter,
   X_ENABLED,
   type TwitterStatus,
+  getLinkedInStatus,
+  startLinkedInConnect,
+  disconnectLinkedIn,
+  postToLinkedIn,
+  LINKEDIN_ENABLED,
+  type LinkedInStatus,
 } from "@/lib/api";
 import type { TemplateOption } from "@/lib/types";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -314,6 +320,8 @@ export default function Dashboard() {
   // X (Twitter) connection state for the Settings tab + post-OAuth toast.
   const [xStatus, setXStatus] = useState<TwitterStatus | null>(null);
   const [xToast, setXToast] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  // LinkedIn connection state (parallels X; the toast above is shared).
+  const [liStatus, setLiStatus] = useState<LinkedInStatus | null>(null);
 
   // Subscription / trial state (local until a real billing provider is wired).
   const [planState, setPlanState] = useState<PlanState>({
@@ -343,24 +351,33 @@ export default function Dashboard() {
   }, [connectMenuOpen]);
 
   // On load, surface the result of an OAuth round-trip (the backend redirects back
-  // to /dashboard?x_connected=1 or ?x_error=...), then scrub it from the URL.
+  // to /dashboard?x_connected=1 / ?x_error=... for X, ?li_connected=1 / ?li_error=...
+  // for LinkedIn), then scrub it from the URL.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has("x_connected")) {
       setXToast({ kind: "ok", text: "X account connected." });
     } else if (params.has("x_error")) {
       setXToast({ kind: "error", text: `Couldn't connect X: ${params.get("x_error")}` });
+    } else if (params.has("li_connected")) {
+      setXToast({ kind: "ok", text: "LinkedIn account connected." });
+    } else if (params.has("li_error")) {
+      setXToast({ kind: "error", text: `Couldn't connect LinkedIn: ${params.get("li_error")}` });
     }
-    if (params.has("x_connected") || params.has("x_error")) {
-      params.delete("x_connected");
-      params.delete("x_error");
+    const oauthKeys = ["x_connected", "x_error", "li_connected", "li_error"];
+    if (oauthKeys.some((k) => params.has(k))) {
+      oauthKeys.forEach((k) => params.delete(k));
       const qs = params.toString();
       window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
     }
     if (X_ENABLED) {
       getTwitterStatus().then(setXStatus).catch(() => setXStatus({ connected: false }));
-    } else {
-      // X is hidden on this deploy — make sure no client id lingers in localStorage.
+    }
+    if (LINKEDIN_ENABLED) {
+      getLinkedInStatus().then(setLiStatus).catch(() => setLiStatus({ connected: false }));
+    }
+    if (!X_ENABLED && !LINKEDIN_ENABLED) {
+      // Both integrations hidden on this deploy — make sure no client id lingers.
       try {
         localStorage.removeItem("clipr_cid");
       } catch {
@@ -405,8 +422,10 @@ export default function Dashboard() {
 
   // Refresh the connection each time Settings opens, in case it changed elsewhere.
   useEffect(() => {
-    if (!X_ENABLED || activeTab !== "Settings") return;
-    getTwitterStatus().then(setXStatus).catch(() => setXStatus({ connected: false }));
+    if (activeTab !== "Settings") return;
+    if (X_ENABLED) getTwitterStatus().then(setXStatus).catch(() => setXStatus({ connected: false }));
+    if (LINKEDIN_ENABLED)
+      getLinkedInStatus().then(setLiStatus).catch(() => setLiStatus({ connected: false }));
   }, [activeTab]);
 
   const handleDisconnectX = async () => {
@@ -448,6 +467,48 @@ export default function Dashboard() {
       });
     } finally {
       setXPostingId(null);
+    }
+  };
+
+  const handleDisconnectLi = async () => {
+    try {
+      await disconnectLinkedIn();
+    } catch {
+      /* ignore — fall through to optimistic update */
+    }
+    setLiStatus({ connected: false });
+    setXToast({ kind: "ok", text: "LinkedIn account disconnected." });
+  };
+
+  // Which saved video is currently being posted to LinkedIn (My Content buttons).
+  const [liPostingId, setLiPostingId] = useState<string | null>(null);
+
+  const handlePostSavedToLinkedIn = async (item: SavedVideo) => {
+    if (!liStatus?.connected) {
+      // Not connected yet — kick off the OAuth flow instead of a dead click.
+      startLinkedInConnect().catch((e) =>
+        setXToast({
+          kind: "error",
+          text: `Couldn't start LinkedIn connect: ${e instanceof Error ? e.message : "try again"}`,
+        })
+      );
+      return;
+    }
+    setLiPostingId(item.id);
+    try {
+      const result = await postToLinkedIn({
+        output_url: item.output_url,
+        caption: item.caption || item.title,
+      });
+      setXToast({ kind: "ok", text: "Posted to LinkedIn." });
+      if (result.url) window.open(result.url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      setXToast({
+        kind: "error",
+        text: e instanceof Error ? e.message : "Couldn't post to LinkedIn. Try again.",
+      });
+    } finally {
+      setLiPostingId(null);
     }
   };
 
@@ -1026,7 +1087,7 @@ export default function Dashboard() {
             >
               ↻ Onboarding
             </button>
-            {X_ENABLED && (
+            {(X_ENABLED || LINKEDIN_ENABLED) && (
             <div className="relative hidden md:block" ref={connectMenuRef}>
               <button
                 onClick={() => setConnectMenuOpen((v) => !v)}
@@ -1034,7 +1095,7 @@ export default function Dashboard() {
               >
                 <span className="flex items-center gap-1.5">
                   <span className="relative flex h-1.5 w-1.5">
-                    {xStatus?.connected ? (
+                    {(xStatus?.connected || liStatus?.connected) ? (
                       <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#10B981] shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
                     ) : (
                       <>
@@ -1043,7 +1104,7 @@ export default function Dashboard() {
                       </>
                     )}
                   </span>
-                  {xStatus?.connected ? "Accounts" : "Connect accounts"}
+                  {(xStatus?.connected || liStatus?.connected) ? "Accounts" : "Connect accounts"}
                 </span>
                 <span className="flex items-center space-x-1 pl-1.5 border-l border-[#152226]">
                   <XLogo className="w-2.5 h-2.5 text-[#EFEFEF]" />
@@ -1055,6 +1116,7 @@ export default function Dashboard() {
               {connectMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-[#152226] bg-[#0D1416] shadow-2xl z-40 p-2 space-y-1">
                   {/* X (Twitter) — live connect */}
+                  {X_ENABLED && (
                   <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-2.5 py-2">
                     <span className="flex items-center gap-2 text-xs text-[#EFEFEF] min-w-0">
                       <XLogo className="w-3.5 h-3.5 shrink-0" />
@@ -1088,20 +1150,61 @@ export default function Dashboard() {
                       </button>
                     )}
                   </div>
+                  )}
 
-                  {/* LinkedIn / TikTok — in development */}
-                  {(["LinkedIn", "TikTok"] as const).map((plat) => (
-                    <div
-                      key={plat}
-                      className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-2.5 py-2 opacity-80"
-                    >
+                  {/* LinkedIn — live connect when enabled, else in development */}
+                  {LINKEDIN_ENABLED ? (
+                    <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-2.5 py-2">
+                      <span className="flex items-center gap-2 text-xs text-[#EFEFEF] min-w-0">
+                        {getPlatformIcon("LinkedIn", 14)}
+                        <span className="truncate">
+                          {liStatus?.connected && liStatus.name ? liStatus.name : "LinkedIn"}
+                        </span>
+                      </span>
+                      {liStatus?.connected ? (
+                        <button
+                          onClick={handleDisconnectLi}
+                          className="shrink-0 text-[10px] text-[#6B7C85] hover:text-[#EF8B8B] border border-[#152226] hover:border-[#EF8B8B]/40 px-2 py-1 rounded-md transition-colors"
+                        >
+                          Disconnect
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setConnectMenuOpen(false);
+                            startLinkedInConnect().catch((e) =>
+                              setXToast({
+                                kind: "error",
+                                text: `Couldn't start LinkedIn connect: ${
+                                  e instanceof Error ? e.message : "try again"
+                                }`,
+                              })
+                            );
+                          }}
+                          className="shrink-0 text-[10px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-2.5 py-1 rounded-md transition-colors"
+                        >
+                          Connect
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-2.5 py-2 opacity-80">
                       <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">
-                        {getPlatformIcon(plat, 14)}
-                        <span>{plat}</span>
+                        {getPlatformIcon("LinkedIn", 14)}
+                        <span>LinkedIn</span>
                       </span>
                       <span className="text-[9px] uppercase tracking-wider font-mono text-[#6B7C85]">In dev</span>
                     </div>
-                  ))}
+                  )}
+
+                  {/* TikTok — in development */}
+                  <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-2.5 py-2 opacity-80">
+                    <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">
+                      {getPlatformIcon("TikTok", 14)}
+                      <span>TikTok</span>
+                    </span>
+                    <span className="text-[9px] uppercase tracking-wider font-mono text-[#6B7C85]">In dev</span>
+                  </div>
 
                   <button
                     onClick={() => {
@@ -1532,6 +1635,20 @@ export default function Dashboard() {
                                     )}
                                   </button>
                                 )}
+                                {LINKEDIN_ENABLED && (
+                                  <button
+                                    onClick={() => handlePostSavedToLinkedIn(item)}
+                                    disabled={liPostingId === item.id}
+                                    title={liStatus?.connected ? "Post to LinkedIn" : "Connect LinkedIn to post"}
+                                    className="p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors disabled:opacity-50"
+                                  >
+                                    {liPostingId === item.id ? (
+                                      <span className="block w-3.5 h-3.5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      getPlatformIcon("LinkedIn", 14)
+                                    )}
+                                  </button>
+                                )}
                                 <a
                                   href={resolveBackendUrl(item.output_url)}
                                   download
@@ -1771,13 +1888,52 @@ export default function Dashboard() {
                   <section className="rounded-xl bg-[#0D1416] border border-[#152226] p-5 space-y-4">
                     <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Connected accounts</h3>
                     <div className="space-y-2">
-                      {/* LinkedIn — in development */}
-                      <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5 opacity-80">
-                        <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">{getPlatformIcon("LinkedIn", 14)}<span>LinkedIn</span></span>
-                        <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] uppercase tracking-wider font-mono text-[#6B7C85] border border-[#152226] bg-[#0D1416] px-2.5 py-1 rounded-lg cursor-not-allowed select-none">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#6B7C85]/70" />
-                          In development
+                      {/* LinkedIn — live connect when enabled, else shown as in-development */}
+                      <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5">
+                        <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">
+                          {getPlatformIcon("LinkedIn", 14)}
+                          <span>LinkedIn</span>
+                          {LINKEDIN_ENABLED && liStatus?.connected && liStatus.name && (
+                            <span className="text-[#6B7C85]">{liStatus.name}</span>
+                          )}
                         </span>
+                        {LINKEDIN_ENABLED ? (
+                          liStatus?.connected ? (
+                            <div className="flex items-center gap-2.5">
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#10B981]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                                Connected
+                              </span>
+                              <button
+                                onClick={handleDisconnectLi}
+                                className="text-[11px] text-[#6B7C85] hover:text-[#EF8B8B] border border-[#152226] hover:border-[#EF8B8B]/40 px-2.5 py-1 rounded-lg transition-colors"
+                              >
+                                Disconnect
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                startLinkedInConnect().catch((e) =>
+                                  setXToast({
+                                    kind: "error",
+                                    text: `Couldn't start LinkedIn connect: ${
+                                      e instanceof Error ? e.message : "try again"
+                                    }`,
+                                  })
+                                )
+                              }
+                              className="text-[11px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-3 py-1.5 rounded-lg transition-colors shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                            >
+                              Connect
+                            </button>
+                          )
+                        ) : (
+                          <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] uppercase tracking-wider font-mono text-[#6B7C85] border border-[#152226] bg-[#0D1416] px-2.5 py-1 rounded-lg cursor-not-allowed select-none">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#6B7C85]/70" />
+                            In development
+                          </span>
+                        )}
                       </div>
 
                       {/* X (Twitter) — live connect when enabled, else shown as in-development */}

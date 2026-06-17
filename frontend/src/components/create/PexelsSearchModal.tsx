@@ -93,11 +93,6 @@ function ResultCard({
               {fmtSecs(video.duration)}
             </span>
           )}
-          {video.user_name && (
-            <span className="truncate text-[10px] text-[#9FB0B6]">
-              {video.user_name}
-            </span>
-          )}
         </div>
       </div>
 
@@ -196,7 +191,7 @@ export function PexelsSearchModal({
       <motion.div
         role="dialog"
         aria-modal="true"
-        aria-label="Search stock video"
+        aria-label="Search video clips"
         className="relative flex max-h-[88vh] w-full flex-col overflow-hidden rounded-t-2xl border border-[#1f3338] bg-[#0B1214]/95 shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:max-h-[80vh] sm:max-w-2xl sm:rounded-2xl"
         initial={{ y: 40, opacity: 0, scale: 0.98 }}
         animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -206,10 +201,10 @@ export function PexelsSearchModal({
         <div className="flex shrink-0 items-start justify-between px-5 pb-3 pt-5">
           <div>
             <h4 className="text-base font-semibold tracking-tight text-[#EFEFEF]">
-              Stock video
+              Video clips
             </h4>
             <p className="mt-0.5 text-[11px] text-[#6B7C85]">
-              Free clips from Pexels — pick one to fill this scene
+              Free clips — pick one to fill this scene
             </p>
           </div>
           <button
@@ -235,8 +230,8 @@ export function PexelsSearchModal({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search stock footage…"
-              aria-label="Search stock footage"
+              placeholder="Search clips…"
+              aria-label="Search clips"
               autoFocus
               className="flex-1 bg-transparent text-sm text-[#EFEFEF] outline-none placeholder:text-[#3A4A50]"
             />
@@ -260,7 +255,7 @@ export function PexelsSearchModal({
           {loading ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-[#6B7C85]">
               <Loader2 className="h-6 w-6 animate-spin text-[#10B981]" />
-              <span className="text-sm">Searching Pexels…</span>
+              <span className="text-sm">Searching…</span>
             </div>
           ) : videos.length > 0 ? (
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
@@ -278,7 +273,7 @@ export function PexelsSearchModal({
             <p className="py-16 text-center text-sm text-[#6B7C85]">
               {searched
                 ? "No clips found — try a different search."
-                : "Type something to find stock footage."}
+                : "Type something to find a clip."}
             </p>
           )}
         </div>
