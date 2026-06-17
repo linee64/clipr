@@ -53,8 +53,14 @@ POSTS_URL = "https://api.linkedin.com/rest/posts"
 # behalf. The app's approved products must grant exactly these.
 SCOPES = "openid profile w_member_social"
 
-# Versioned REST API: LinkedIn requires a YYYYMM version header on /rest/* calls.
-LINKEDIN_VERSION = "202405"
+# Versioned REST API: LinkedIn requires a YYYYMM version header on /rest/* calls and
+# only keeps ~the last 12 monthly versions active — an older one 426s with
+# "NONEXISTENT_VERSION". Default to a known-active recent version, but read it from env
+# so it can be bumped without a code change once it ages out: set LINKEDIN_API_VERSION
+# to any version your LinkedIn app lists as Supported (Developer Portal > Versioning).
+LINKEDIN_VERSION = (
+    (os.getenv("LINKEDIN_API_VERSION") or "").strip().strip('"').strip("'") or "202601"
+)
 
 ACCOUNT_PREFIX = "linkedin/accounts/"
 STATE_PREFIX = "linkedin/oauth_state/"
