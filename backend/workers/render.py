@@ -654,19 +654,31 @@ async def run_broll_render(
                 )
                 spans = vo.get("spans") if vo else None
                 if spans:
-                    # Narration begins at the first voiced scene's footage start; each
-                    # phrase's caption is timed to its exact span within the one take.
-                    by_index = {sp["index"]: sp for sp in spans}
+                    # Narration begins at the first voiced scene's footage start. Each
+                    # caption starts when its phrase is spoken, but is HELD until the next
+                    # phrase begins (so it doesn't flash for ~1s and leave the pauses
+                    # blank), and the LAST caption is held to the end of the video (so the
+                    # tail after the narration isn't left with no subtitle). The voice
+                    # still plays at the exact spans — only the caption windows stretch.
                     first_idx = spans[0]["index"]
                     audio_offset = float(scenes_with_timing[first_idx].get("start_time", 0.0))
+                    video_total = await asyncio.to_thread(get_duration, with_audio_path)
+                    held: dict = {}
+                    for k, sp in enumerate(spans):
+                        start = audio_offset + float(sp["start"])
+                        nxt = (
+                            audio_offset + float(spans[k + 1]["start"])
+                            if k + 1 < len(spans)
+                            else video_total
+                        )
+                        end = max(start + 0.6, min(nxt, video_total))
+                        held[sp["index"]] = (start, end)
                     retimed: list = []
                     for idx, scene in enumerate(scenes_with_timing):
-                        sp = by_index.get(idx)
-                        if sp:
-                            start = audio_offset + float(sp["start"])
-                            dur = max(0.3, float(sp["end"]) - float(sp["start"]))
+                        if idx in held:
+                            start, end = held[idx]
                             retimed.append(
-                                {**scene, "start_time": start, "duration_seconds": dur}
+                                {**scene, "start_time": start, "duration_seconds": end - start}
                             )
                         else:
                             retimed.append(scene)  # no phrase -> keep montage timing
