@@ -1496,7 +1496,11 @@ export default function Dashboard() {
 
                   {/* Ideas Feed (responsive grid, up to 3 cols) — fits all 6 ideas without scrolling, hidden once an idea is selected */}
                   {heroExitState === 'hidden' && !selectedIdeaId && (
-                    <div className="w-full flex-1 flex flex-col items-center justify-center min-h-0 overflow-y-auto px-4 py-6 scrollbar-thin">
+                    // justify-start on mobile: the 6 cards stack into one tall column, and
+                    // a centered (justify-center) overflowing flex column clips its top
+                    // behind the header with no way to scroll up. Center only on md+ where
+                    // the 3-col grid fits without scrolling.
+                    <div className="w-full flex-1 flex flex-col items-center justify-start md:justify-center min-h-0 overflow-y-auto px-4 py-6 scrollbar-thin">
                       {ideasError && (
                         <div className="text-[11px] mb-4 text-amber-400 bg-amber-950/20 border border-amber-500/20 px-3 py-1.5 rounded-lg max-w-[1080px] w-full text-center">
                           {ideasError}
