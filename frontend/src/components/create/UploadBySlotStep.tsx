@@ -10,9 +10,11 @@ import type {
   TemplateTrack,
   UploadedClipSlot,
   VisualScriptResponse,
+  VoiceoverSettings,
 } from "@/lib/types";
 import { MusicTrimmer } from "./MusicTrimmer";
 import { PexelsSearchModal } from "./PexelsSearchModal";
+import { VoiceoverPicker } from "./VoiceoverPicker";
 
 function fmtSecs(s: number): string {
   const m = Math.floor(s / 60);
@@ -20,13 +22,42 @@ function fmtSecs(s: number): string {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
-/** An AI "what to film" line is a shooting instruction ("close-up of hands, soft
- *  window light"), not a stock-search keyword. Seed the Pexels search with a short
- *  head of it — before the first clause break, capped to a few words — so the first
- *  auto-search returns footage. The user can still refine it in the modal. */
+/** Grammatical filler + camera-direction jargon that adds noise (not subject
+ *  matter) to a stock-footage search. "close-up of frustrated founder" should
+ *  search "frustrated founder", not match random close-up clips. */
+const STOCK_QUERY_STOPWORDS = new Set([
+  // articles / conjunctions / prepositions / pronouns / linking verbs
+  "a", "an", "the", "and", "or", "but", "of", "to", "in", "on", "at", "by",
+  "for", "with", "from", "into", "onto", "over", "under", "as", "is", "are",
+  "be", "been", "being", "was", "were", "has", "have", "had", "will",
+  "this", "that", "these", "those", "their", "his", "her", "its", "our",
+  "your", "they", "them", "while", "very", "some", "who", "it", "then",
+  // filler verbs common in shooting directions
+  "looking", "staring", "showing", "shows", "holding", "sitting", "standing",
+  // camera-direction jargon — framing, not subject
+  "closeup", "close", "up", "wide", "shot", "shots", "angle", "pan", "zoom",
+  "footage", "broll", "camera", "cut", "filming", "shoot",
+]);
+
+/** An AI "what to film" line is a shooting instruction ("close-up, founder looking
+ *  frustrated, staring at laptop screen in dim office lighting"), not a stock-search
+ *  keyword. Build the query from the WHOLE instruction: flatten every clause, drop
+ *  filler/camera-direction words, and keep the meaningful nouns/adjectives — so the
+ *  auto-search reflects the entire scene, not just the first word. Falls back to the
+ *  raw head if filtering leaves nothing. The user can still refine it in the modal. */
 function toStockQuery(suggestion: string): string {
-  const head = (suggestion || "").split(/[:,.;—–\n]/)[0].trim();
-  return head.split(/\s+/).filter(Boolean).slice(0, 6).join(" ");
+  const seen = new Set<string>();
+  const keywords: string[] = [];
+  for (const raw of (suggestion || "").toLowerCase().split(/[^a-z0-9]+/)) {
+    if (raw.length < 2 || STOCK_QUERY_STOPWORDS.has(raw) || seen.has(raw)) continue;
+    seen.add(raw);
+    keywords.push(raw);
+    if (keywords.length >= 8) break;
+  }
+  if (keywords.length > 0) return keywords.join(" ");
+  // All-filler line (rare) — fall back to the raw head so we still search something.
+  return (suggestion || "").split(/[:,.;—–\n]/)[0].trim().split(/\s+/)
+    .filter(Boolean).slice(0, 6).join(" ");
 }
 
 /** Animated equalizer bars shown on a track that's currently previewing. */
@@ -132,6 +163,9 @@ interface UploadBySlotStepProps {
   onBack: () => void;
   /** user picked a start offset (seconds) for the chosen track in the trimmer */
   onTrimChange: (start: number) => void;
+  /** AI-voiceover settings (toggle / chosen voice / speed) and their setter */
+  voiceover: VoiceoverSettings;
+  onVoiceoverChange: (next: VoiceoverSettings) => void;
 }
 
 export function UploadBySlotStep({
@@ -147,6 +181,8 @@ export function UploadBySlotStep({
   onContinue,
   onBack,
   onTrimChange,
+  voiceover,
+  onVoiceoverChange,
 }: UploadBySlotStepProps) {
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -519,6 +555,8 @@ export function UploadBySlotStep({
             </button>
           )}
         </section>
+
+        <VoiceoverPicker value={voiceover} onChange={onVoiceoverChange} />
 
         <div className="mt-6 flex gap-3">
           <button

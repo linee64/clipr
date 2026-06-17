@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import os
 import uuid
 from pathlib import Path
@@ -18,6 +19,7 @@ from models.schemas import (
     SilenceDetectRequest,
     SilenceRemoveRequest,
     SubtitleStyleRequest,
+    VoiceoverPreviewRequest,
 )
 from services.editor import (
     apply_beat_sync_transitions,
@@ -32,7 +34,7 @@ from services.editor import (
     transcode_to_mp3,
     transcribe_audio,
 )
-from services import jobstore, pexels
+from services import jobstore, pexels, tts
 from services.storage import download_file, local_file_path, upload_file, use_local_storage
 from services.tracks import get_tracks_with_urls
 from workers.render import render_jobs, run_broll_render, run_render_job
@@ -440,6 +442,13 @@ async def apply_subtitles(request: SubtitleStyleRequest, background_tasks: Backg
 @router.post("/broll-render")
 async def broll_render(request: BrollRenderRequest, background_tasks: BackgroundTasks):
     """Full aesthetic b-roll render: clips + phrases + music → graded video with text."""
+    # Fail fast (and match /voiceover/preview's contract) rather than silently rendering
+    # without voiceover when it was asked for but no voice was chosen.
+    if request.add_voiceover and not (request.voice_id or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="voice_id is required when add_voiceover is enabled.",
+        )
     # Note: seeding a template track into storage (an upload that can take seconds on
     # a cold worker) happens inside run_broll_render now, not here — so this request
     # returns immediately and the client starts polling real progress right away
@@ -465,9 +474,58 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
         beats_per_clip=request.beats_per_clip,
         template_id=request.template_id,
         music_start=request.music_start,
+        add_voiceover=request.add_voiceover,
+        voice_id=request.voice_id,
+        vo_speed=request.vo_speed,
+        vo_volume=request.vo_volume,
+        bg_music_volume=request.bg_music_volume,
     )
 
     return {"job_id": request.job_id, "status": "pending"}
+
+
+@router.get("/voices")
+async def list_voices():
+    """List the ElevenLabs voices available for AI voiceover (for the picker)."""
+    try:
+        voices = await asyncio.to_thread(tts.get_available_voices)
+        return {"voices": voices}
+    except tts.TTSNotConfigured as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except tts.TTSError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@router.post("/voiceover/preview")
+async def voiceover_preview(request: VoiceoverPreviewRequest):
+    """Synthesize a short sample line in the chosen voice and return it as a base64
+    mp3, so the picker can play a preview without a render. Kept small + synchronous;
+    the audio is base64 in the JSON body (no temp file is left on the server)."""
+    if not (request.voice_id or "").strip():
+        raise HTTPException(status_code=400, detail="voice_id is required.")
+    tmp_path = os.path.join(TEMP_DIR, f"vo_preview_{uuid.uuid4()}.mp3")
+    try:
+        await asyncio.to_thread(
+            tts.text_to_speech, request.text, tmp_path, request.voice_id, request.speed
+        )
+        async with aiofiles.open(tmp_path, "rb") as f:
+            data = await f.read()
+        return {
+            "audio_base64": base64.b64encode(data).decode("ascii"),
+            "content_type": "audio/mpeg",
+        }
+    except tts.TTSNotConfigured as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except tts.TTSError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    finally:
+        # Best-effort cleanup — a transient remove failure (e.g. AV scanner holding the
+        # file briefly on Windows) must not mask the real response/error.
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except OSError:
+            pass
 
 
 @router.post("/render", response_model=RenderStatus)

@@ -55,6 +55,29 @@ export interface BrollRenderRequest {
   template_id?: string;
   /** user-picked start offset (seconds) into the track, from the trimmer */
   music_start?: number;
+  // --- AI voiceover (ElevenLabs) — omitted unless the user turns it on ---
+  add_voiceover?: boolean;
+  voice_id?: string;
+  vo_speed?: number;
+  vo_volume?: number;
+  bg_music_volume?: number;
+}
+
+/** An ElevenLabs voice available for AI voiceover (from GET /api/video/voices). */
+export interface Voice {
+  voice_id: string;
+  name: string;
+  category?: string;
+  labels?: Record<string, string>;
+  preview_url?: string;
+}
+
+/** AI-voiceover choices the create flow carries from the upload step into render. */
+export interface VoiceoverSettings {
+  enabled: boolean;
+  voiceId: string;
+  /** playback speed multiplier; ElevenLabs honours ~0.7–1.2 */
+  speed: number;
 }
 
 export interface RenderStatus {

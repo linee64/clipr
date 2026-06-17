@@ -396,6 +396,130 @@ def add_background_audio_only(
     _run(cmd)
 
 
+def mix_voiceover_per_scene(
+    video_path: str,
+    scenes_with_audio: list[dict],
+    output_path: str,
+    vo_volume: float = 1.0,
+    bg_music_volume: float = 0.2,
+) -> str:
+    """Lay each scene's AI voiceover onto the video at its timestamp, ducking the
+    background music under the voice.
+
+    ``scenes_with_audio`` = ``[{"audio_path", "start_time"}, ...]`` (the output of
+    services.tts.generate_voiceover_for_scenes). The video's existing audio (the
+    background-music mix) is lowered to ``bg_music_volume`` and further ducked beneath
+    the combined voice via sidechaincompress, so speech always reads clearly while the
+    music breathes back up between phrases. Each voiceover is delayed to its scene's
+    start_time. The picture is stream-copied (no re-encode) — only audio is rebuilt.
+
+    Falls back to a plain copy when there are no voiceovers; lays the voice over
+    silence when the source has no audio track (defensive — the b-roll pipeline always
+    has music here).
+
+    Note: the output is bounded to the video length (-shortest), so a final-scene
+    voice that runs past the end of the montage is clipped at the video end rather than
+    extending it — voiceover is sized to the video, not the other way around.
+    """
+    voices = [
+        s
+        for s in (scenes_with_audio or [])
+        if s.get("audio_path") and os.path.exists(s["audio_path"])
+    ]
+    if not voices:
+        # Nothing to mix — hand back the input untouched.
+        if os.path.abspath(video_path) != os.path.abspath(output_path):
+            shutil.copy2(video_path, output_path)
+        return output_path
+
+    vo_vol = max(0.0, min(float(vo_volume), 3.0))
+    bg_vol = max(0.0, min(float(bg_music_volume), 2.0))
+    has_bg = has_audio_stream(video_path)
+
+    inputs: list[str] = ["-i", video_path]
+    for v in voices:
+        inputs += ["-i", v["audio_path"]]
+
+    parts: list[str] = []
+    vo_labels: list[str] = []
+    for idx, v in enumerate(voices):
+        # voice inputs are ffmpeg inputs 1..N (input 0 is the video). Normalize each to
+        # a common rate/layout so adelay/amix/sidechain never choke on a mono 22kHz mp3,
+        # then delay it to the scene's start and set the voiceover level.
+        delay_ms = max(0, int(round(float(v.get("start_time", 0.0)) * 1000)))
+        lbl = f"vo{idx}"
+        parts.append(
+            f"[{idx + 1}:a]aformat=sample_rates=44100:channel_layouts=stereo,"
+            f"adelay={delay_ms}:all=1,volume={vo_vol:.3f}[{lbl}]"
+        )
+        vo_labels.append(f"[{lbl}]")
+
+    # Combine every scene's voiceover into one continuous voice track.
+    if len(vo_labels) == 1:
+        parts.append(f"{vo_labels[0]}anull[vmix]")
+    else:
+        parts.append(
+            f"{''.join(vo_labels)}amix=inputs={len(vo_labels)}:normalize=0:"
+            f"dropout_transition=0[vmix]"
+        )
+
+    if has_bg:
+        # Split the voice: one copy keys the ducking sidechain, the other gets mixed in.
+        parts.append("[vmix]asplit=2[vokey][vomix]")
+        # sidechaincompress ends its output when the SHORTER input ends, so a voice that
+        # stops before the video would otherwise cut the music off there. Pad the key
+        # with trailing silence so ducking spans the whole track and the music recovers
+        # (un-ducked, since silence is below threshold) in the gaps after each phrase.
+        parts.append("[vokey]apad[vokeypad]")
+        parts.append(
+            f"[0:a]aformat=sample_rates=44100:channel_layouts=stereo,"
+            f"volume={bg_vol:.3f}[bg0]"
+        )
+        # Duck the (already-lowered) music beneath the voice — drops when the voice is
+        # present, recovers in the gaps between phrases.
+        parts.append(
+            "[bg0][vokeypad]sidechaincompress=threshold=0.04:ratio=8:attack=20:"
+            "release=300[bgduck]"
+        )
+        # duration=first keeps the output at the music/video length, not the (possibly
+        # shorter) voice; -shortest then trims to the video.
+        parts.append(
+            "[bgduck][vomix]amix=inputs=2:normalize=0:duration=first:"
+            "dropout_transition=0[premix]"
+        )
+        # normalize=0 keeps both tracks at honest levels, but the voice + music sum can
+        # cross 0dBFS when vo_volume/bg_music_volume are pushed up — a brick-wall limiter
+        # guards against clipping before the AAC encode (which would bake in distortion).
+        parts.append("[premix]alimiter=limit=0.97[aout]")
+    else:
+        # No source audio: pad the voice with trailing silence so -shortest bounds the
+        # output to the video length rather than the (shorter) voice track; limit too in
+        # case a high vo_volume pushes the voice alone past full scale.
+        parts.append("[vmix]apad,alimiter=limit=0.97[aout]")
+
+    cmd = [
+        "ffmpeg",
+        "-y",
+        *inputs,
+        "-filter_complex",
+        ";".join(parts),
+        "-map",
+        "0:v",
+        "-map",
+        "[aout]",
+        "-c:v",
+        "copy",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-shortest",
+        output_path,
+    ]
+    _run(cmd)
+    return output_path
+
+
 def transcribe_audio(audio_path: str) -> list[dict]:
     """Transcribe audio/video and return timed segments synced to vocals."""
     global _whisper_model

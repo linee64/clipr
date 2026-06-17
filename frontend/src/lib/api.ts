@@ -8,6 +8,7 @@ import type {
   TemplateTrack,
   VisualScriptRequest,
   VisualScriptResponse,
+  Voice,
 } from "./types";
 
 // Backend (FastAPI on Railway) base URL. Set NEXT_PUBLIC_API_BASE in the deploy
@@ -92,6 +93,28 @@ export async function startBrollRender(
   payload: BrollRenderRequest
 ): Promise<{ job_id: string; status: string }> {
   const res = await fetch(`${API_BASE}/api/video/broll-render`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parseJson(res);
+}
+
+/** List the ElevenLabs voices available for AI voiceover. Throws (with the backend's
+ *  message) if voiceover isn't configured on the server — callers surface that. */
+export async function getVoices(): Promise<{ voices: Voice[] }> {
+  const res = await fetch(`${API_BASE}/api/video/voices`);
+  return parseJson(res);
+}
+
+/** Synthesize a short sample line in a voice and get back a base64 mp3 to play in the
+ *  picker (no render needed). */
+export async function previewVoiceover(payload: {
+  voice_id: string;
+  text?: string;
+  speed?: number;
+}): Promise<{ audio_base64: string; content_type: string }> {
+  const res = await fetch(`${API_BASE}/api/video/voiceover/preview`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

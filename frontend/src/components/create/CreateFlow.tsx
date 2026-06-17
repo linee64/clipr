@@ -20,6 +20,7 @@ import type {
   TemplateTrack,
   UploadedClipSlot,
   VisualScriptResponse,
+  VoiceoverSettings,
 } from "@/lib/types";
 import { StepIndicator, type FlowStep } from "./StepIndicator";
 import { StoryboardStep } from "./StoryboardStep";
@@ -209,6 +210,12 @@ export function CreateFlow({
   const [tracks, setTracks] = useState<TemplateTrack[]>([]);
   const [selectedMusicVibe, setSelectedMusicVibe] = useState("dark ambient");
   const [chosenTemplateId, setChosenTemplateId] = useState<string | null>(null);
+  // AI voiceover (off by default — opt-in in the upload step).
+  const [voiceover, setVoiceover] = useState<VoiceoverSettings>({
+    enabled: false,
+    voiceId: "",
+    speed: 1.0,
+  });
 
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [renderStatus, setRenderStatus] = useState<RenderStatus | null>(null);
@@ -464,6 +471,15 @@ export function CreateFlow({
         template_id: chosenTemplateId || visualScript.template_id || "",
         // user-picked track segment (trimmer); omitted -> template/auto behaviour
         ...(audio.start != null ? { music_start: audio.start } : {}),
+        // AI voiceover — only sent when enabled AND a voice is chosen, so the backend
+        // never gets add_voiceover with an empty voice_id.
+        ...(voiceover.enabled && voiceover.voiceId
+          ? {
+              add_voiceover: true,
+              voice_id: voiceover.voiceId,
+              vo_speed: voiceover.speed,
+            }
+          : {}),
       });
 
       setRenderJobId(jobId);
@@ -561,6 +577,8 @@ export function CreateFlow({
           onTrimChange={(start) =>
             setAudioFile((prev) => (prev ? { ...prev, start } : prev))
           }
+          voiceover={voiceover}
+          onVoiceoverChange={setVoiceover}
         />
       )}
 

@@ -22,6 +22,7 @@ from services.editor import (
     generate_description,
     get_duration,
     measure_brightness,
+    mix_voiceover_per_scene,
     montage_scene_windows,
     plan_accel_cut_montage,
     plan_beat_cut_montage,
@@ -33,6 +34,7 @@ from services.editor import (
 )
 from services.storage import download_file, upload_file
 from services.tracks import ensure_track_seeded
+from services.tts import generate_voiceover_for_scenes
 from services.templates import (
     DEFAULT_TEMPLATE,
     cap_total_duration,
@@ -226,6 +228,11 @@ async def run_broll_render(
     beats_per_clip: int = 2,  # kept for API stability; b-roll pacing now comes from the template
     template_id: str = "",
     music_start: float | None = None,  # user-picked track start (trimmer); wins over auto
+    add_voiceover: bool = False,
+    voice_id: str = "",
+    vo_speed: float = 1.0,
+    vo_volume: float = 1.0,
+    bg_music_volume: float = 0.2,
 ):
     render_jobs[job_id] = {
         "status": "processing",
@@ -619,6 +626,39 @@ async def run_broll_render(
                 card_total,
             )
 
+        # --- AI voiceover (optional) -------------------------------------------------
+        # Speak each scene's phrase with an ElevenLabs voice and lay it onto the music
+        # mix at the scene's real (measured) timestamp, ducking the music under the
+        # voice. Done here — after the true scene windows are known and before captions
+        # are burned — so the spoken phrase, the on-screen caption, and the cut all line
+        # up on the same clock. Non-fatal: a TTS hiccup falls back to the music-only mix
+        # rather than discarding an otherwise-finished render (mirrors how a failed
+        # description generation degrades gracefully above).
+        caption_video_path = with_audio_path
+        if add_voiceover and (voice_id or "").strip():
+            try:
+                vo_dir = os.path.join(job_dir, "voiceover")
+                vo_scenes = await asyncio.to_thread(
+                    generate_voiceover_for_scenes,
+                    scenes_with_timing, vo_dir, voice_id, vo_speed,
+                )
+                if vo_scenes:
+                    with_vo_path = os.path.join(job_dir, "with_voiceover.mp4")
+                    await asyncio.to_thread(
+                        mix_voiceover_per_scene,
+                        with_audio_path, vo_scenes, with_vo_path,
+                        vo_volume, bg_music_volume,
+                    )
+                    caption_video_path = with_vo_path
+            except Exception:
+                print(
+                    f"[broll_render {job_id}] voiceover failed, continuing without it:\n"
+                    f"{traceback.format_exc()}",
+                    flush=True,
+                )
+                caption_video_path = with_audio_path
+        render_jobs[job_id]["progress"] = 80
+
         ass_path = os.path.join(job_dir, "broll_captions.ass")
         closing_caption = template.get("closing_caption")
         if closing_caption:
@@ -687,7 +727,7 @@ async def run_broll_render(
         caption_blend = template.get("caption_blend")
         blend_opacity = float(template.get("caption_blend_opacity", 0.85))
         await asyncio.to_thread(
-            burn_subtitles_ass, with_audio_path, ass_path, final_path,
+            burn_subtitles_ass, caption_video_path, ass_path, final_path,
             caption_blend, blend_opacity, True,
         )
 

@@ -62,6 +62,31 @@ class BrollRenderRequest(BaseModel):
     # User-chosen start offset (seconds) into the track — the segment they picked in
     # the trimmer. None = auto (template music_start / hook detection). Wins over both.
     music_start: float | None = None
+    # --- AI voiceover (ElevenLabs) ---
+    # Off by default so existing renders are byte-identical. When on, each scene's
+    # phrase is spoken at its timestamp and the music ducks under the voice. voice_id
+    # defaults to "" (rather than being required) so a request that doesn't opt into
+    # voiceover still validates; it's required only when add_voiceover is True.
+    add_voiceover: bool = False
+    voice_id: str = ""
+    # Bounds reject obvious garbage (negative/NaN/huge) at the API edge; the services
+    # still clamp to their exact working ranges (speed 0.7–1.2 in tts) downstream.
+    vo_speed: float = Field(default=1.0, ge=0.5, le=2.0)  # ElevenLabs honours ~0.7–1.2
+    vo_volume: float = Field(default=1.0, ge=0.0, le=3.0)  # voiceover level in the mix
+    bg_music_volume: float = Field(default=0.2, ge=0.0, le=2.0)  # music bed under voice
+
+
+class VoiceoverPreviewRequest(BaseModel):
+    voice_id: str
+    # Short sample line the user hears in the picker before committing to a voice.
+    # Capped so a preview can't synthesize a huge clip (the base64 mp3 rides back in
+    # the JSON body) or burn API quota.
+    text: str = Field(
+        default="This is how your voiceover will sound on your next video.",
+        min_length=1,
+        max_length=300,
+    )
+    speed: float = Field(default=1.0, ge=0.5, le=2.0)
 
 
 class VideoClip(BaseModel):
