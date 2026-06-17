@@ -572,6 +572,18 @@ export default function Dashboard() {
     });
   };
 
+  // Copy a saved video's description/caption so it can be pasted into a social post.
+  const handleCopyCaption = async (item: SavedVideo) => {
+    const text = (item.caption || item.title || "").trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setXToast({ kind: "ok", text: "Caption copied." });
+    } catch {
+      setXToast({ kind: "error", text: "Couldn't copy — select the text manually." });
+    }
+  };
+
   // Onboarding & DNA States
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(true);
   const [isLoadingOnboarding, setIsLoadingOnboarding] = useState<boolean>(true);
@@ -1618,6 +1630,24 @@ export default function Dashboard() {
                             <h4 className="text-xs font-semibold text-[#EFEFEF] line-clamp-2 leading-relaxed">
                               {item.title}
                             </h4>
+
+                            {/* Saved description/caption — shown so it can be reused
+                                when posting to socials (copy, or use the post buttons). */}
+                            {item.caption && (
+                              <div className="rounded-lg bg-[#070B0D] border border-[#152226] p-2">
+                                <p className="text-[10px] text-[#9FB0B6] leading-relaxed whitespace-pre-line line-clamp-3">
+                                  {item.caption}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyCaption(item)}
+                                  className="mt-1.5 text-[10px] font-medium text-[#6B7C85] hover:text-[#10B981] transition-colors"
+                                >
+                                  Copy caption
+                                </button>
+                              </div>
+                            )}
+
                             <div className="flex justify-between items-center pt-2 border-t border-[#152226]">
                               <span className="text-[10px] text-[#6B7C85] font-mono">{item.date}</span>
                               <div className="flex items-center gap-1.5">
