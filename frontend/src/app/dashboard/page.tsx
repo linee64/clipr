@@ -483,6 +483,10 @@ export default function Dashboard() {
   // Which saved video is currently being posted to LinkedIn (My Content buttons).
   const [liPostingId, setLiPostingId] = useState<string | null>(null);
 
+  // Inline caption editing in My Content: the card being edited + its draft text.
+  const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null);
+  const [captionDraft, setCaptionDraft] = useState("");
+
   const handlePostSavedToLinkedIn = async (item: SavedVideo) => {
     if (!liStatus?.connected) {
       // Not connected yet — kick off the OAuth flow instead of a dead click.
@@ -582,6 +586,34 @@ export default function Dashboard() {
     } catch {
       setXToast({ kind: "error", text: "Couldn't copy — select the text manually." });
     }
+  };
+
+  // Persist an edited description back to the saved video (state + localStorage).
+  const updateSavedCaption = (id: string, caption: string) => {
+    setSavedContent((prev) => {
+      const next = prev.map((v) => (v.id === id ? { ...v, caption } : v));
+      try {
+        localStorage.setItem("clipr_content", JSON.stringify(next));
+      } catch {
+        /* ignore — localStorage unavailable */
+      }
+      return next;
+    });
+  };
+
+  const startEditCaption = (item: SavedVideo) => {
+    setEditingCaptionId(item.id);
+    setCaptionDraft(item.caption || "");
+  };
+  const cancelEditCaption = () => {
+    setEditingCaptionId(null);
+    setCaptionDraft("");
+  };
+  const saveEditCaption = (id: string) => {
+    updateSavedCaption(id, captionDraft.trim());
+    setEditingCaptionId(null);
+    setCaptionDraft("");
+    setXToast({ kind: "ok", text: "Description saved." });
   };
 
   // Onboarding & DNA States
@@ -1631,20 +1663,62 @@ export default function Dashboard() {
                               {item.title}
                             </h4>
 
-                            {/* Saved description/caption — shown so it can be reused
-                                when posting to socials (copy, or use the post buttons). */}
-                            {item.caption && (
+                            {/* Saved description/caption — editable + persisted, and
+                                reused when posting to socials (copy / post buttons). */}
+                            {editingCaptionId === item.id ? (
+                              <div className="rounded-lg bg-[#070B0D] border border-[#10B981]/30 p-2">
+                                <textarea
+                                  value={captionDraft}
+                                  onChange={(e) => setCaptionDraft(e.target.value)}
+                                  rows={4}
+                                  autoFocus
+                                  placeholder="Write a description…"
+                                  className="w-full resize-y bg-transparent text-[11px] text-[#EFEFEF] leading-relaxed outline-none placeholder:text-[#3A4A50] scrollbar-thin"
+                                />
+                                <div className="mt-1.5 flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => saveEditCaption(item.id)}
+                                    className="text-[10px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-2.5 py-1 rounded-md transition-colors"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={cancelEditCaption}
+                                    className="text-[10px] text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
                               <div className="rounded-lg bg-[#070B0D] border border-[#152226] p-2">
-                                <p className="text-[10px] text-[#9FB0B6] leading-relaxed whitespace-pre-line line-clamp-3">
-                                  {item.caption}
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyCaption(item)}
-                                  className="mt-1.5 text-[10px] font-medium text-[#6B7C85] hover:text-[#10B981] transition-colors"
-                                >
-                                  Copy caption
-                                </button>
+                                {item.caption ? (
+                                  <p className="text-[10px] text-[#9FB0B6] leading-relaxed whitespace-pre-line line-clamp-3">
+                                    {item.caption}
+                                  </p>
+                                ) : (
+                                  <p className="text-[10px] text-[#3A4A50] italic">No description yet</p>
+                                )}
+                                <div className="mt-1.5 flex items-center gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditCaption(item)}
+                                    className="text-[10px] font-medium text-[#6B7C85] hover:text-[#10B981] transition-colors"
+                                  >
+                                    Edit
+                                  </button>
+                                  {item.caption && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyCaption(item)}
+                                      className="text-[10px] font-medium text-[#6B7C85] hover:text-[#10B981] transition-colors"
+                                    >
+                                      Copy
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             )}
 
