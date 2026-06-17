@@ -18,8 +18,8 @@ import {
   Trash2,
   X,
   Check,
-  ChevronRight,
-  ChevronLeft
+  Clock,
+  ChevronRight
 } from "lucide-react";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { CreateFlow } from "@/components/create/CreateFlow";
@@ -40,8 +40,11 @@ import {
   postToLinkedIn,
   LINKEDIN_ENABLED,
   type LinkedInStatus,
+  createSchedule,
+  listSchedules,
+  cancelSchedule,
 } from "@/lib/api";
-import type { TemplateOption } from "@/lib/types";
+import type { TemplateOption, ScheduledPost } from "@/lib/types";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { readPlan, setPlan, TRIAL_DAYS, type PlanState } from "@/lib/plan";
 
@@ -273,15 +276,6 @@ const IDEA_CARDS: IdeaCard[] = [
     estimate: "Trending topic"
   }
 ];
-
-const MOCK_CALENDAR_POSTS: Record<number, { platform: "TikTok" | "LinkedIn" | "Instagram"; title: string; time: string; status: "Scheduled" | "Published" }[]> = {
-  3: [{ platform: "LinkedIn", title: "The cost of bad hiring in SaaS", time: "10:30 AM", status: "Published" }],
-  5: [{ platform: "TikTok", title: "Day in the life of a solo founder", time: "04:15 PM", status: "Published" }],
-  10: [{ platform: "Instagram", title: "How we hit $10k MRR in 30 days", time: "09:00 AM", status: "Scheduled" }],
-  14: [{ platform: "TikTok", title: "Why I hate traditional project management", time: "11:30 AM", status: "Scheduled" }],
-  18: [{ platform: "LinkedIn", title: "3 productivity hacks that actually work", time: "01:00 PM", status: "Scheduled" }],
-  22: [{ platform: "Instagram", title: "The raw truth about SaaS valuations", time: "06:00 PM", status: "Scheduled" }]
-};
 
 const TRENDS_DATA = [
   { id: "t-1", source: "REDDIT", title: "Founders moving from Slack to Discord", time: "2h ago" },
@@ -629,23 +623,35 @@ export default function Dashboard() {
   // Modal and details
   const [selectedIdea, setSelectedIdea] = useState<IdeaCard | null>(null);
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<number | null>(10);
-  const [, setShowCalendarPanel] = useState(true);
   const [ideasError, setIdeasError] = useState<string | null>(null);
 
-  // Scheduling
-  // Calendar/scheduling is shelved (Calendar tab is "coming soon"); the schedule
-  // modal stays wired but the displayed values aren't read anywhere, so keep only
-  // the setters to satisfy the no-unused-vars rule.
-  const [, setCalendarPosts] = useState(MOCK_CALENDAR_POSTS);
+  // Scheduling (auto-post a rendered video to a social network at a set time).
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [scheduleTitle, setScheduleTitle] = useState("");
-  const [schedulePlatform, setSchedulePlatform] = useState<"TikTok" | "LinkedIn" | "Instagram">("TikTok");
-  const [scheduleDay, setScheduleDay] = useState<number>(10);
+  const [scheduleVideo, setScheduleVideo] = useState<{ output_url: string; title: string } | null>(null);
+  const [schedulePlatform, setSchedulePlatform] = useState<"twitter" | "linkedin">("twitter");
+  const [scheduleDate, setScheduleDate] = useState(""); // YYYY-MM-DD (local)
   const [scheduleTime, setScheduleTime] = useState("09:00");
-  const [, setScheduleConfirmation] = useState<string | null>(null);
+  const [scheduleCaption, setScheduleCaption] = useState("");
+  const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [schedules, setSchedules] = useState<ScheduledPost[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
   // Lets the schedule modal jump the still-mounted create flow back to a step.
   const [flowJumpStep, setFlowJumpStep] = useState<FlowStep | null>(null);
+
+  const loadSchedules = useCallback(() => {
+    setSchedulesLoading(true);
+    listSchedules()
+      .then((data) => setSchedules(data.schedules))
+      .catch(() => setSchedules([]))
+      .finally(() => setSchedulesLoading(false));
+  }, []);
+
+  // Load scheduled posts whenever the Calendar tab opens.
+  useEffect(() => {
+    if (activeTab !== "Calendar") return;
+    loadSchedules();
+  }, [activeTab, loadSchedules]);
 
 
   // Voice Edit profile
@@ -751,13 +757,7 @@ export default function Dashboard() {
     setSelectedIdea(null);
   };
 
-  const normalizePlatform = (p: string): "TikTok" | "LinkedIn" | "Instagram" => {
-    if (p === "LinkedIn") return "LinkedIn";
-    if (p === "Reels" || p === "Instagram" || p === "Instagram Reels") return "Instagram";
-    return "TikTok";
-  };
-
-  // "14:30" (24h input value) -> "2:30 PM" (calendar display)
+  // "14:30" (24h input value) -> "2:30 PM" (display)
   const formatTime = (t: string): string => {
     const [hStr, m] = (t || "09:00").split(":");
     let h = Number(hStr);
@@ -767,30 +767,71 @@ export default function Dashboard() {
     return `${h}:${m ?? "00"} ${ampm}`;
   };
 
-  const openScheduleModal = (draft?: { title?: string; platform?: string; day?: number }) => {
-    setScheduleTitle(draft?.title ?? "");
-    setSchedulePlatform(normalizePlatform(draft?.platform ?? selectedPlatform));
-    setScheduleDay(draft?.day ?? selectedDate ?? 10);
+  // Format an epoch (seconds) as a short local date+time for the calendar list.
+  const formatScheduleWhen = (epochSecs: number): string => {
+    const d = new Date(epochSecs * 1000);
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  // Open the schedule modal for a specific rendered video.
+  const openScheduleModal = (
+    video: { output_url: string; title?: string; caption?: string },
+    platform?: "twitter" | "linkedin",
+  ) => {
+    if (!video.output_url) return;
+    setScheduleVideo({ output_url: video.output_url, title: video.title || "Untitled video" });
+    setSchedulePlatform(platform ?? (X_ENABLED ? "twitter" : "linkedin"));
+    setScheduleCaption(video.caption ?? "");
+    const now = new Date();
+    setScheduleDate(
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
+    );
     setScheduleTime("09:00");
+    setScheduleError(null);
     setScheduleOpen(true);
   };
 
-  const confirmSchedule = () => {
-    const day = scheduleDay;
-    const displayTime = formatTime(scheduleTime);
-    const post = {
-      platform: schedulePlatform,
-      title: scheduleTitle.trim() || "Untitled video",
-      time: displayTime,
-      status: "Scheduled" as const,
-    };
-    setCalendarPosts((prev) => ({ ...prev, [day]: [...(prev[day] ?? []), post] }));
-    setScheduleOpen(false);
-    setScheduleConfirmation(`Scheduled “${post.title}” to June ${day} at ${post.time}`);
-    setActiveTab("Calendar");
-    setSidebarActive("Calendar");
-    setSelectedDate(day);
-    setShowCalendarPanel(true);
+  const confirmSchedule = async () => {
+    if (!scheduleVideo) return;
+    const ts = new Date(`${scheduleDate}T${scheduleTime}`).getTime();
+    if (!scheduleDate || Number.isNaN(ts)) {
+      setScheduleError("Pick a valid date and time.");
+      return;
+    }
+    setScheduleSubmitting(true);
+    setScheduleError(null);
+    try {
+      await createSchedule({
+        platform: schedulePlatform,
+        output_url: scheduleVideo.output_url,
+        caption: scheduleCaption,
+        title: scheduleVideo.title,
+        scheduled_at: Math.round(ts / 1000),
+      });
+      setScheduleOpen(false);
+      setXToast({ kind: "ok", text: "Post scheduled." });
+      setActiveTab("Calendar");
+      setSidebarActive("Calendar");
+      loadSchedules();
+    } catch (e) {
+      setScheduleError(e instanceof Error ? e.message : "Couldn't schedule. Try again.");
+    } finally {
+      setScheduleSubmitting(false);
+    }
+  };
+
+  const handleCancelSchedule = async (id: string) => {
+    try {
+      await cancelSchedule(id);
+    } catch {
+      /* ignore — fall through to optimistic removal */
+    }
+    setSchedules((prev) => prev.filter((s) => s.id !== id));
   };
 
   const handleScheduleFromRender = (payload: {
@@ -799,21 +840,11 @@ export default function Dashboard() {
     outputUrl: string;
     platform: string;
   }) => {
-    // Keep the create flow mounted underneath the modal so its "back to
-    // reference / subtitles" buttons can return without losing progress.
     openScheduleModal({
+      output_url: payload.outputUrl,
       title: payload.title,
-      platform: payload.platform,
-      day: selectedDate ?? 10,
+      caption: payload.description,
     });
-  };
-
-  // From the schedule modal: close it and jump the still-mounted flow to a step.
-  const jumpFlowToStep = (step: FlowStep) => {
-    setScheduleOpen(false);
-    setActiveTab("Create");
-    setSidebarActive("Home");
-    setFlowJumpStep(step);
   };
 
   const triggerGenerateIdeas = async () => {
@@ -1566,25 +1597,100 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between border-b border-[#152226] pb-4">
                     <div className="space-y-1">
                       <h2 className="text-base font-semibold text-[#EFEFEF]">Content Calendar</h2>
-                      <p className="text-xs text-[#6B7C85]">Plan, schedule &amp; auto-post your content.</p>
+                      <p className="text-xs text-[#6B7C85]">Scheduled posts auto-publish to X / LinkedIn at their time.</p>
                     </div>
+                    <button
+                      onClick={loadSchedules}
+                      className="shrink-0 text-[11px] text-[#6B7C85] hover:text-[#10B981] border border-[#152226] hover:border-[#10B981]/40 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Refresh
+                    </button>
                   </div>
-                  <div className="rounded-xl bg-[#0D1416] border border-[#152226] p-12 sm:p-16 text-center flex flex-col items-center gap-4 relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: "radial-gradient(circle at 50% 0%, #10B981, transparent 60%)" }} />
-                    <div className="w-14 h-14 rounded-2xl bg-[#070B0D] border border-[#152226] flex items-center justify-center shadow-[0_0_24px_rgba(16,185,129,0.12)] relative">
-                      <CalendarRange className="w-6 h-6 text-[#10B981]" />
+
+                  {schedulesLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-16 text-[#6B7C85]">
+                      <span className="w-4 h-4 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm">Loading…</span>
                     </div>
-                    <span className="relative text-[10px] uppercase tracking-[0.2em] font-mono text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-3 py-1 rounded-full">Coming soon</span>
-                    <h3 className="relative text-xl font-semibold text-[#EFEFEF]">Schedule &amp; auto-post</h3>
-                    <p className="relative text-sm text-[#6B7C85] max-w-sm leading-relaxed">Plan your week and let Clipr post your videos to TikTok, Reels &amp; LinkedIn automatically — right from your calendar. We&apos;re putting the finishing touches on it.</p>
-                    <div className="relative flex flex-wrap items-center justify-center gap-2 pt-2">
-                      {(["TikTok", "Instagram", "LinkedIn"] as const).map((plat) => (
-                        <span key={plat} className="inline-flex items-center gap-1.5 text-[11px] text-[#6B7C85] border border-[#152226] bg-[#070B0D] px-2.5 py-1 rounded-full">
-                          {getPlatformIcon(plat, 12)}<span>{plat}</span>
-                        </span>
-                      ))}
+                  ) : schedules.length === 0 ? (
+                    <div className="rounded-xl bg-[#0D1416] border border-[#152226] p-12 text-center flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-[#070B0D] border border-[#152226] flex items-center justify-center">
+                        <CalendarRange className="w-5 h-5 text-[#10B981]" />
+                      </div>
+                      <h3 className="text-base font-semibold text-[#EFEFEF]">No scheduled posts yet</h3>
+                      <p className="text-sm text-[#6B7C85] max-w-xs">
+                        Open My Content, pick a video and tap the clock icon to schedule an auto-post.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setActiveTab("My Content");
+                          setSidebarActive("My Content");
+                        }}
+                        className="mt-1 text-xs font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-4 py-2 rounded-lg transition-colors"
+                      >
+                        Go to My Content
+                      </button>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {schedules.map((s) => {
+                        const badge =
+                          ({
+                            pending: { t: "Scheduled", c: "text-[#10B981] bg-[#10B981]/10 border-[#10B981]/25" },
+                            processing: { t: "Posting…", c: "text-[#7FA89C] bg-[#10B981]/[0.06] border-[#152226]" },
+                            posted: { t: "Posted", c: "text-[#10B981] bg-[#10B981]/10 border-[#10B981]/25" },
+                            error: { t: "Failed", c: "text-[#EF8B8B] bg-[#EF8B8B]/[0.06] border-[#EF8B8B]/25" },
+                          } as const)[s.status] ?? { t: s.status, c: "text-[#6B7C85] border-[#152226]" };
+                        return (
+                          <div
+                            key={s.id}
+                            className="flex items-center gap-3 rounded-xl bg-[#0D1416] border border-[#152226] px-4 py-3"
+                          >
+                            <span className="w-8 h-8 rounded-full bg-[#152226] flex items-center justify-center shrink-0 text-[#EFEFEF]">
+                              {s.platform === "twitter" ? (
+                                <XLogo className="w-3.5 h-3.5" />
+                              ) : (
+                                getPlatformIcon("LinkedIn", 14)
+                              )}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-[#EFEFEF] truncate">
+                                {s.title || "Untitled video"}
+                              </p>
+                              <p className="text-[11px] text-[#6B7C85]">
+                                {s.platform === "twitter" ? "X" : "LinkedIn"} · {formatScheduleWhen(s.scheduled_at)}
+                              </p>
+                              {s.status === "error" && s.error && (
+                                <p className="text-[10px] text-[#EF8B8B] mt-0.5 line-clamp-1">{s.error}</p>
+                              )}
+                            </div>
+                            <span
+                              className={`shrink-0 text-[10px] uppercase tracking-wider font-mono border px-2 py-1 rounded-md ${badge.c}`}
+                            >
+                              {badge.t}
+                            </span>
+                            {s.status === "posted" && s.result_url ? (
+                              <a
+                                href={s.result_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 text-[11px] text-[#10B981] hover:underline"
+                              >
+                                View
+                              </a>
+                            ) : s.status === "pending" || s.status === "error" ? (
+                              <button
+                                onClick={() => handleCancelSchedule(s.id)}
+                                className="shrink-0 text-[11px] text-[#6B7C85] hover:text-[#EF8B8B] transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -1753,6 +1859,19 @@ export default function Dashboard() {
                                     )}
                                   </button>
                                 )}
+                                <button
+                                  onClick={() =>
+                                    openScheduleModal({
+                                      output_url: item.output_url,
+                                      title: item.title,
+                                      caption: item.caption,
+                                    })
+                                  }
+                                  title="Schedule auto-post"
+                                  className="p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors"
+                                >
+                                  <Clock className="w-3.5 h-3.5" />
+                                </button>
                                 <a
                                   href={resolveBackendUrl(item.output_url)}
                                   download
@@ -2376,7 +2495,7 @@ export default function Dashboard() {
 
       {/* Schedule Modal */}
       <AnimatePresence>
-        {scheduleOpen && (
+        {scheduleOpen && scheduleVideo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
@@ -2395,8 +2514,8 @@ export default function Dashboard() {
             >
               <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h2 className="text-lg font-bold text-[#EFEFEF]">Schedule post</h2>
-                  <p className="text-xs text-[#6B7C85] mt-0.5">Pick a day and time on your calendar</p>
+                  <h2 className="text-lg font-bold text-[#EFEFEF]">Schedule auto-post</h2>
+                  <p className="text-xs text-[#6B7C85] mt-0.5">It posts itself when the time comes</p>
                 </div>
                 <button
                   onClick={() => setScheduleOpen(false)}
@@ -2406,66 +2525,45 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {selectedIdea && (
-                <div className="mb-5 flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85] mr-1">
-                    Go back to edit
-                  </span>
-                  {([
-                    { label: "Subtitles", step: 2 },
-                    { label: "Clips & music", step: 3 },
-                    { label: "Reference", step: 4 },
-                  ] as { label: string; step: FlowStep }[]).map((b) => (
-                    <button
-                      key={b.step}
-                      type="button"
-                      onClick={() => jumpFlowToStep(b.step)}
-                      className="inline-flex items-center gap-1 rounded-full border border-[#152226] bg-[#070B0D] px-3 py-1.5 text-xs text-[#6B7C85] hover:text-[#10B981] hover:border-[#10B981]/40 transition-colors"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                      {b.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {/* Which video */}
+              <div className="mb-4 rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85]">Video</span>
+                <p className="text-sm text-[#EFEFEF] truncate mt-0.5">{scheduleVideo.title}</p>
+              </div>
 
               <div className="space-y-4">
-                {/* Title */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85] font-bold">
-                    Title
-                  </label>
-                  <input
-                    value={scheduleTitle}
-                    onChange={(e) => setScheduleTitle(e.target.value)}
-                    placeholder="Video title"
-                    className="w-full bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2.5 text-sm text-[#EFEFEF] outline-none focus:border-[#10B981] transition-colors placeholder:text-[#6B7C85]"
-                  />
-                </div>
-
                 {/* Platform */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85] font-bold">
                     Platform
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["TikTok", "Instagram", "LinkedIn"] as const).map((plat) => {
-                      const active = schedulePlatform === plat;
-                      return (
-                        <button
-                          key={plat}
-                          onClick={() => setSchedulePlatform(plat)}
-                          className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-all ${
-                            active
-                              ? "border-[#10B981] bg-[#10B981]/10 text-[#EFEFEF]"
-                              : "border-[#152226] bg-[#070B0D] text-[#6B7C85] hover:border-[#1E343A]"
-                          }`}
-                        >
-                          {getPlatformIcon(plat, 14)}
-                          <span>{plat}</span>
-                        </button>
-                      );
-                    })}
+                  <div className="grid grid-cols-2 gap-2">
+                    {X_ENABLED && (
+                      <button
+                        onClick={() => setSchedulePlatform("twitter")}
+                        className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-all ${
+                          schedulePlatform === "twitter"
+                            ? "border-[#10B981] bg-[#10B981]/10 text-[#EFEFEF]"
+                            : "border-[#152226] bg-[#070B0D] text-[#6B7C85] hover:border-[#1E343A]"
+                        }`}
+                      >
+                        <XLogo className="w-3.5 h-3.5" />
+                        <span>X</span>
+                      </button>
+                    )}
+                    {LINKEDIN_ENABLED && (
+                      <button
+                        onClick={() => setSchedulePlatform("linkedin")}
+                        className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-all ${
+                          schedulePlatform === "linkedin"
+                            ? "border-[#10B981] bg-[#10B981]/10 text-[#EFEFEF]"
+                            : "border-[#152226] bg-[#070B0D] text-[#6B7C85] hover:border-[#1E343A]"
+                        }`}
+                      >
+                        {getPlatformIcon("LinkedIn", 14)}
+                        <span>LinkedIn</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -2477,13 +2575,8 @@ export default function Dashboard() {
                     </label>
                     <input
                       type="date"
-                      min="2026-06-01"
-                      max="2026-06-30"
-                      value={`2026-06-${String(scheduleDay).padStart(2, "0")}`}
-                      onChange={(e) => {
-                        const d = Number(e.target.value.split("-")[2]);
-                        if (d >= 1 && d <= 30) setScheduleDay(d);
-                      }}
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
                       className="w-full bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2.5 text-sm text-[#EFEFEF] outline-none focus:border-[#10B981] transition-colors [color-scheme:dark]"
                     />
                   </div>
@@ -2500,11 +2593,34 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <p className="text-[11px] text-[#6B7C85]">
-                  Will post on{" "}
-                  <span className="text-[#EFEFEF] font-medium">June {scheduleDay}, 2026</span> at{" "}
-                  <span className="text-[#EFEFEF] font-medium">{formatTime(scheduleTime)}</span>
-                </p>
+                {/* Caption */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85] font-bold">
+                    Caption
+                  </label>
+                  <textarea
+                    value={scheduleCaption}
+                    onChange={(e) => setScheduleCaption(e.target.value)}
+                    rows={3}
+                    placeholder="Post text…"
+                    className="w-full resize-y bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2.5 text-sm text-[#EFEFEF] outline-none focus:border-[#10B981] transition-colors placeholder:text-[#6B7C85] scrollbar-thin"
+                  />
+                </div>
+
+                {scheduleDate && (
+                  <p className="text-[11px] text-[#6B7C85]">
+                    Posts to{" "}
+                    <span className="text-[#EFEFEF] font-medium">
+                      {schedulePlatform === "twitter" ? "X" : "LinkedIn"}
+                    </span>{" "}
+                    on <span className="text-[#EFEFEF] font-medium">{scheduleDate}</span> at{" "}
+                    <span className="text-[#EFEFEF] font-medium">{formatTime(scheduleTime)}</span>
+                  </p>
+                )}
+
+                {scheduleError && (
+                  <p className="text-xs text-[#EF8B8B] leading-relaxed">{scheduleError}</p>
+                )}
               </div>
 
               <div className="mt-6 flex gap-3">
@@ -2516,10 +2632,20 @@ export default function Dashboard() {
                 </button>
                 <button
                   onClick={confirmSchedule}
-                  className="flex-1 py-2.5 rounded-lg bg-[#10B981] hover:bg-[#0D9E6E] text-[#070B0D] text-sm font-bold transition-all flex items-center justify-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                  disabled={scheduleSubmitting}
+                  className="flex-1 py-2.5 rounded-lg bg-[#10B981] hover:bg-[#0D9E6E] text-[#070B0D] text-sm font-bold transition-all flex items-center justify-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.3)] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Check className="w-4 h-4" />
-                  Add to calendar
+                  {scheduleSubmitting ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-[#070B0D] border-t-transparent rounded-full animate-spin" />
+                      Scheduling…
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="w-4 h-4" />
+                      Schedule
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>

@@ -9,6 +9,7 @@ import type {
   VisualScriptRequest,
   VisualScriptResponse,
   Voice,
+  ScheduledPost,
 } from "./types";
 
 // Backend (FastAPI on Railway) base URL. Set NEXT_PUBLIC_API_BASE in the deploy
@@ -323,5 +324,45 @@ export async function disconnectLinkedIn(): Promise<void> {
     `${API_BASE}/api/linkedin/disconnect?cid=${encodeURIComponent(getClientId())}`,
     { method: "POST" }
   );
+  await parseJson(res);
+}
+
+// ----------------------------------------------------------------------------
+// Scheduled auto-posting (Calendar)
+// ----------------------------------------------------------------------------
+
+/** Schedule a rendered video to auto-post to X/LinkedIn at an absolute time. */
+export async function createSchedule(payload: {
+  platform: "twitter" | "linkedin";
+  output_url: string;
+  caption: string;
+  title: string;
+  /** epoch seconds */
+  scheduled_at: number;
+}): Promise<ScheduledPost> {
+  const res = await fetch(`${API_BASE}/api/schedule`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...payload, cid: getClientId() }),
+  });
+  return parseJson(res);
+}
+
+/** This browser's scheduled posts (pending + history). */
+export async function listSchedules(): Promise<{ schedules: ScheduledPost[] }> {
+  const res = await fetch(
+    `${API_BASE}/api/schedule?cid=${encodeURIComponent(getClientId())}`,
+    { cache: "no-store" }
+  );
+  return parseJson(res);
+}
+
+/** Cancel a pending (or failed) scheduled post. */
+export async function cancelSchedule(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/schedule/cancel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, cid: getClientId() }),
+  });
   await parseJson(res);
 }

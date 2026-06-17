@@ -2,7 +2,7 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import ideas, linkedin, pexels, scripts, templates, twitter, video
+from routers import ideas, linkedin, pexels, schedule, scripts, templates, twitter, video
 
 app = FastAPI(title="Clipr API", version="1.0.0")
 
@@ -31,7 +31,19 @@ app.include_router(scripts.router)
 app.include_router(templates.router)
 app.include_router(twitter.router)
 app.include_router(linkedin.router)
+app.include_router(schedule.router)
 app.include_router(video.router)
+
+
+@app.on_event("startup")
+async def _start_scheduler():
+    """Kick off the background loop that auto-posts scheduled videos when due. Runs in
+    this (single) uvicorn worker for the life of the process."""
+    import asyncio
+
+    from services import scheduler
+
+    asyncio.create_task(scheduler.run_loop())
 
 
 @app.get("/")

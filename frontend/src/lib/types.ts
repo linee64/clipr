@@ -80,6 +80,22 @@ export interface VoiceoverSettings {
   speed: number;
 }
 
+/** A rendered video scheduled to auto-post to a social network at a set time. */
+export interface ScheduledPost {
+  id: string;
+  platform: "twitter" | "linkedin";
+  output_url: string;
+  caption: string;
+  title: string;
+  /** epoch seconds (absolute) when it should post */
+  scheduled_at: number;
+  status: "pending" | "processing" | "posted" | "error";
+  result_url?: string;
+  error?: string;
+  created_at?: number;
+  posted_at?: number;
+}
+
 export interface RenderStatus {
   job_id: string;
   status: string;
