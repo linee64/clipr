@@ -156,7 +156,9 @@ Creator niche: {niche}
 Platform: {platform}
 
 LANGUAGE: Write EVERYTHING in {lang}. Every "phrase", every "film_suggestion", and the "caption"
-MUST be written in {lang}. Do not use any other language anywhere in the output.
+MUST be in {lang} — this explicitly includes the filming suggestions ("film_suggestion"), which is
+the field most often left in English by mistake. Translate the shot descriptions too (camera,
+framing, subject, lighting). Do not use any other language anywhere in the output.
 
 Create a storyboard of {lo}-{hi} scenes — short scenes for a montage, not a few long ones. Each scene has:
 - An on-screen line, lowercase, {min_w} to {max_w} words; the final "punch" line can be shorter
@@ -188,6 +190,8 @@ Also write a ready-to-post caption for {platform} in {lang}:
 IMPORTANT: the "scenes" array below shows the SHAPE, not the count — return {lo} to {hi} scene objects.
 The first scene is "hook", the very last is "punch", everything between is "body".
 
+Reminder: the "phrase", "film_suggestion" and "caption" values must ALL be written in {lang}.
+
 Return ONLY valid JSON:
 {{
   "title": "{idea_title}",
@@ -195,8 +199,8 @@ Return ONLY valid JSON:
   "scenes": [
     {{
       "order": 1,
-      "phrase": "on-screen line of {min_w} to {max_w} words",
-      "film_suggestion": "detailed shot: framing + subject + action + setting/light",
+      "phrase": "on-screen line in {lang}, {min_w} to {max_w} words",
+      "film_suggestion": "detailed shot written in {lang}: framing + subject + action + setting/light",
       "duration_seconds": 4,
       "role": "hook"
     }},
