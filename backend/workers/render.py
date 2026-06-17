@@ -69,17 +69,25 @@ def _render_resolution(platform: str, full_res: str) -> str:
 
 
 def _cut_concurrency() -> int:
-    """How many montage cuts to encode at once. Each cut is an independent single-
-    pass ffmpeg encode writing to its own file, so they parallelize cleanly. Bound
-    the fan-out so we don't oversubscribe the CPU (ffmpeg already multithreads each
-    encode). Override with RENDER_CUT_CONCURRENCY; defaults to a modest share of
-    cores. 1 restores the old serial behavior."""
+    """How many montage cuts to encode at once. Each cut is an independent single-pass
+    ffmpeg encode to its own file, so they parallelize cleanly — but N concurrent
+    libx264 encodes is N× the peak memory, a prime OOM trigger on a small box (and
+    os.cpu_count() reports the HOST's cores in a container, so the old min(4, cpu)
+    could fan out to 4 encodes there). So: serial (1) whenever the render is downscaled
+    to fit a constrained box (RENDER_LONG_EDGE < 1920); parallel for speed only on a
+    full-res box. Override either way with RENDER_CUT_CONCURRENCY."""
     raw = (os.getenv("RENDER_CUT_CONCURRENCY") or "").strip()
     if raw:
         try:
             return max(1, int(raw))
         except ValueError:
             pass
+    try:
+        long_edge = int(os.getenv("RENDER_LONG_EDGE", "1920") or "1920")
+    except ValueError:
+        long_edge = 1920
+    if long_edge < 1920:
+        return 1  # memory-constrained deploy: encode cuts one at a time
     return max(1, min(4, os.cpu_count() or 2))
 
 
