@@ -183,12 +183,11 @@ export interface TwitterPostResult {
 }
 
 /**
- * Whether the X / Twitter integration is shown at all. OFF unless
- * NEXT_PUBLIC_X_ENABLED is exactly "true", so the whole feature is hidden on
- * public deploys (no connect, no account, no post buttons) until per-user auth
- * exists. Flip the env var on to bring it back.
+ * Whether the X / Twitter integration is shown. ON by default; set
+ * NEXT_PUBLIC_X_ENABLED="false" to hide it. Connections are scoped per browser
+ * (the clipr_cid client id), so one browser's account isn't visible to others.
  */
-export const X_ENABLED = process.env.NEXT_PUBLIC_X_ENABLED === "true";
+export const X_ENABLED = process.env.NEXT_PUBLIC_X_ENABLED !== "false";
 
 /**
  * A stable per-browser client id. X connections are scoped to it server-side, so
@@ -274,12 +273,11 @@ export interface LinkedInStatus {
 }
 
 /**
- * Whether the LinkedIn integration is shown at all. OFF unless
- * NEXT_PUBLIC_LINKEDIN_ENABLED is exactly "true", so the feature stays hidden on a
- * deploy until it's ready to expose (same gate pattern as X_ENABLED). Connections are
- * scoped per browser by the shared client id, like X.
+ * Whether the LinkedIn integration is shown. ON by default; set
+ * NEXT_PUBLIC_LINKEDIN_ENABLED="false" to hide it. Connections are scoped per browser
+ * by the shared client id, like X.
  */
-export const LINKEDIN_ENABLED = process.env.NEXT_PUBLIC_LINKEDIN_ENABLED === "true";
+export const LINKEDIN_ENABLED = process.env.NEXT_PUBLIC_LINKEDIN_ENABLED !== "false";
 
 /** Whether a LinkedIn account is connected for this browser, and which member. */
 export async function getLinkedInStatus(): Promise<LinkedInStatus> {
