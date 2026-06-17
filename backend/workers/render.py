@@ -34,7 +34,7 @@ from services.editor import (
 )
 from services.storage import download_file, upload_file
 from services.tracks import ensure_track_seeded
-from services.tts import generate_voiceover_for_scenes
+from services.tts import generate_single_voiceover
 from services.templates import (
     DEFAULT_TEMPLATE,
     cap_total_duration,
@@ -635,52 +635,52 @@ async def run_broll_render(
             )
 
         # --- AI voiceover (optional) -------------------------------------------------
-        # Speak each scene's phrase with an ElevenLabs voice, then lay the voice and the
-        # captions onto ONE shared timeline so they stay in lockstep. The montage's
-        # scene windows are beat-synced and almost never equal the time it actually
-        # takes to SAY the phrase, so anchoring captions to the windows while the voice
-        # plays at its natural length makes the two drift apart (and back-to-back voices
-        # would overlap). Instead: measure each clip's real spoken length, lay the clips
-        # sequentially (no overlap, each starting no earlier than its scene's visual
-        # start), and re-time that scene's caption to the exact voice span. The b-roll
-        # cuts keep their own beat timing underneath (fine for narration).
-        # Non-fatal: a TTS hiccup falls back to the music-only mix + montage-timed
-        # captions rather than discarding an otherwise-finished render.
+        # Generate the ENTIRE narration in ONE ElevenLabs call (all scene phrases joined),
+        # so the voice keeps one consistent tone and natural flow. Generating a separate
+        # clip per short phrase made it choppy — a few words, silence, then a different
+        # tone mid-thought (each call was its own generation/prosody). The single call
+        # returns per-character timestamps, so each phrase's caption is timed to the exact
+        # span it's spoken. The b-roll cuts keep their own beat timing underneath.
+        # Non-fatal: a TTS hiccup falls back to the music-only mix + montage-timed captions.
         caption_video_path = with_audio_path
         if add_voiceover and (voice_id or "").strip():
             try:
                 vo_dir = os.path.join(job_dir, "voiceover")
-                vo_scenes = await asyncio.to_thread(
-                    generate_voiceover_for_scenes,
-                    scenes_with_timing, vo_dir, voice_id, vo_speed,
+                os.makedirs(vo_dir, exist_ok=True)
+                vo_path = os.path.join(vo_dir, "narration.mp3")
+                vo = await asyncio.to_thread(
+                    generate_single_voiceover,
+                    scenes_with_timing, vo_path, voice_id, vo_speed,
                 )
-                if vo_scenes:
-                    # Re-time voice + captions onto one timeline (see note above).
-                    VO_GAP = 0.12  # small breath between phrases
-                    vo_by_index = {vo.get("index"): vo for vo in vo_scenes}
-                    cursor = 0.0
+                spans = vo.get("spans") if vo else None
+                if spans:
+                    # Narration begins at the first voiced scene's footage start; each
+                    # phrase's caption is timed to its exact span within the one take.
+                    by_index = {sp["index"]: sp for sp in spans}
+                    first_idx = spans[0]["index"]
+                    audio_offset = float(scenes_with_timing[first_idx].get("start_time", 0.0))
                     retimed: list = []
                     for idx, scene in enumerate(scenes_with_timing):
-                        vo = vo_by_index.get(idx)
-                        if vo and vo.get("audio_path"):
-                            dur = await asyncio.to_thread(get_duration, vo["audio_path"])
-                            start = max(float(scene.get("start_time", 0.0)), cursor)
-                            vo["start_time"] = start          # where the voice is laid
-                            vo["duration_seconds"] = dur
-                            cursor = start + dur + VO_GAP
+                        sp = by_index.get(idx)
+                        if sp:
+                            start = audio_offset + float(sp["start"])
+                            dur = max(0.3, float(sp["end"]) - float(sp["start"]))
                             retimed.append(
                                 {**scene, "start_time": start, "duration_seconds": dur}
                             )
                         else:
-                            retimed.append(scene)  # no voiceover -> keep montage timing
+                            retimed.append(scene)  # no phrase -> keep montage timing
                     # Captions below read scenes_with_timing -> now the voice timeline.
                     scenes_with_timing = retimed
 
                     with_vo_path = os.path.join(job_dir, "with_voiceover.mp4")
                     await asyncio.to_thread(
                         mix_voiceover_per_scene,
-                        with_audio_path, vo_scenes, with_vo_path,
-                        vo_volume, bg_music_volume,
+                        with_audio_path,
+                        [{"audio_path": vo["audio_path"], "start_time": audio_offset}],
+                        with_vo_path,
+                        vo_volume,
+                        bg_music_volume,
                     )
                     caption_video_path = with_vo_path
             except Exception:

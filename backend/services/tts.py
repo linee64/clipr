@@ -145,6 +145,93 @@ def text_to_speech(
     return output_path
 
 
+def generate_single_voiceover(
+    scenes: list[dict], output_path: str, voice_id: str, speed: float = 1.0
+) -> dict | None:
+    """Synthesize the WHOLE narration in ONE call and return where each scene's phrase
+    falls within it.
+
+    Generating a separate clip per short phrase made the voiceover choppy — a few words,
+    silence, then a different tone mid-thought (each call is its own generation with its
+    own prosody). Instead, join every scene's phrase into one flowing text and synthesize
+    it in a single call, so the voice keeps one consistent tone and natural cadence. The
+    call returns per-character timestamps, so we can map each phrase back to the exact
+    [start, end] seconds it's spoken — used to time captions to the voice.
+
+    Returns ``{"audio_path", "spans": [{"index", "phrase", "start", "end"}, ...]}`` (spans
+    in audio-relative seconds, scene order), or None if no scene has a phrase.
+    """
+    import base64
+
+    voiced = [
+        (i, str(s.get("phrase", "")).strip())
+        for i, s in enumerate(scenes or [])
+    ]
+    voiced = [(i, p) for i, p in voiced if p]
+    if not voiced:
+        return None
+
+    # Join phrases into one narration, tracking each phrase's character range so we can
+    # map the returned char timestamps back to scenes. ". " gives each line natural
+    # sentence prosody (and a clean caption boundary) while staying one continuous take.
+    sep = ". "
+    text = ""
+    char_spans: list[tuple[int, int, int]] = []  # (scene_index, start_idx, end_idx_excl)
+    for k, (i, phrase) in enumerate(voiced):
+        if k > 0:
+            text += sep
+        start_idx = len(text)
+        text += phrase
+        char_spans.append((i, start_idx, len(text)))
+
+    client = _client()
+    settings = _voice_settings(speed)
+    try:
+        resp = client.text_to_speech.convert_with_timestamps(
+            voice_id=voice_id,
+            model_id=MODEL_ID,
+            text=text,
+            output_format=OUTPUT_FORMAT,
+            voice_settings=settings,
+        )
+    except TTSError:
+        raise
+    except Exception as e:
+        raise TTSError(f"ElevenLabs timestamped TTS failed: {e}") from e
+
+    audio_b64 = getattr(resp, "audio_base_64", None) or getattr(resp, "audio_base64", None)
+    if not audio_b64:
+        raise TTSError("ElevenLabs returned no audio.")
+    with open(output_path, "wb") as f:
+        f.write(base64.b64decode(audio_b64))
+
+    al = getattr(resp, "alignment", None)
+    chars = list(getattr(al, "characters", None) or []) if al else []
+    cstart = list(getattr(al, "character_start_times_seconds", None) or []) if al else []
+    cend = list(getattr(al, "character_end_times_seconds", None) or []) if al else []
+
+    spans: list[dict] = []
+    if chars and cstart and cend and len(chars) == len(cstart) == len(cend) == len(text):
+        # Exact: phrase span = [start time of its first char, end time of its last char].
+        for i, a, b in char_spans:
+            st = float(cstart[a])
+            en = float(cend[b - 1])
+            spans.append({"index": i, "phrase": scenes[i].get("phrase", ""),
+                          "start": max(0.0, st), "end": max(st + 0.1, en)})
+    else:
+        # Fallback (timestamps unavailable/mismatched): spread by character position over
+        # the measured audio length.
+        from services.editor import get_duration
+
+        total = max(0.1, float(get_duration(output_path)))
+        n = max(1, len(text))
+        for i, a, b in char_spans:
+            spans.append({"index": i, "phrase": scenes[i].get("phrase", ""),
+                          "start": total * a / n, "end": max(total * a / n + 0.1, total * b / n)})
+
+    return {"audio_path": output_path, "spans": spans}
+
+
 def generate_voiceover_for_scenes(
     scenes: list[dict], output_dir: str, voice_id: str, speed: float = 1.0
 ) -> list[dict]:
