@@ -4,7 +4,7 @@
 // `setPlan` with a checkout redirect and hydrate `readPlan` from the subscription.
 
 export const TRIAL_DAYS = 7;
-export const PRO_PRICE = "$20";
+export const PRO_PRICE = "$25";
 
 export type PlanKind = "trial" | "pro";
 

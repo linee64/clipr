@@ -2102,7 +2102,7 @@ export default function Dashboard() {
                           Clipr Pro
                         </span>
                         <span className="text-xs text-[#6B7C85]">
-                          <span className="text-[#EFEFEF] font-semibold">$20</span>/mo
+                          <span className="text-[#EFEFEF] font-semibold">$25</span>/mo
                         </span>
                       </div>
 

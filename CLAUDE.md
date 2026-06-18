@@ -75,7 +75,7 @@ This project follows production-grade frontend design principles. Avoid generic 
 - **Video upload** (`/upload`): Drag-and-drop, FFmpeg processing status, subtitle preset selector (TikTok Bold / Plaque / Center Caps)
 
 ## Pricing
-- $20/month with 7-day free trial
+- $25/month with 7-day free trial (billed via Polar)
 
 ## Code Conventions
 - All components in `/components` folder, co-located with their styles
