@@ -162,7 +162,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     ];
 
     return (
-      <div className="fixed inset-0 z-50 bg-[#070B0D] flex flex-col items-center justify-center p-6 select-none">
+      <div className="fixed inset-0 z-50 bg-[#070B0D] flex flex-col items-center justify-center overflow-y-auto p-6 py-10 select-none">
         <div className="absolute top-[30%] left-[50%] -translate-x-[50%] w-[300px] h-[300px] bg-[#10B981] rounded-full blur-[120px] opacity-[0.2] animate-pulse pointer-events-none" />
         
         <div className="relative z-10 max-w-md w-full text-center space-y-8">
@@ -215,8 +215,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#070B0D] flex flex-col md:flex-row overflow-hidden">
-      
+    <div className="fixed inset-0 z-50 bg-[#070B0D] flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
+
       {/* Background glow orbs */}
       <div className="absolute top-[-10%] left-[20%] w-[350px] h-[350px] bg-gradient-to-br from-[#10B981] to-emerald-950 rounded-full blur-[120px] opacity-[0.08] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[10%] w-[400px] h-[400px] bg-gradient-to-tr from-emerald-950 to-emerald-500 rounded-full blur-[140px] opacity-[0.05] pointer-events-none" />
@@ -283,13 +283,13 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       </div>
 
       {/* RIGHT PANEL: Question content */}
-      <div className="flex-1 flex flex-col justify-between p-6 md:p-12 relative z-10 min-h-[450px]">
+      <div className="flex-1 flex flex-col md:justify-between p-6 md:p-12 pb-10 md:pb-12 relative z-10 md:min-h-[450px]">
         {/* Mobile step bar indicator */}
         <div className="md:hidden w-full bg-[#152226] h-1 rounded-full mb-6 overflow-hidden">
           <div className="bg-[#10B981] h-full" style={{ width: `${(step / 6) * 100}%` }} />
         </div>
 
-        <div className="max-w-xl w-full mx-auto my-auto space-y-6">
+        <div className="max-w-xl w-full mx-auto md:my-auto space-y-6">
           <AnimatePresence mode="wait">
             {step === 1 && (
               <motion.div key="step1" {...stepsTransitions} className="space-y-4">
