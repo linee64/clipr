@@ -34,7 +34,7 @@ from services.editor import (
     transcode_to_mp3,
     transcribe_audio,
 )
-from services import jobstore, pexels, tts
+from services import jobstore, pexels, tts, usage
 from services.storage import download_file, local_file_path, upload_file, use_local_storage
 from services.tracks import get_tracks_with_urls
 from workers.render import render_jobs, run_broll_render, run_render_job
@@ -449,6 +449,22 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
             status_code=400,
             detail="voice_id is required when add_voiceover is enabled.",
         )
+
+    # Server-side free-tier enforcement (Pro bypasses all of it). Premium reference
+    # style / AI voice are Pro-only (403); AI-voiceover renders are metered (429).
+    try:
+        await usage.require_template_allowed(request.email, request.template_id)
+        if request.add_voiceover:
+            await usage.require_voice_allowed(request.email, request.voice_id)
+            await usage.consume(request.email, "voiceover")
+    except usage.PremiumRequired as e:
+        raise HTTPException(status_code=403, detail=f"{e} Upgrade to unlock it.")
+    except usage.QuotaExceeded as e:
+        raise HTTPException(
+            status_code=429,
+            detail=f"You've used your {e.limit} free AI voiceovers. Upgrade to Pro for unlimited.",
+        )
+
     # Note: seeding a template track into storage (an upload that can take seconds on
     # a cold worker) happens inside run_broll_render now, not here — so this request
     # returns immediately and the client starts polling real progress right away

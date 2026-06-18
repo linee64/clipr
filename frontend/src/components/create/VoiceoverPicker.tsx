@@ -5,7 +5,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, Loader2, Lock, Mic, Pause, Play } from "lucide-react";
 import { getVoices, previewVoiceover } from "@/lib/api";
 import type { Voice, VoiceoverSettings } from "@/lib/types";
-import { usesLeft } from "@/lib/limits";
 
 interface VoiceoverPickerProps {
   value: VoiceoverSettings;
@@ -13,6 +12,8 @@ interface VoiceoverPickerProps {
   /** Pro unlocks premium voices + removes the free use limit */
   isPro: boolean;
   onRequireUpgrade: () => void;
+  /** server-side free AI-voiceover renders remaining (Infinity for Pro) */
+  voiceoverLeft: number;
 }
 
 /** A nicely-cased label for the voice's accent/use-case if ElevenLabs provides one. */
@@ -33,11 +34,12 @@ export function VoiceoverPicker({
   onChange,
   isPro,
   onRequireUpgrade,
+  voiceoverLeft,
 }: VoiceoverPickerProps) {
   const { enabled, voiceId, speed } = value;
 
-  // Free AI-voiceover allowance (Infinity for Pro).
-  const voLeft = usesLeft("voiceover", isPro);
+  // Free AI-voiceover allowance remaining (Infinity for Pro), from the server.
+  const voLeft = voiceoverLeft;
   const voCapped = Number.isFinite(voLeft);
   const voiceLocked = (v: Voice) => !!v.premium && !isPro;
 

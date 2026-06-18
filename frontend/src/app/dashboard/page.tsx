@@ -46,6 +46,7 @@ import {
   getBillingStatus,
   startCheckout,
   openBillingPortal,
+  type BillingStatus,
 } from "@/lib/api";
 import type { TemplateOption, ScheduledPost } from "@/lib/types";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -332,19 +333,30 @@ export default function Dashboard() {
   // to the local stub so the demo still flips to Pro without a payment provider.
   const [billingConfigured, setBillingConfigured] = useState(false);
   const [billingBusy, setBillingBusy] = useState(false);
+  // Full server billing snapshot: real Pro + the server-side trial clock and
+  // free-tier usage counts (authoritative — survives cache clears / new devices).
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
 
   useEffect(() => {
     setPlanState(readPlan());
   }, []);
 
-  // Hydrate the real subscription from Polar (via the backend). An active sub wins
-  // over the local trial clock; the trial countdown still drives the free-tier UI.
+  // Hydrate plan + trial + usage from the backend. An active Polar sub → Pro;
+  // otherwise the SERVER trial clock drives the free-tier countdown (overriding the
+  // local fallback). Re-run after a metered action to refresh remaining uses.
   const refreshBilling = useCallback(async () => {
     try {
       const status = await getBillingStatus();
+      setBilling(status);
       setBillingConfigured(!!status.configured);
       if (status.active) {
         setPlanState((s) => (s.plan === "pro" ? s : setPlan("pro")));
+      } else if (typeof status.trial_days_left === "number") {
+        setPlanState({
+          plan: "trial",
+          daysLeft: status.trial_days_left,
+          expired: !!status.trial_expired,
+        });
       }
     } catch {
       /* offline / not configured — keep the local plan */
@@ -354,6 +366,15 @@ export default function Dashboard() {
   useEffect(() => {
     refreshBilling();
   }, [refreshBilling]);
+
+  // Free-tier allowances remaining (Infinity for Pro), from the server counts.
+  const isProPlan = planState.plan === "pro";
+  const freeRegenLeft = isProPlan
+    ? Infinity
+    : Math.max(0, (billing?.regen_limit ?? 3) - (billing?.regen_used ?? 0));
+  const freeVoiceoverLeft = isProPlan
+    ? Infinity
+    : Math.max(0, (billing?.voiceover_limit ?? 2) - (billing?.voiceover_used ?? 0));
 
   // Header "Connect accounts" popover (connect X right from the Home tab).
   const [connectMenuOpen, setConnectMenuOpen] = useState(false);
@@ -1668,6 +1689,9 @@ export default function Dashboard() {
                             onJumpHandled={() => setFlowJumpStep(null)}
                             isPro={planState.plan === "pro"}
                             onRequireUpgrade={() => setUpgradeOpen(true)}
+                            regenLeft={freeRegenLeft}
+                            voiceoverLeft={freeVoiceoverLeft}
+                            onUsageRefresh={refreshBilling}
                           />
                         </div>
                       )}

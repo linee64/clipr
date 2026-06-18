@@ -103,6 +103,27 @@ def is_premium_voice(name: str) -> bool:
     return base in PREMIUM_VOICE_NAMES
 
 
+_premium_voice_ids: set[str] | None = None
+
+
+def is_premium_voice_id(voice_id: str) -> bool:
+    """Whether a voice_id is a Pro-only voice. Resolves names->ids once from the
+    catalog and caches them (the premium set rarely changes); on any fetch error it
+    fails OPEN (returns False) so a transient ElevenLabs hiccup can't block a render
+    for everyone — the frontend lock is the primary gate."""
+    global _premium_voice_ids
+    if not voice_id:
+        return False
+    if _premium_voice_ids is None:
+        try:
+            _premium_voice_ids = {
+                v["voice_id"] for v in get_available_voices() if v.get("premium")
+            }
+        except Exception:
+            return False
+    return voice_id in _premium_voice_ids
+
+
 def get_available_voices() -> list[dict]:
     """List the account's ElevenLabs voices as lean dicts for the frontend picker.
 

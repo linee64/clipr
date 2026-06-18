@@ -47,6 +47,13 @@ class VisualScriptRequest(BaseModel):
     platform: str
     tone: str
     niche: str
+    # Billing identity (clipr_email) for server-side free-tier metering. Optional so
+    # anonymous/local use still works; when present and the user is on free, a
+    # `regenerate` call is counted against the regen allowance.
+    email: str = ""
+    # True when this is a user-triggered regeneration (counted), not the first
+    # storyboard generation for an idea (free).
+    regenerate: bool = False
 
 
 class BrollRenderRequest(BaseModel):
@@ -54,6 +61,10 @@ class BrollRenderRequest(BaseModel):
     scenes: list[Scene]
     clip_ids: list[str]
     audio_file_id: str
+    # Billing identity (clipr_email) for server-side free-tier enforcement: premium
+    # voices/reference styles are blocked and AI-voiceover renders are metered for
+    # free accounts. Optional so anonymous/local use still works.
+    email: str = ""
     audio_volume: float = 0.6
     color_grade: str = "dark_cinematic"
     platform: str = "TikTok"

@@ -28,9 +28,19 @@ async function parseJson<T>(res: Response): Promise<T> {
     } catch {
       /* use raw text */
     }
-    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    const err = new Error(
+      typeof detail === "string" ? detail : JSON.stringify(detail)
+    ) as Error & { status?: number };
+    err.status = res.status; // lets callers detect 402/403/429 (upgrade-required)
+    throw err;
   }
   return res.json() as Promise<T>;
+}
+
+/** True when an error from parseJson is a "needs Pro" rejection (premium/quota). */
+export function isUpgradeError(e: unknown): boolean {
+  const s = (e as { status?: number })?.status;
+  return s === 402 || s === 403 || s === 429;
 }
 
 export function resolveBackendUrl(url: string): string {
@@ -96,7 +106,9 @@ export async function startBrollRender(
   const res = await fetch(`${API_BASE}/api/video/broll-render`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    // Attach the billing email so the backend can gate premium voices/styles and
+    // meter free-tier AI-voiceover renders.
+    body: JSON.stringify({ email: getBillingEmail(), ...payload }),
   });
   return parseJson(res);
 }
@@ -161,7 +173,8 @@ export async function generateVisualScript(
   const res = await fetch(`${API_BASE}/api/scripts/visual`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    // Attach the billing email so the backend can meter free-tier regenerations.
+    body: JSON.stringify({ email: getBillingEmail(), ...payload }),
   });
   return parseJson(res);
 }
@@ -343,6 +356,17 @@ export interface BillingStatus {
   cancel_at_period_end?: boolean;
   /** false when the backend is missing Polar credentials (checkout can't work yet) */
   configured?: boolean;
+  // --- server-side free-tier trial + usage (from the accounts table) ---
+  /** whole days left in the server trial (authoritative; survives cache clears) */
+  trial_days_left?: number;
+  /** true once the server trial has elapsed */
+  trial_expired?: boolean;
+  /** free-tier storyboard regenerations used / allowed */
+  regen_used?: number;
+  regen_limit?: number;
+  /** free-tier AI-voiceover renders used / allowed */
+  voiceover_used?: number;
+  voiceover_limit?: number;
 }
 
 /** The user's billing identity — the email captured at onboarding (clipr_email). */

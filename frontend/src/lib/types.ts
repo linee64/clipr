@@ -32,6 +32,10 @@ export interface VisualScriptRequest {
   platform: string;
   tone: string;
   niche: string;
+  /** billing email (auto-attached by the API client) for free-tier metering */
+  email?: string;
+  /** true for a user-triggered regeneration (metered on free), not the first gen */
+  regenerate?: boolean;
 }
 
 export interface VisualScriptResponse {
@@ -46,6 +50,8 @@ export interface VisualScriptResponse {
 
 export interface BrollRenderRequest {
   job_id: string;
+  /** billing email (auto-attached by the API client) for free-tier enforcement */
+  email?: string;
   scenes: Scene[];
   clip_ids: string[];
   audio_file_id: string;

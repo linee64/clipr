@@ -305,6 +305,18 @@ async def _reconcile_from_polar(email: str) -> dict | None:
         return None
 
 
+async def is_active(email: str | None) -> bool:
+    """Fast Pro check for enforcement: reads the stored subscription record only (no
+    Polar reconcile), so it's cheap to call on every gated action. The webhook and
+    `get_status` keep that record fresh."""
+    try:
+        norm = _normalize_email(email or "")
+    except BillingError:
+        return False
+    record = await _read_record(norm)
+    return bool(record and record.get("active"))
+
+
 async def get_status(email: str | None) -> dict:
     """Return the subscription state for an email (Pro vs free).
 

@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 from services.storage import use_local_storage
-from services.templates import load_templates
+from services.templates import is_premium_template, load_templates
 
 router = APIRouter(prefix="/api/templates", tags=["templates"])
 
@@ -68,25 +68,12 @@ def _preview_url(t: dict) -> str:
     return _ref_bucket_url(t.get("id") or "")
 
 
-# Reference styles reserved for Pro subscribers — matched on the (clean) reference
-# name so they gate correctly regardless of template id, and so new references with
-# these names become Pro-only automatically once added.
-PREMIUM_REF_TITLES = ("locked in", "the feeling of building", "boring life")
-
-
-def _is_premium_template(t: dict) -> bool:
-    title = ((t.get("ref") or t.get("label") or "")).strip().lower()
-    if title.startswith("ref:"):
-        title = title[4:].strip()
-    return any(key in title for key in PREMIUM_REF_TITLES)
-
-
 def _public(t: dict) -> dict:
     return {
         "id": t.get("id"),
         "label": t.get("label"),
         # Pro-only reference style; the picker shows a lock for free users.
-        "premium": _is_premium_template(t),
+        "premium": is_premium_template(t),
         "caption_style": t.get("caption_style"),
         "color_grade": t.get("color_grade"),
         "music_vibe": t.get("music_vibe"),

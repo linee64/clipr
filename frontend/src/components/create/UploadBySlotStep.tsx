@@ -169,6 +169,8 @@ interface UploadBySlotStepProps {
   /** Pro gates premium voices + the free AI-voiceover use limit */
   isPro: boolean;
   onRequireUpgrade: () => void;
+  /** server-side free AI-voiceover renders remaining (Infinity for Pro) */
+  voiceoverLeft: number;
 }
 
 export function UploadBySlotStep({
@@ -188,6 +190,7 @@ export function UploadBySlotStep({
   onVoiceoverChange,
   isPro,
   onRequireUpgrade,
+  voiceoverLeft,
 }: UploadBySlotStepProps) {
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -561,6 +564,7 @@ export function UploadBySlotStep({
           onChange={onVoiceoverChange}
           isPro={isPro}
           onRequireUpgrade={onRequireUpgrade}
+          voiceoverLeft={voiceoverLeft}
         />
 
         <div className="mt-6 flex gap-3">

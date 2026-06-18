@@ -14,7 +14,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 
 from models.schemas import BillingPortalRequest, CheckoutRequest
-from services import billing
+from services import billing, usage
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 logger = logging.getLogger("clipr.billing")
@@ -48,7 +48,11 @@ async def portal(request: BillingPortalRequest):
 
 @router.get("/status")
 async def status(email: str = ""):
-    return await billing.get_status(email)
+    """Subscription state + the server-side trial clock and free-tier usage counts
+    (starts the trial for this email on first call)."""
+    sub = await billing.get_status(email)
+    acct = await usage.account_status(email)
+    return {**sub, **acct}
 
 
 @router.post("/webhook")

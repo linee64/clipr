@@ -8,6 +8,7 @@ import {
   generateVisualScript,
   getRenderStatus,
   importPexelsClip,
+  isUpgradeError,
   startBrollRender,
   uploadAudio,
   uploadClip,
@@ -27,7 +28,6 @@ import { StoryboardStep } from "./StoryboardStep";
 import { UploadBySlotStep } from "./UploadBySlotStep";
 import { TemplatePickStep } from "./TemplatePickStep";
 import { RenderStep } from "./RenderStep";
-import { bumpUsage, canUse, usesLeft } from "@/lib/limits";
 
 export interface CreateFlowIdea {
   id: string;
@@ -56,6 +56,11 @@ interface CreateFlowProps {
   isPro: boolean;
   /** Open the upgrade modal when a free-tier limit / Pro-only feature is hit. */
   onRequireUpgrade: () => void;
+  /** Server-side free-tier allowances remaining (Infinity for Pro). */
+  regenLeft: number;
+  voiceoverLeft: number;
+  /** Re-fetch the server usage counts after a metered action. */
+  onUsageRefresh: () => void;
 }
 
 function fallbackVisualScript(idea: CreateFlowIdea): VisualScriptResponse {
@@ -203,6 +208,9 @@ export function CreateFlow({
   onJumpHandled,
   isPro,
   onRequireUpgrade,
+  regenLeft,
+  voiceoverLeft,
+  onUsageRefresh,
 }: CreateFlowProps) {
   const [currentStep, setCurrentStep] = useState<FlowStep>(2);
   const [visualScript, setVisualScript] = useState<VisualScriptResponse | null>(null);
@@ -247,7 +255,7 @@ export function CreateFlow({
     };
   }, []);
 
-  const fetchStoryboard = useCallback(async () => {
+  const fetchStoryboard = useCallback(async (regenerate = false) => {
     setIsLoadingScript(true);
     setScriptError(null);
 
@@ -284,11 +292,20 @@ export function CreateFlow({
         platform: outputPlatform,
         tone,
         niche,
+        regenerate,
       });
       setVisualScript(data);
       localStorage.setItem(`clipr_storyboard_v2_${idea.title}`, JSON.stringify(data));
       setSelectedMusicVibe(data.music_vibe.split("|")[0]?.trim() || "dark ambient");
+      if (regenerate) onUsageRefresh(); // server counted this regen — refresh "left"
     } catch (err) {
+      // Free-tier regen limit hit on the server → prompt upgrade, keep the current
+      // storyboard (don't replace it with a fallback).
+      if (regenerate && isUpgradeError(err)) {
+        onRequireUpgrade();
+        setIsLoadingScript(false);
+        return;
+      }
       setScriptError(
         err instanceof Error ? err.message : "Failed to generate storyboard"
       );
@@ -297,7 +314,7 @@ export function CreateFlow({
     } finally {
       setIsLoadingScript(false);
     }
-  }, [idea, outputPlatform]);
+  }, [idea, outputPlatform, onUsageRefresh, onRequireUpgrade]);
 
   useEffect(() => {
     fetchStoryboard();
@@ -428,7 +445,7 @@ export function CreateFlow({
     // AI voiceover is limited on the free tier — gate before doing any work so a
     // free user who's out of uses gets the upgrade prompt instead of a render.
     const useVoiceover = voiceover.enabled && !!voiceover.voiceId;
-    if (useVoiceover && !canUse("voiceover", isPro)) {
+    if (useVoiceover && voiceoverLeft <= 0) {
       onRequireUpgrade();
       return;
     }
@@ -498,8 +515,8 @@ export function CreateFlow({
           : {}),
       });
 
-      // Count this AI-voiceover use against the free allowance (Pro is unlimited).
-      if (useVoiceover && !isPro) bumpUsage("voiceover");
+      // The server counted this AI-voiceover render — refresh remaining "left".
+      if (useVoiceover && !isPro) onUsageRefresh();
 
       setRenderJobId(jobId);
       setRenderStatus({
@@ -511,7 +528,14 @@ export function CreateFlow({
         error: "",
       });
     } catch (err) {
-      setRenderError(err instanceof Error ? err.message : "Render failed to start");
+      // A Pro-only voice/style or an exhausted free allowance the client didn't
+      // catch (e.g. stale counts) → prompt upgrade rather than a raw error.
+      if (isUpgradeError(err)) {
+        onRequireUpgrade();
+        onUsageRefresh();
+      } else {
+        setRenderError(err instanceof Error ? err.message : "Render failed to start");
+      }
       setCurrentStep(4);
     } finally {
       setIsStartingRender(false);
@@ -554,15 +578,15 @@ export function CreateFlow({
           onPhraseEdit={handlePhraseEdit}
           onRegenerate={() => {
             // Free tier: cap storyboard regenerations; over the limit → upgrade.
-            if (!canUse("regen", isPro)) {
+            // The server is the real gate (counts + 429); this avoids a wasted call.
+            if (regenLeft <= 0) {
               onRequireUpgrade();
               return;
             }
-            if (!isPro) bumpUsage("regen");
             localStorage.removeItem(`clipr_storyboard_v2_${idea.title}`);
-            fetchStoryboard();
+            fetchStoryboard(true);
           }}
-          regenLeft={usesLeft("regen", isPro)}
+          regenLeft={regenLeft}
           onContinue={() => setCurrentStep(3)}
           onBack={onBack}
         />
@@ -607,6 +631,7 @@ export function CreateFlow({
           onVoiceoverChange={setVoiceover}
           isPro={isPro}
           onRequireUpgrade={onRequireUpgrade}
+          voiceoverLeft={voiceoverLeft}
         />
       )}
 

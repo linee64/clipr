@@ -100,6 +100,23 @@ def get_template(template_id: str) -> dict | None:
     return None
 
 
+# Reference styles reserved for Pro subscribers — matched on the (clean) reference
+# name so they gate by name regardless of template id, and so new references with
+# these names become Pro-only automatically once added.
+PREMIUM_REF_TITLES = ("locked in", "the feeling of building", "boring life")
+
+
+def is_premium_template(t: dict) -> bool:
+    title = ((t or {}).get("ref") or (t or {}).get("label") or "").strip().lower()
+    if title.startswith("ref:"):
+        title = title[4:].strip()
+    return any(key in title for key in PREMIUM_REF_TITLES)
+
+
+def is_premium_template_id(template_id: str) -> bool:
+    return is_premium_template(get_template(template_id) or {})
+
+
 def pick_template(platform: str = "") -> dict:
     """Pick a random template that fits the platform, for variety across videos.
 
