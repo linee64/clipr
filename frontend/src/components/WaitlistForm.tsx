@@ -333,7 +333,7 @@ export function WaitlistForm() {
             {200 + dbCount} creators on board
           </span>
           <span className="text-zinc-800">•</span>
-          <span>Free 7-day trial · No card</span>
+          <span>Free 3-day trial · No card</span>
         </div>
         <p className="text-xs text-zinc-400 text-center">
           Already have an account?{" "}

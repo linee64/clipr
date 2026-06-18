@@ -144,7 +144,7 @@ export default function Home() {
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
             <p className="text-[10px] text-zinc-500 mt-3 tracking-wide">
-              Free 7-day trial · No credit card · Cancel anytime
+              Free 3-day trial · No credit card · Cancel anytime
             </p>
           </motion.div>
 
@@ -403,10 +403,10 @@ export default function Home() {
 
               <div className="pt-6 space-y-2">
                 <Button variant="primary" size="sm" className="w-full py-2.5 rounded-lg text-xs" onClick={openSignup}>
-                  Start 7-day free trial
+                  Start 3-day free trial
                 </Button>
                 <p className="text-[9px] text-zinc-500 text-center tracking-wide">
-                  Free 7-day trial · Then $25/mo · Cancel anytime
+                  Free 3-day trial · Then $25/mo · Cancel anytime
                 </p>
               </div>
             </motion.div>

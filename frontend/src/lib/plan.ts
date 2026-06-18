@@ -1,9 +1,9 @@
 // Subscription / trial state — local-only for now (there's no payment backend yet).
-// The 7-day free trial is tracked from a start timestamp written on first run, and
+// The 3-day free trial is tracked from a start timestamp written on first run, and
 // "upgrading" flips a local flag. To wire a real provider (Stripe) later, replace
 // `setPlan` with a checkout redirect and hydrate `readPlan` from the subscription.
 
-export const TRIAL_DAYS = 7;
+export const TRIAL_DAYS = 3;
 export const PRO_PRICE = "$25";
 
 export type PlanKind = "trial" | "pro";
