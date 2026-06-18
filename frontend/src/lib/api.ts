@@ -328,6 +328,72 @@ export async function disconnectLinkedIn(): Promise<void> {
 }
 
 // ----------------------------------------------------------------------------
+// Billing (Polar subscription)
+// ----------------------------------------------------------------------------
+
+export interface BillingStatus {
+  /** "pro" when an active subscription exists, otherwise "free" */
+  plan: "pro" | "free";
+  active: boolean;
+  /** raw Polar status: active | trialing | canceled | past_due | ... */
+  status?: string;
+  /** ISO timestamp the current paid period ends */
+  current_period_end?: string;
+  /** true when the sub is set to end at period end (cancelled but still active) */
+  cancel_at_period_end?: boolean;
+  /** false when the backend is missing Polar credentials (checkout can't work yet) */
+  configured?: boolean;
+}
+
+/** The user's billing identity — the email captured at onboarding (clipr_email). */
+function getBillingEmail(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return (localStorage.getItem("clipr_email") || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+/** Whether this account currently has an active Pro subscription (per the backend). */
+export async function getBillingStatus(): Promise<BillingStatus> {
+  const res = await fetch(
+    `${API_BASE}/api/billing/status?email=${encodeURIComponent(getBillingEmail())}`,
+    { cache: "no-store" }
+  );
+  return parseJson(res);
+}
+
+/**
+ * Start a Polar checkout for Pro and send the browser to the hosted checkout page.
+ * Polar returns to POLAR_SUCCESS_URL (the dashboard with ?billing=success) when done.
+ */
+export async function startCheckout(): Promise<void> {
+  const email = getBillingEmail();
+  if (!email) throw new Error("Add your email first so we can link your subscription.");
+  const res = await fetch(`${API_BASE}/api/billing/checkout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const { url } = await parseJson<{ url: string }>(res);
+  window.location.href = url;
+}
+
+/** Open the Polar customer portal (manage / cancel) for the current subscriber. */
+export async function openBillingPortal(): Promise<void> {
+  const email = getBillingEmail();
+  if (!email) throw new Error("No email on file for this account.");
+  const res = await fetch(`${API_BASE}/api/billing/portal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const { url } = await parseJson<{ url: string }>(res);
+  window.location.href = url;
+}
+
+// ----------------------------------------------------------------------------
 // Scheduled auto-posting (Calendar)
 // ----------------------------------------------------------------------------
 

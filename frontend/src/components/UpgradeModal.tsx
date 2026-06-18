@@ -29,6 +29,8 @@ interface UpgradeModalProps {
   onClose: () => void;
   onSubscribe: () => void;
   onCancel: () => void;
+  /** true while a checkout / portal redirect is in flight */
+  busy?: boolean;
 }
 
 export function UpgradeModal({
@@ -38,6 +40,7 @@ export function UpgradeModal({
   onClose,
   onSubscribe,
   onCancel,
+  busy = false,
 }: UpgradeModalProps) {
   const isPro = plan === "pro";
   return (
@@ -146,18 +149,22 @@ export function UpgradeModal({
                   </button>
                   <button
                     onClick={onCancel}
-                    className="w-full py-1.5 text-center text-xs text-[#6B7C85] hover:text-[#EF8B8B] transition-colors"
+                    disabled={busy}
+                    className="w-full py-1.5 text-center text-xs text-[#6B7C85] hover:text-[#EF8B8B] transition-colors disabled:opacity-50"
                   >
-                    Cancel subscription
+                    {busy ? "Opening billing…" : "Cancel subscription"}
                   </button>
                 </div>
               ) : (
                 <div className="mt-7 space-y-2.5">
                   <button
                     onClick={onSubscribe}
-                    className="w-full rounded-xl bg-[#10B981] py-3.5 text-sm font-bold text-[#070B0D] hover:bg-[#12cf90] transition-colors shadow-[0_0_20px_rgba(16,185,129,0.35)]"
+                    disabled={busy}
+                    className="w-full rounded-xl bg-[#10B981] py-3.5 text-sm font-bold text-[#070B0D] hover:bg-[#12cf90] transition-colors shadow-[0_0_20px_rgba(16,185,129,0.35)] disabled:opacity-60"
                   >
-                    {daysLeft > 0 ? "Upgrade to Pro" : "Reactivate Pro"} · {PRO_PRICE}/mo
+                    {busy
+                      ? "Redirecting to checkout…"
+                      : `${daysLeft > 0 ? "Upgrade to Pro" : "Reactivate Pro"} · ${PRO_PRICE}/mo`}
                   </button>
                   <p className="text-center text-[11px] text-[#6B7C85]">
                     Cancel anytime{daysLeft > 0 ? " — you won't be charged until your trial ends." : "."}

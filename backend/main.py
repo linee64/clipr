@@ -2,7 +2,17 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import ideas, linkedin, pexels, schedule, scripts, templates, twitter, video
+from routers import (
+    billing,
+    ideas,
+    linkedin,
+    pexels,
+    schedule,
+    scripts,
+    templates,
+    twitter,
+    video,
+)
 
 app = FastAPI(title="Clipr API", version="1.0.0")
 
@@ -33,6 +43,7 @@ app.include_router(twitter.router)
 app.include_router(linkedin.router)
 app.include_router(schedule.router)
 app.include_router(video.router)
+app.include_router(billing.router)
 
 
 @app.on_event("startup")

@@ -205,3 +205,16 @@ class ScheduleCreateRequest(BaseModel):
 class ScheduleCancelRequest(BaseModel):
     cid: str
     id: str
+
+
+class CheckoutRequest(BaseModel):
+    # Start a Polar checkout for this user. The email is the billing identity (Polar
+    # customer) — it's what the webhook later maps the subscription back onto. Stored
+    # client-side as clipr_email since there's no per-user auth yet.
+    email: str = ""
+
+
+class BillingPortalRequest(BaseModel):
+    # Open the Polar customer portal (manage / cancel) for an existing customer,
+    # identified by the same email used at checkout.
+    email: str = ""

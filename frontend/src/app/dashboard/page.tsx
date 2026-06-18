@@ -43,6 +43,9 @@ import {
   createSchedule,
   listSchedules,
   cancelSchedule,
+  getBillingStatus,
+  startCheckout,
+  openBillingPortal,
 } from "@/lib/api";
 import type { TemplateOption, ScheduledPost } from "@/lib/types";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -325,10 +328,32 @@ export default function Dashboard() {
   });
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
+  // True once the backend confirms Polar is wired; until then "upgrade" falls back
+  // to the local stub so the demo still flips to Pro without a payment provider.
+  const [billingConfigured, setBillingConfigured] = useState(false);
+  const [billingBusy, setBillingBusy] = useState(false);
 
   useEffect(() => {
     setPlanState(readPlan());
   }, []);
+
+  // Hydrate the real subscription from Polar (via the backend). An active sub wins
+  // over the local trial clock; the trial countdown still drives the free-tier UI.
+  const refreshBilling = useCallback(async () => {
+    try {
+      const status = await getBillingStatus();
+      setBillingConfigured(!!status.configured);
+      if (status.active) {
+        setPlanState((s) => (s.plan === "pro" ? s : setPlan("pro")));
+      }
+    } catch {
+      /* offline / not configured — keep the local plan */
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshBilling();
+  }, [refreshBilling]);
 
   // Header "Connect accounts" popover (connect X right from the Home tab).
   const [connectMenuOpen, setConnectMenuOpen] = useState(false);
@@ -357,8 +382,14 @@ export default function Dashboard() {
       setXToast({ kind: "ok", text: "LinkedIn account connected." });
     } else if (params.has("li_error")) {
       setXToast({ kind: "error", text: `Couldn't connect LinkedIn: ${params.get("li_error")}` });
+    } else if (params.get("billing") === "success") {
+      setXToast({ kind: "ok", text: "Payment received — welcome to Pro! 🎉" });
+      // The webhook writes the subscription a beat after the redirect; poll briefly.
+      [1500, 4000, 8000].forEach((ms) => setTimeout(() => refreshBilling(), ms));
+    } else if (params.get("billing") === "cancelled") {
+      setXToast({ kind: "error", text: "Checkout cancelled — no charge was made." });
     }
-    const oauthKeys = ["x_connected", "x_error", "li_connected", "li_error"];
+    const oauthKeys = ["x_connected", "x_error", "li_connected", "li_error", "billing"];
     if (oauthKeys.some((k) => params.has(k))) {
       oauthKeys.forEach((k) => params.delete(k));
       const qs = params.toString();
@@ -510,17 +541,45 @@ export default function Dashboard() {
     }
   };
 
-  // Subscription actions (local-only stub — swap for a Stripe checkout later).
-  const handleSubscribe = () => {
-    setPlanState(setPlan("pro"));
-    setUpgradeOpen(false);
-    setTrialBannerDismissed(true);
-    setXToast({ kind: "ok", text: "Welcome to Pro! 🎉" });
+  // Subscription actions. When Polar is wired (billingConfigured), these redirect to
+  // the hosted Polar checkout / customer portal; otherwise they fall back to the
+  // local stub so the demo still flips Pro without a payment provider.
+  const handleSubscribe = async () => {
+    if (!billingConfigured) {
+      setPlanState(setPlan("pro"));
+      setUpgradeOpen(false);
+      setTrialBannerDismissed(true);
+      setXToast({ kind: "ok", text: "Welcome to Pro! 🎉" });
+      return;
+    }
+    setBillingBusy(true);
+    try {
+      await startCheckout(); // redirects to Polar; control leaves the page
+    } catch (e) {
+      setBillingBusy(false);
+      setXToast({
+        kind: "error",
+        text: e instanceof Error ? e.message : "Couldn't start checkout. Try again.",
+      });
+    }
   };
-  const handleCancelPlan = () => {
-    setPlanState(setPlan("trial"));
-    setUpgradeOpen(false);
-    setXToast({ kind: "ok", text: "Subscription cancelled — you're back on the trial." });
+  const handleCancelPlan = async () => {
+    if (!billingConfigured) {
+      setPlanState(setPlan("trial"));
+      setUpgradeOpen(false);
+      setXToast({ kind: "ok", text: "Subscription cancelled — you're back on the trial." });
+      return;
+    }
+    setBillingBusy(true);
+    try {
+      await openBillingPortal(); // redirects to Polar's manage/cancel portal
+    } catch (e) {
+      setBillingBusy(false);
+      setXToast({
+        kind: "error",
+        text: e instanceof Error ? e.message : "Couldn't open the billing portal. Try again.",
+      });
+    }
   };
 
   useEffect(() => {
@@ -2704,6 +2763,7 @@ export default function Dashboard() {
         onClose={() => setUpgradeOpen(false)}
         onSubscribe={handleSubscribe}
         onCancel={handleCancelPlan}
+        busy={billingBusy}
       />
 
     </div>
