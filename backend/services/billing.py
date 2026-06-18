@@ -260,8 +260,64 @@ async def create_portal_session(email: str) -> str:
 # ---------------------------------------------------------------------------
 # Status
 # ---------------------------------------------------------------------------
+def _record_from_subscription(email: str, sub: dict) -> dict:
+    status = (sub.get("status") or "").lower()
+    return {
+        "email": email,
+        "active": status in ACTIVE_STATUSES,
+        "status": status,
+        "current_period_end": sub.get("current_period_end") or "",
+        "cancel_at_period_end": bool(sub.get("cancel_at_period_end")),
+        "subscription_id": sub.get("id") or "",
+        "last_event": "reconcile",
+    }
+
+
+async def _reconcile_from_polar(email: str) -> dict | None:
+    """Best-effort: ask Polar directly for this customer's subscription, so status
+    doesn't depend on the webhook having reached us (important when a local tunnel
+    is flaky). Needs `subscriptions:read`; if the token lacks it (403) or anything
+    else goes wrong, returns None and we fall back to the stored record."""
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(
+                f"{_api_base()}/v1/subscriptions/",
+                headers={"Authorization": f"Bearer {_access_token()}"},
+                params={"external_customer_id": email, "limit": 50},
+            )
+        if resp.status_code != 200:
+            return None
+        items = (resp.json() or {}).get("items") or []
+        # Match on the customer we linked (external_id) or their email, in case the
+        # query param wasn't honoured server-side.
+        def _mine(s: dict) -> bool:
+            cust = s.get("customer") or {}
+            return email in (
+                (cust.get("external_id") or "").lower(),
+                (cust.get("email") or "").lower(),
+            )
+        mine = [s for s in items if _mine(s)] or items
+        if not mine:
+            return None
+        chosen = next(
+            (s for s in mine if (s.get("status") or "").lower() in ACTIVE_STATUSES),
+            mine[0],
+        )
+        record = _record_from_subscription(email, chosen)
+        await _write_json(_customer_key(email), record)
+        return record
+    except Exception as e:
+        logger.warning("Polar reconcile failed for %s: %s", email, e)
+        return None
+
+
 async def get_status(email: str | None) -> dict:
-    """Return the stored subscription state for an email (Pro vs free)."""
+    """Return the subscription state for an email (Pro vs free).
+
+    Prefers the webhook-written record; if there isn't an active one, falls back to
+    asking Polar directly (reconcile) so a missed/late webhook doesn't strand a
+    paying user on Free.
+    """
     base = {
         "plan": "free",
         "active": False,
@@ -271,10 +327,14 @@ async def get_status(email: str | None) -> dict:
         "configured": is_configured(),
     }
     try:
-        key = _customer_key(email or "")
+        norm = _normalize_email(email or "")
     except BillingError:
         return base
-    record = await _read_json(key)
+    record = await _read_json(_customer_key(norm))
+    if not record or not record.get("active"):
+        fresh = await _reconcile_from_polar(norm)
+        if fresh:
+            record = fresh
     if not record:
         return base
     active = bool(record.get("active"))
