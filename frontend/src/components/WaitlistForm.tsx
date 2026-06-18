@@ -9,7 +9,8 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export function WaitlistForm() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "confirm" | "error">("idle");
   const [message, setMessage] = useState("");
   const [dbCount, setDbCount] = useState(17);
 
@@ -142,26 +143,42 @@ export function WaitlistForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !password) return;
+    if (password.length < 8) {
+      setStatus("error");
+      setMessage("Password must be at least 8 characters.");
+      return;
+    }
 
     setStatus("loading");
     setMessage("");
 
     const formData = new FormData();
     formData.append("email", email);
+    formData.append("password", password);
+    formData.append("origin", window.location.origin);
 
     try {
       const response = await submitWaitlist(formData);
-      if (response.success) {
-        setStatus("success");
-        setMessage("You're in — taking you to your studio…");
-        setDbCount((prev) => prev + 1);
-        const captured = email;
-        setEmail("");
-        setTimeout(() => goToDashboard(captured), 900);
-      } else {
+      if (!response.success) {
         setStatus("error");
         setMessage(response.message);
+        return;
+      }
+      setDbCount((prev) => prev + 1);
+      const captured = email;
+      setPassword("");
+      if (response.needsConfirmation) {
+        // Real sign-up with confirmation: do NOT enter the studio — they must
+        // confirm via email, then log in with their new password.
+        setStatus("confirm");
+        setMessage(captured);
+      } else {
+        // Demo / confirmations off — send them to the login page to sign in.
+        setStatus("success");
+        setMessage("Account created — taking you to log in…");
+        setEmail("");
+        setTimeout(() => { window.location.href = "/login"; }, 900);
       }
     } catch {
       setStatus("error");
@@ -186,6 +203,33 @@ export function WaitlistForm() {
             </div>
             <Loader2 className="w-4 h-4 text-[#10B981] animate-spin shrink-0" />
           </motion.div>
+        ) : status === "confirm" ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: 5 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className="p-5 rounded-2xl border border-[#10B981]/30 bg-zinc-950/60 backdrop-blur-md w-full text-center space-y-3"
+          >
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[#10B981]/12 border border-[#10B981]/30">
+              <CheckCircle2 className="w-5 h-5 text-[#10B981]" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[9px] uppercase font-mono tracking-widest text-[#10B981] font-bold">Confirm your email</p>
+              <p className="text-sm text-zinc-200 leading-relaxed">
+                We sent a confirmation link to{" "}
+                <span className="font-medium text-white">{message}</span>. Click it, then{" "}
+                <a href="/login" className="text-[#10B981] font-semibold hover:underline">log in</a>{" "}
+                with your password.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setStatus("idle"); setMessage(""); }}
+              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              Use a different email
+            </button>
+          </motion.div>
         ) : (
           <motion.div
             initial={{ opacity: 0 }}
@@ -193,38 +237,46 @@ export function WaitlistForm() {
             className="space-y-4 text-left"
           >
             <form onSubmit={handleSubmit} className="space-y-3 w-full">
-              <div className="flex flex-col sm:flex-row gap-3 w-full">
-                <div className="flex-1 relative">
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Enter your email address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={status === "loading"}
-                    className="w-full px-5 py-3 rounded-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] transition-all text-base md:text-sm disabled:opacity-50"
-                    required
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={status === "loading" || !email}
-                  className="w-full sm:w-auto shrink-0 py-3 rounded-full"
-                >
-                  {status === "loading" ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Setting up...
-                    </>
-                  ) : (
-                    <>
-                      Get started
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </>
-                  )}
-                </Button>
-              </div>
+              <input
+                type="email"
+                name="email"
+                autoComplete="email"
+                placeholder="Enter your email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={status === "loading"}
+                className="w-full px-5 py-3 rounded-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] transition-all text-base md:text-sm disabled:opacity-50"
+                required
+              />
+              <input
+                type="password"
+                name="password"
+                autoComplete="new-password"
+                placeholder="Create a password (8+ characters)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={status === "loading"}
+                minLength={8}
+                className="w-full px-5 py-3 rounded-full bg-zinc-950/60 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] transition-all text-base md:text-sm disabled:opacity-50"
+                required
+              />
+              <Button
+                type="submit"
+                disabled={status === "loading" || !email || !password}
+                className="w-full py-3 rounded-full"
+              >
+                {status === "loading" ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating account...
+                  </>
+                ) : (
+                  <>
+                    Create account
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
             </form>
 
             <div className="relative flex py-2 items-center">

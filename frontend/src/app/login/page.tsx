@@ -3,20 +3,22 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { ArrowRight, ArrowLeft, Loader2, Mail, CheckCircle2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
-// Dedicated Log In page. Unlike the old "Log in" link (which dumped you straight
-// into /dashboard), this is a real gate: you only land in the studio AFTER an
-// explicit login completes. We mark `clipr_login_active` when a login is started
-// so that merely opening /login — or having a stale Supabase session — never
-// auto-bounces you in. Identity is the email (clipr_email), the same key billing
-// and the dashboard use; there's no per-user auth wall yet.
+// Dedicated Log In page. Email + PASSWORD sign-in (no email confirmation step at
+// login — that happens once, at sign-up). You only land in the studio AFTER an
+// explicit login. Google OAuth is gated by `clipr_login_active` so that merely
+// opening /login — or returning here from a sign-up confirmation link — never
+// auto-bounces you in. Identity is the email (clipr_email), the key billing and
+// the dashboard use.
 export default function LoginPage() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "sent" | "entering" | "error">("idle");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "entering" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [justConfirmed, setJustConfirmed] = useState(false);
 
   const enterStudio = (userEmail?: string) => {
     try {
@@ -29,15 +31,22 @@ export default function LoginPage() {
     window.location.href = "/dashboard";
   };
 
-  // Catch the return from a magic link / Google OAuth and finish the login — but
-  // only when WE started a login in this browser (the flag), so an idle visit or a
-  // leftover session can't silently shove the user into the creator account.
   useEffect(() => {
+    // Surface "email confirmed" when arriving from a sign-up confirmation link,
+    // BEFORE the auth handler below strips the query param.
+    try {
+      if (new URLSearchParams(window.location.search).get("confirmed") === "1") {
+        setJustConfirmed(true);
+      }
+    } catch {
+      /* ignore */
+    }
+
     if (!isSupabaseConfigured || !supabase) return;
 
+    // Only used to finish a Google OAuth round-trip (gated by clipr_login_active).
+    // A confirm-link session does NOT set that flag, so it won't auto-enter.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Strip auth params Supabase appends to the URL (hash token / ?code) so HMR
-      // and styling don't choke on them.
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
         let changed = false;
@@ -45,14 +54,8 @@ export default function LoginPage() {
           url.hash = "";
           changed = true;
         }
-        if (url.searchParams.has("code")) {
-          url.searchParams.delete("code");
-          changed = true;
-        }
-        if (url.searchParams.has("confirmed")) {
-          url.searchParams.delete("confirmed");
-          changed = true;
-        }
+        if (url.searchParams.has("code")) { url.searchParams.delete("code"); changed = true; }
+        if (url.searchParams.has("confirmed")) { url.searchParams.delete("confirmed"); changed = true; }
         if (changed) window.history.replaceState(null, "", url.pathname + url.search + url.hash);
       }
 
@@ -69,10 +72,10 @@ export default function LoginPage() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const value = email.trim();
-    if (!value) return;
+    if (!value || !password) return;
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRe.test(value)) {
       setStatus("error");
@@ -82,38 +85,39 @@ export default function LoginPage() {
 
     setStatus("loading");
     setMessage("");
-    try {
-      localStorage.setItem("clipr_login_active", "true");
-    } catch {
-      /* ignore */
-    }
+    // Password login enters directly; make sure a stale Google flag can't also fire.
+    try { localStorage.removeItem("clipr_login_active"); } catch { /* ignore */ }
 
-    // No Supabase configured (local/demo) — treat the email as the identity and go in.
+    // No Supabase (local/demo) — treat the email as the identity and go in.
     if (!isSupabaseConfigured || !supabase) {
       setStatus("entering");
       setMessage("Welcome back — taking you to your studio…");
-      setTimeout(() => enterStudio(value), 800);
+      setTimeout(() => enterStudio(value), 700);
       return;
     }
 
     try {
-      const origin = window.location.origin;
-      const { error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: value,
-        options: { emailRedirectTo: `${origin}/login?confirmed=1` },
+        password,
       });
       if (error) {
-        try { localStorage.removeItem("clipr_login_active"); } catch { /* ignore */ }
         setStatus("error");
-        setMessage(error.message);
+        setMessage(
+          /email not confirmed/i.test(error.message)
+            ? "Confirm your email first — check your inbox for the link."
+            : /invalid login credentials/i.test(error.message)
+              ? "Wrong email or password."
+              : error.message
+        );
         return;
       }
-      setStatus("sent");
-      setMessage(value);
+      setStatus("entering");
+      setMessage("Welcome back — taking you to your studio…");
+      setTimeout(() => enterStudio(data.user?.email || value), 600);
     } catch {
-      try { localStorage.removeItem("clipr_login_active"); } catch { /* ignore */ }
       setStatus("error");
-      setMessage("Couldn't send the link. Please try again.");
+      setMessage("Couldn't log in. Please try again.");
     }
   };
 
@@ -129,7 +133,7 @@ export default function LoginPage() {
     if (!isSupabaseConfigured || !supabase) {
       setStatus("entering");
       setMessage("Welcome back — taking you to your studio…");
-      setTimeout(() => enterStudio(), 800);
+      setTimeout(() => enterStudio(), 700);
       return;
     }
 
@@ -191,33 +195,7 @@ export default function LoginPage() {
           className="w-full max-w-[420px] rounded-[24px] border border-zinc-800/80 bg-zinc-950/60 backdrop-blur-xl p-7 sm:p-8 shadow-[0_0_50px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.03)]"
         >
           <AnimatePresence mode="wait">
-            {status === "sent" ? (
-              <motion.div
-                key="sent"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                className="text-center space-y-4 py-2"
-              >
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#10B981]/12 border border-[#10B981]/30">
-                  <Mail className="h-5 w-5 text-[#10B981]" />
-                </div>
-                <div className="space-y-1.5">
-                  <h1 className="text-xl font-bold tracking-tight text-white">Check your inbox</h1>
-                  <p className="text-sm text-zinc-400 leading-relaxed">
-                    We sent a secure sign-in link to{" "}
-                    <span className="text-zinc-200 font-medium">{message}</span>. Open it on this
-                    device to log in.
-                  </p>
-                </div>
-                <button
-                  onClick={() => { setStatus("idle"); setMessage(""); }}
-                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-                >
-                  Use a different email
-                </button>
-              </motion.div>
-            ) : status === "entering" ? (
+            {status === "entering" ? (
               <motion.div
                 key="entering"
                 initial={{ opacity: 0 }}
@@ -244,7 +222,14 @@ export default function LoginPage() {
                   <p className="text-sm text-zinc-400">Pick up right where you left off.</p>
                 </div>
 
-                <form onSubmit={handleEmailLogin} className="space-y-3">
+                {justConfirmed && (
+                  <div className="flex items-center gap-2 rounded-xl border border-[#10B981]/30 bg-[#10B981]/10 px-3.5 py-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-[#10B981] shrink-0" />
+                    <p className="text-xs text-zinc-200">Email confirmed — log in to continue.</p>
+                  </div>
+                )}
+
+                <form onSubmit={handlePasswordLogin} className="space-y-3">
                   <input
                     type="email"
                     name="email"
@@ -256,20 +241,31 @@ export default function LoginPage() {
                     className="w-full px-5 py-3 rounded-full bg-zinc-950/70 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] transition-all text-base md:text-sm disabled:opacity-50"
                     required
                   />
+                  <input
+                    type="password"
+                    name="password"
+                    autoComplete="current-password"
+                    placeholder="Your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={busy}
+                    className="w-full px-5 py-3 rounded-full bg-zinc-950/70 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] transition-all text-base md:text-sm disabled:opacity-50"
+                    required
+                  />
                   <Button
                     type="submit"
                     variant="primary"
-                    disabled={busy || !email}
+                    disabled={busy || !email || !password}
                     className="w-full py-3 rounded-full"
                   >
                     {status === "loading" ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Sending link…
+                        Logging in…
                       </>
                     ) : (
                       <>
-                        Email me a login link
+                        Log in
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </>
                     )}
@@ -318,7 +314,7 @@ export default function LoginPage() {
         <p className="text-sm text-zinc-400">
           New to Clipr?{" "}
           <a href="/" className="text-[#10B981] font-semibold hover:underline">
-            Get started
+            Create an account
           </a>
         </p>
         <a
