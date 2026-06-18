@@ -544,6 +544,29 @@ export default function Dashboard() {
   // Subscription actions. When Polar is wired (billingConfigured), these redirect to
   // the hosted Polar checkout / customer portal; otherwise they fall back to the
   // local stub so the demo still flips Pro without a payment provider.
+  // Make sure we have an email to key billing on. Returns true if one is available
+  // (already stored, or just entered + persisted), false if the user cancelled.
+  const ensureBillingEmail = (): boolean => {
+    try {
+      let email = (localStorage.getItem("clipr_email") || "").trim();
+      if (!email) {
+        const entered = window.prompt(
+          "Enter your email to start your subscription (we'll link it to this account):"
+        );
+        email = (entered || "").trim();
+        if (!email) return false;
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+          setXToast({ kind: "error", text: "That doesn't look like a valid email." });
+          return false;
+        }
+        localStorage.setItem("clipr_email", email);
+      }
+      return true;
+    } catch {
+      return true; // localStorage blocked — let the backend surface any issue
+    }
+  };
+
   const handleSubscribe = async () => {
     if (!billingConfigured) {
       setPlanState(setPlan("pro"));
@@ -552,6 +575,9 @@ export default function Dashboard() {
       setXToast({ kind: "ok", text: "Welcome to Pro! 🎉" });
       return;
     }
+    // Billing is keyed by email; if we don't have one yet (e.g. landed straight on
+    // /dashboard without signing in), ask for it and persist it before checkout.
+    if (!ensureBillingEmail()) return;
     setBillingBusy(true);
     try {
       await startCheckout(); // redirects to Polar; control leaves the page
@@ -570,6 +596,7 @@ export default function Dashboard() {
       setXToast({ kind: "ok", text: "Subscription cancelled — you're back on the trial." });
       return;
     }
+    if (!ensureBillingEmail()) return;
     setBillingBusy(true);
     try {
       await openBillingPortal(); // redirects to Polar's manage/cancel portal
