@@ -2,13 +2,17 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Loader2, Mic, Pause, Play } from "lucide-react";
+import { Check, Loader2, Lock, Mic, Pause, Play } from "lucide-react";
 import { getVoices, previewVoiceover } from "@/lib/api";
 import type { Voice, VoiceoverSettings } from "@/lib/types";
+import { usesLeft } from "@/lib/limits";
 
 interface VoiceoverPickerProps {
   value: VoiceoverSettings;
   onChange: (next: VoiceoverSettings) => void;
+  /** Pro unlocks premium voices + removes the free use limit */
+  isPro: boolean;
+  onRequireUpgrade: () => void;
 }
 
 /** A nicely-cased label for the voice's accent/use-case if ElevenLabs provides one. */
@@ -24,8 +28,18 @@ function voiceTag(v: Voice): string {
  * actually turns voiceover on, so creators who don't use it never trigger the call
  * (or a "not configured" error). The chosen voice + speed flow into the render request.
  */
-export function VoiceoverPicker({ value, onChange }: VoiceoverPickerProps) {
+export function VoiceoverPicker({
+  value,
+  onChange,
+  isPro,
+  onRequireUpgrade,
+}: VoiceoverPickerProps) {
   const { enabled, voiceId, speed } = value;
+
+  // Free AI-voiceover allowance (Infinity for Pro).
+  const voLeft = usesLeft("voiceover", isPro);
+  const voCapped = Number.isFinite(voLeft);
+  const voiceLocked = (v: Voice) => !!v.premium && !isPro;
 
   const [voices, setVoices] = useState<Voice[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,9 +62,11 @@ export function VoiceoverPicker({ value, onChange }: VoiceoverPickerProps) {
         if (!active) return;
         setVoices(list);
         setLoaded(true);
-        // Auto-select the first voice so an enabled toggle always has a usable pick.
-        if (!voiceId && list[0]) {
-          onChange({ enabled, voiceId: list[0].voice_id, speed });
+        // Auto-select the first voice the user can actually use (skip Pro-only
+        // voices for free users) so an enabled toggle always has a usable pick.
+        const firstUsable = list.find((vv) => isPro || !vv.premium) || list[0];
+        if (!voiceId && firstUsable) {
+          onChange({ enabled, voiceId: firstUsable.voice_id, speed });
         }
       })
       .catch((e) => {
@@ -79,13 +95,27 @@ export function VoiceoverPicker({ value, onChange }: VoiceoverPickerProps) {
   };
 
   const toggle = () => {
-    if (enabled) stopPlayback();
-    onChange({ ...value, enabled: !enabled });
+    if (enabled) {
+      stopPlayback();
+      onChange({ ...value, enabled: false });
+      return;
+    }
+    // Turning ON: free users out of their AI-voiceover allowance get the upgrade
+    // prompt instead.
+    if (!isPro && voLeft <= 0) {
+      onRequireUpgrade();
+      return;
+    }
+    onChange({ ...value, enabled: true });
   };
 
-  const selectVoice = (id: string) => {
+  const selectVoice = (v: Voice) => {
+    if (voiceLocked(v)) {
+      onRequireUpgrade();
+      return;
+    }
     stopPlayback();
-    onChange({ ...value, voiceId: id });
+    onChange({ ...value, voiceId: v.voice_id });
   };
 
   const handlePreview = async (id: string) => {
@@ -164,6 +194,22 @@ export function VoiceoverPicker({ value, onChange }: VoiceoverPickerProps) {
             className="overflow-hidden"
           >
             <div className="mt-4">
+              {!isPro && voCapped && (
+                <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-[#10B981]/20 bg-[#10B981]/[0.06] px-3 py-2">
+                  <span className="text-[11px] text-[#9FB0B6]">
+                    {voLeft > 0
+                      ? `${voLeft} free AI voiceover${voLeft === 1 ? "" : "s"} left · premium voices are Pro`
+                      : "You've used your free AI voiceovers"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={onRequireUpgrade}
+                    className="text-[11px] font-semibold text-[#10B981] hover:underline shrink-0"
+                  >
+                    Upgrade
+                  </button>
+                </div>
+              )}
               {loading && (
                 <div className="flex items-center justify-center gap-2 rounded-xl border border-[#152226] bg-[#0D1416] py-8 text-[#6B7C85]">
                   <Loader2 className="w-4 h-4 animate-spin text-[#10B981]" />
@@ -196,16 +242,15 @@ export function VoiceoverPicker({ value, onChange }: VoiceoverPickerProps) {
                         const isLoadingPrev = previewLoadingId === v.voice_id;
                         const isPlaying = playingId === v.voice_id;
                         const tag = voiceTag(v);
+                        const locked = voiceLocked(v);
                         return (
                           <div
                             key={v.voice_id}
                             role="button"
                             tabIndex={0}
                             aria-pressed={selected}
-                            onClick={() => selectVoice(v.voice_id)}
-                            onKeyDown={(e) =>
-                              e.key === "Enter" && selectVoice(v.voice_id)
-                            }
+                            onClick={() => selectVoice(v)}
+                            onKeyDown={(e) => e.key === "Enter" && selectVoice(v)}
                             className={`group flex items-center gap-3 px-3 py-2.5 cursor-pointer border-l-2 transition-colors ${
                               selected
                                 ? "border-l-[#10B981] bg-[#10B981]/[0.06]"
@@ -236,25 +281,32 @@ export function VoiceoverPicker({ value, onChange }: VoiceoverPickerProps) {
                               )}
                             </button>
 
-                            <span className="text-sm font-medium text-[#EFEFEF] truncate flex-1 min-w-0">
+                            <span className={`text-sm font-medium truncate flex-1 min-w-0 ${locked ? "text-[#9FB0B6]" : "text-[#EFEFEF]"}`}>
                               {v.name}
                             </span>
 
-                            {tag && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide text-[#7FA89C] bg-[#10B981]/[0.08] border border-[#10B981]/15 shrink-0 truncate max-w-[40%]">
-                                {tag}
+                            {locked ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide text-[#10B981] bg-[#10B981]/[0.1] border border-[#10B981]/30 shrink-0">
+                                <Lock className="w-2.5 h-2.5" /> Pro
                               </span>
+                            ) : (
+                              <>
+                                {tag && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide text-[#7FA89C] bg-[#10B981]/[0.08] border border-[#10B981]/15 shrink-0 truncate max-w-[40%]">
+                                    {tag}
+                                  </span>
+                                )}
+                                <span
+                                  className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 ${
+                                    selected
+                                      ? "bg-[#10B981] text-[#070B0D] scale-100"
+                                      : "border border-[#2A3A40] text-transparent scale-90"
+                                  }`}
+                                >
+                                  <Check className="w-3 h-3" strokeWidth={3} />
+                                </span>
+                              </>
                             )}
-
-                            <span
-                              className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 ${
-                                selected
-                                  ? "bg-[#10B981] text-[#070B0D] scale-100"
-                                  : "border border-[#2A3A40] text-transparent scale-90"
-                              }`}
-                            >
-                              <Check className="w-3 h-3" strokeWidth={3} />
-                            </span>
                           </div>
                         );
                       })}

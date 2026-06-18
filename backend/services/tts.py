@@ -87,8 +87,27 @@ def _voice_settings(speed: float):
         return VoiceSettings(**base)
 
 
+# Voices reserved for Pro subscribers — matched by (case-insensitive) name. The
+# picker shows these with a lock for free users; everyone else can use the rest.
+PREMIUM_VOICE_NAMES = {
+    "george", "harry", "liam", "matilda", "eric",
+    "brian", "adam", "bill", "narxoz mimic", "jiggy",
+}
+
+
+def is_premium_voice(name: str) -> bool:
+    # ElevenLabs names are "Name - description" (e.g. "George - Warm, Captivating
+    # Storyteller"); match on the leading name only. Custom voices like "NARXOZ
+    # MIMIC" / "Jiggy" have no " - " and match whole.
+    base = (name or "").split(" - ")[0].strip().lower()
+    return base in PREMIUM_VOICE_NAMES
+
+
 def get_available_voices() -> list[dict]:
-    """List the account's ElevenLabs voices as lean dicts for the frontend picker."""
+    """List the account's ElevenLabs voices as lean dicts for the frontend picker.
+
+    Each voice is tagged `premium` (Pro-only) by name; the frontend gates selection.
+    """
     client = _client()
     try:
         resp = client.voices.get_all()
@@ -97,13 +116,15 @@ def get_available_voices() -> list[dict]:
     voices = getattr(resp, "voices", None) or []
     out: list[dict] = []
     for v in voices:
+        name = getattr(v, "name", "") or ""
         out.append(
             {
                 "voice_id": getattr(v, "voice_id", "") or "",
-                "name": getattr(v, "name", "") or "",
+                "name": name,
                 "category": getattr(v, "category", "") or "",
                 "labels": dict(getattr(v, "labels", {}) or {}),
                 "preview_url": getattr(v, "preview_url", "") or "",
+                "premium": is_premium_voice(name),
             }
         )
     return out

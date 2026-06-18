@@ -27,6 +27,7 @@ import { StoryboardStep } from "./StoryboardStep";
 import { UploadBySlotStep } from "./UploadBySlotStep";
 import { TemplatePickStep } from "./TemplatePickStep";
 import { RenderStep } from "./RenderStep";
+import { bumpUsage, canUse, usesLeft } from "@/lib/limits";
 
 export interface CreateFlowIdea {
   id: string;
@@ -51,6 +52,10 @@ interface CreateFlowProps {
    * modal's "back to reference / subtitles" buttons). Consumed once, then cleared. */
   jumpToStep?: FlowStep | null;
   onJumpHandled?: () => void;
+  /** Whether the user has an active Pro subscription (gates free-tier limits). */
+  isPro: boolean;
+  /** Open the upgrade modal when a free-tier limit / Pro-only feature is hit. */
+  onRequireUpgrade: () => void;
 }
 
 function fallbackVisualScript(idea: CreateFlowIdea): VisualScriptResponse {
@@ -196,6 +201,8 @@ export function CreateFlow({
   onSchedulePost,
   jumpToStep,
   onJumpHandled,
+  isPro,
+  onRequireUpgrade,
 }: CreateFlowProps) {
   const [currentStep, setCurrentStep] = useState<FlowStep>(2);
   const [visualScript, setVisualScript] = useState<VisualScriptResponse | null>(null);
@@ -418,6 +425,13 @@ export function CreateFlow({
 
   const handleStartRender = async () => {
     if (!visualScript) return;
+    // AI voiceover is limited on the free tier — gate before doing any work so a
+    // free user who's out of uses gets the upgrade prompt instead of a render.
+    const useVoiceover = voiceover.enabled && !!voiceover.voiceId;
+    if (useVoiceover && !canUse("voiceover", isPro)) {
+      onRequireUpgrade();
+      return;
+    }
     const scenes = [...visualScript.scenes].sort((a, b) => a.order - b.order);
     // Music is optional: prefer the user's pick / reference-matched track, else fall
     // back to the first built-in track so the render always has audio.
@@ -484,6 +498,9 @@ export function CreateFlow({
           : {}),
       });
 
+      // Count this AI-voiceover use against the free allowance (Pro is unlimited).
+      if (useVoiceover && !isPro) bumpUsage("voiceover");
+
       setRenderJobId(jobId);
       setRenderStatus({
         job_id: jobId,
@@ -536,9 +553,16 @@ export function CreateFlow({
           error={scriptError}
           onPhraseEdit={handlePhraseEdit}
           onRegenerate={() => {
+            // Free tier: cap storyboard regenerations; over the limit → upgrade.
+            if (!canUse("regen", isPro)) {
+              onRequireUpgrade();
+              return;
+            }
+            if (!isPro) bumpUsage("regen");
             localStorage.removeItem(`clipr_storyboard_v2_${idea.title}`);
             fetchStoryboard();
           }}
+          regenLeft={usesLeft("regen", isPro)}
           onContinue={() => setCurrentStep(3)}
           onBack={onBack}
         />
@@ -581,6 +605,8 @@ export function CreateFlow({
           }
           voiceover={voiceover}
           onVoiceoverChange={setVoiceover}
+          isPro={isPro}
+          onRequireUpgrade={onRequireUpgrade}
         />
       )}
 
@@ -588,6 +614,8 @@ export function CreateFlow({
         <TemplatePickStep
           platform={outputPlatform}
           selectedTemplateId={chosenTemplateId}
+          isPro={isPro}
+          onRequireUpgrade={onRequireUpgrade}
           onSelect={(id, recommendedTrack, musicManual) => {
             setChosenTemplateId(id || null);
             if (!id) return;

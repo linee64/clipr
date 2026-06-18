@@ -1666,6 +1666,8 @@ export default function Dashboard() {
                             onSchedulePost={handleScheduleFromRender}
                             jumpToStep={flowJumpStep}
                             onJumpHandled={() => setFlowJumpStep(null)}
+                            isPro={planState.plan === "pro"}
+                            onRequireUpgrade={() => setUpgradeOpen(true)}
                           />
                         </div>
                       )}

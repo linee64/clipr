@@ -2,13 +2,16 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, ChevronLeft, Film, Loader2, Music, RefreshCw } from "lucide-react";
+import { Check, ChevronLeft, Film, Loader2, Lock, Music, RefreshCw } from "lucide-react";
 import { resolveBackendUrl, sampleTemplates } from "@/lib/api";
 import type { TemplateOption } from "@/lib/types";
 
 interface TemplatePickStepProps {
   platform: string;
   selectedTemplateId: string | null;
+  /** Pro unlocks premium reference styles */
+  isPro: boolean;
+  onRequireUpgrade: () => void;
   onSelect: (id: string, recommendedTrack?: string, musicManual?: boolean) => void;
   onRender: () => void;
   onBack: () => void;
@@ -29,6 +32,8 @@ function prettyGrade(g: string): string {
 export function TemplatePickStep({
   platform,
   selectedTemplateId,
+  isPro,
+  onRequireUpgrade,
   onSelect,
   onRender,
   onBack,
@@ -154,7 +159,8 @@ export function TemplatePickStep({
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
               {templates.map((t, idx) => {
                 const wip = !!t.wip;
-                const isSelected = !wip && t.id === selectedTemplateId;
+                const locked = !!t.premium && !isPro;
+                const isSelected = !wip && !locked && t.id === selectedTemplateId;
                 const cut = t.pacing?.target_cut_len;
                 const bpm = t.measured?.bpm;
                 return (
@@ -162,27 +168,30 @@ export function TemplatePickStep({
                     type="button"
                     key={t.id}
                     disabled={wip}
-                    aria-disabled={wip}
+                    aria-disabled={wip || locked}
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.06, duration: 0.25 }}
                     onClick={() => {
                       if (wip) return; // in development — not selectable yet
+                      if (locked) { onRequireUpgrade(); return; } // Pro-only style
                       onSelect(t.id, t.recommended_track, t.music_manual);
                     }}
                     className={`group relative text-left rounded-xl overflow-hidden border transition-all ${
                       wip
                         ? "border-[#152226] cursor-not-allowed"
-                        : isSelected
-                          ? "border-[#10B981] shadow-[0_0_24px_rgba(16,185,129,0.22)]"
-                          : "border-[#152226] hover:border-[#1E343A]"
+                        : locked
+                          ? "border-[#10B981]/30 hover:border-[#10B981]/60"
+                          : isSelected
+                            ? "border-[#10B981] shadow-[0_0_24px_rgba(16,185,129,0.22)]"
+                            : "border-[#152226] hover:border-[#1E343A]"
                     }`}
                   >
                     <div className="relative aspect-[9/16] bg-[#070B0D]">
                       {t.preview_url ? (
                         <video
                           src={resolveBackendUrl(t.preview_url)}
-                          className={`w-full h-full object-cover ${wip ? "opacity-40 grayscale" : ""}`}
+                          className={`w-full h-full object-cover ${wip || locked ? "opacity-40 grayscale" : ""}`}
                           muted
                           loop
                           autoPlay
@@ -199,6 +208,14 @@ export function TemplatePickStep({
                         <div className="absolute inset-0 flex items-center justify-center bg-[#070B0D]/45">
                           <span className="px-3 py-1.5 rounded-full bg-[#1C1C1C]/90 border border-[#3A4A50] text-[11px] font-semibold uppercase tracking-wider text-[#EFEFEF] shadow-lg">
                             In development
+                          </span>
+                        </div>
+                      )}
+
+                      {locked && !wip && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-[#070B0D]/55">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#10B981]/15 border border-[#10B981]/40 text-[11px] font-semibold uppercase tracking-wider text-[#10B981] shadow-lg backdrop-blur-sm">
+                            <Lock className="w-3 h-3" /> Pro
                           </span>
                         </div>
                       )}

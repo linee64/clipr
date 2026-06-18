@@ -10,6 +10,8 @@ interface StoryboardStepProps {
   error: string | null;
   onPhraseEdit: (order: number, phrase: string) => void;
   onRegenerate: () => void;
+  /** Free-tier regenerations remaining (Infinity for Pro). */
+  regenLeft?: number;
   onContinue: () => void;
   onBack: () => void;
 }
@@ -28,10 +30,18 @@ export function StoryboardStep({
   error,
   onPhraseEdit,
   onRegenerate,
+  regenLeft,
   onContinue,
   onBack,
 }: StoryboardStepProps) {
   const [editingOrder, setEditingOrder] = useState<number | null>(null);
+  // Show the remaining free regenerations (Infinity = Pro, so no counter).
+  const regenCapped = typeof regenLeft === "number" && Number.isFinite(regenLeft);
+  const regenLabel = !regenCapped
+    ? "Regenerate storyboard"
+    : regenLeft! > 0
+      ? `Regenerate storyboard · ${regenLeft} left`
+      : "Regenerate storyboard · Pro";
 
   const totalDuration = visualScript?.scenes.reduce(
     (sum, s) => sum + s.duration_seconds,
@@ -187,9 +197,14 @@ export function StoryboardStep({
           <button
             type="button"
             onClick={onRegenerate}
-            className="flex-1 min-w-[140px] py-3 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg text-sm font-medium hover:bg-[#11191B] transition-colors"
+            title={regenCapped && regenLeft! <= 0 ? "Free limit reached — upgrade for unlimited" : undefined}
+            className={`flex-1 min-w-[140px] py-3 border rounded-lg text-sm font-medium transition-colors ${
+              regenCapped && regenLeft! <= 0
+                ? "bg-[#0D1416] border-[#10B981]/30 text-[#10B981] hover:bg-[#10B981]/[0.08]"
+                : "bg-[#0D1416] border-[#152226] text-[#EFEFEF] hover:bg-[#11191B]"
+            }`}
           >
-            Regenerate storyboard
+            {regenLabel}
           </button>
           <button
             type="button"

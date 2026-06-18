@@ -166,6 +166,9 @@ interface UploadBySlotStepProps {
   /** AI-voiceover settings (toggle / chosen voice / speed) and their setter */
   voiceover: VoiceoverSettings;
   onVoiceoverChange: (next: VoiceoverSettings) => void;
+  /** Pro gates premium voices + the free AI-voiceover use limit */
+  isPro: boolean;
+  onRequireUpgrade: () => void;
 }
 
 export function UploadBySlotStep({
@@ -183,6 +186,8 @@ export function UploadBySlotStep({
   onTrimChange,
   voiceover,
   onVoiceoverChange,
+  isPro,
+  onRequireUpgrade,
 }: UploadBySlotStepProps) {
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -551,7 +556,12 @@ export function UploadBySlotStep({
           )}
         </section>
 
-        <VoiceoverPicker value={voiceover} onChange={onVoiceoverChange} />
+        <VoiceoverPicker
+          value={voiceover}
+          onChange={onVoiceoverChange}
+          isPro={isPro}
+          onRequireUpgrade={onRequireUpgrade}
+        />
 
         <div className="mt-6 flex gap-3">
           <button

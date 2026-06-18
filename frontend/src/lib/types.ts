@@ -70,6 +70,8 @@ export interface Voice {
   category?: string;
   labels?: Record<string, string>;
   preview_url?: string;
+  /** Pro-only voice — the picker shows a lock and blocks selection for free users */
+  premium?: boolean;
 }
 
 /** AI-voiceover choices the create flow carries from the upload step into render. */
@@ -164,6 +166,8 @@ export interface TemplateOption {
   music_manual?: boolean;
   /** work-in-progress style: shown but not selectable yet */
   wip?: boolean;
+  /** Pro-only reference style — the picker shows a lock and blocks free users */
+  premium?: boolean;
   pacing?: {
     target_cut_len?: number;
     max_cuts_per_scene?: number;
