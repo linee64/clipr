@@ -777,6 +777,10 @@ export default function Dashboard() {
   const [voicePreview, setVoicePreview] = useState("Direct, no fluff, fast-paced, talking directly to operators.");
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(true);
   const [heroExitState, setHeroExitState] = useState<'visible' | 'exiting' | 'hidden'>('visible');
+  // Pending hero-exit animation timer; tracked so navigation can cancel it before it
+  // fires (otherwise a stale timer flips heroExitState back to 'hidden' after the user
+  // navigated Home/back).
+  const heroExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [modalIdea, setModalIdea] = useState<IdeaCard | null>(null);
   const [isPlatformOpen, setIsPlatformOpen] = useState(false);
   const [isFormatOpen, setIsFormatOpen] = useState(false);
@@ -870,6 +874,10 @@ export default function Dashboard() {
   };
 
   const handleExitCreateFlow = () => {
+    if (heroExitTimerRef.current) {
+      clearTimeout(heroExitTimerRef.current);
+      heroExitTimerRef.current = null;
+    }
     setSelectedIdeaId(null);
     setSelectedIdea(null);
   };
@@ -972,7 +980,9 @@ export default function Dashboard() {
     setHeroExitState("exiting");
 
     // Exit animation duration is ~400ms, after which we hide the hero section and show the cards
-    setTimeout(() => {
+    if (heroExitTimerRef.current) clearTimeout(heroExitTimerRef.current);
+    heroExitTimerRef.current = setTimeout(() => {
+      heroExitTimerRef.current = null;
       setHeroExitState("hidden");
     }, 400);
 
@@ -1017,7 +1027,9 @@ export default function Dashboard() {
       const aiIdeas: IdeaCard[] = rawList.map((it, i) => {
         const o = (it ?? {}) as Record<string, unknown>;
         return {
-          id: typeof o.id === "string" && o.id ? o.id : `ai-idea-${i + 1}`,
+          // Always index-based so React keys / selection ids are unique even if the
+          // model returns duplicate or missing ids (the model id carries no meaning here).
+          id: `ai-idea-${i + 1}`,
           title: typeof o.title === "string" ? o.title : "Untitled idea",
           hook: typeof o.hook === "string" ? o.hook : "",
           vibe: typeof o.vibe === "string" ? o.vibe : "",
@@ -1136,7 +1148,12 @@ export default function Dashboard() {
   ) => {
     setSidebarActive(name);
     if (name === "Home") {
-      // Fresh start: back to the AI chat / idea generation
+      // Fresh start: back to the AI chat / idea generation. Cancel any pending hero-exit
+      // timer so it can't flip the hero back to 'hidden' right after we reset it.
+      if (heroExitTimerRef.current) {
+        clearTimeout(heroExitTimerRef.current);
+        heroExitTimerRef.current = null;
+      }
       setActiveTab("Create");
       setSelectedIdeaId(null);
       setSelectedIdea(null);

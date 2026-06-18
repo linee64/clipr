@@ -23,6 +23,13 @@ export async function POST(req: Request) {
     if (typeof ideaTitle !== "string" || !ideaTitle.trim()) {
       return NextResponse.json({ error: "An idea title is required." }, { status: 400 });
     }
+    // Bound every user-controlled field (all are forwarded into the Gemini prompt) so a
+    // huge body can't amplify cost — same 2000-char cap the generate-ideas route enforces.
+    for (const v of [product, audience, tone, samplePost, ideaTitle, ideaHook]) {
+      if (typeof v === "string" && v.length > 2000) {
+        return NextResponse.json({ error: "Input is too long." }, { status: 400 });
+      }
+    }
 
     const systemInstruction = `You are an expert short-form video content strategist and scriptwriter.
 Your goal is to generate one viral short-form video script (TikTok, Instagram Reels, YouTube Shorts, or LinkedIn post) based on the user's idea, product, target audience, tone of voice, and platform.

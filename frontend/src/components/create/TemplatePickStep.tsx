@@ -55,10 +55,6 @@ export function TemplatePickStep({
         // Show 3 references at a time; "Show other styles" reshuffles to new ones.
         const { templates: next } = await sampleTemplates(platform, excludeIds);
         setTemplates(next);
-        // drop the selection if the chosen style is no longer on screen
-        if (selectedTemplateId && !next.some((t) => t.id === selectedTemplateId)) {
-          onSelect("");
-        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Couldn't load styles");
         setTemplates([]);
@@ -74,6 +70,20 @@ export function TemplatePickStep({
   useEffect(() => {
     load([]);
   }, [load]);
+
+  // Drop the selection if the chosen style is no longer on screen. This reads the LIVE
+  // selectedTemplateId/templates (not the value captured in `load`'s [platform]-only
+  // closure), so a reshuffle that hides the selected card actually clears it — otherwise
+  // Render could fire with a hidden/stale template.
+  useEffect(() => {
+    if (
+      selectedTemplateId &&
+      templates.length &&
+      !templates.some((t) => t.id === selectedTemplateId)
+    ) {
+      onSelect("");
+    }
+  }, [templates, selectedTemplateId, onSelect]);
 
   const handleShuffle = () => {
     // don't pre-clear: load() drops the selection only if the chosen style isn't in

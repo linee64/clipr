@@ -16,6 +16,7 @@ queue. A `processing` claim guards against re-posting within an overlapping tick
 import asyncio
 import json
 import logging
+import math
 import os
 import re
 import time
@@ -128,12 +129,25 @@ def _list_ids_sync() -> list[str]:
             return [p.stem for p in d.glob("*.json")]
         from services.storage import _get_supabase
 
-        items = _get_supabase().storage.from_(BUCKET).list(SCHEDULE_PREFIX.rstrip("/"))
+        sb = _get_supabase()
         ids: list[str] = []
-        for it in items or []:
-            name = it.get("name") if isinstance(it, dict) else getattr(it, "name", "")
-            if name and name.endswith(".json"):
-                ids.append(name[:-5])
+        # Page through the bucket: storage list() defaults to only 100 objects, which
+        # would silently drop due posts once more than 100 schedule files exist.
+        page_size = 1000
+        offset = 0
+        while True:
+            batch = sb.storage.from_(BUCKET).list(
+                SCHEDULE_PREFIX.rstrip("/"),
+                {"limit": page_size, "offset": offset,
+                 "sortBy": {"column": "name", "order": "asc"}},
+            ) or []
+            for it in batch:
+                name = it.get("name") if isinstance(it, dict) else getattr(it, "name", "")
+                if name and name.endswith(".json"):
+                    ids.append(name[:-5])
+            if len(batch) < page_size:
+                break
+            offset += page_size
         return ids
     except Exception:
         logger.info("Scheduler list failed", exc_info=True)
@@ -189,7 +203,9 @@ async def create_schedule(
         when = float(scheduled_at)
     except (TypeError, ValueError):
         raise ScheduleError("Invalid schedule time.")
-    if when <= 0:
+    # Reject NaN/Infinity too (a float field accepts them by default): NaN would post
+    # immediately and Infinity would stick pending forever.
+    if not math.isfinite(when) or when <= 0:
         raise ScheduleError("Invalid schedule time.")
 
     schedule_id = uuid.uuid4().hex
