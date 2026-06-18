@@ -17,30 +17,33 @@ Flow:
                                  the subscription state. This is the source of truth.
 
 Checkout + portal use the documented REST API directly (httpx, like the X/LinkedIn
-integrations). Webhook signature verification uses polar-sdk's validate_event, which
-handles Polar's Standard-Webhooks secret encoding for us.
+integrations). Webhook signatures are verified with standardwebhooks directly.
+
+Subscription state lives in the Supabase Postgres table `subscriptions` (keyed by
+email), so plan status is queryable/visible in the Supabase dashboard. See
+`backend/migrations/001_subscriptions.sql` for the schema — it must exist before
+billing works.
 """
 
 import asyncio
 import base64
-import hashlib
-import json
 import logging
 import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
 
-from services.storage import BUCKET, local_file_path, use_local_storage
+from services.storage import _get_supabase
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 logger = logging.getLogger("clipr.billing")
 
-# Where each customer's subscription state is parked (keyed by hashed email).
-CUSTOMER_PREFIX = "billing/customers/"
+# Supabase table holding one row per customer's subscription state.
+SUBS_TABLE = "subscriptions"
 
 # Polar subscription statuses that grant Pro access.
 ACTIVE_STATUSES = {"active", "trialing"}
@@ -126,49 +129,40 @@ def _normalize_email(email: str | None) -> str:
     return email
 
 
-def _customer_key(email: str) -> str:
-    digest = hashlib.sha256(_normalize_email(email).encode("utf-8")).hexdigest()
-    return f"{CUSTOMER_PREFIX}{digest}.json"
-
-
 # ---------------------------------------------------------------------------
-# Tiny JSON store on top of the existing storage backend (bucket or local temp)
+# Subscription store — one row per email in the Supabase `subscriptions` table
 # ---------------------------------------------------------------------------
-def _read_json_sync(key: str) -> dict | None:
+def _read_record_sync(email: str) -> dict | None:
     try:
-        if use_local_storage():
-            src = local_file_path(key)
-            return json.loads(src.read_bytes()) if src.is_file() else None
-        from services.storage import _get_supabase
-
-        data = _get_supabase().storage.from_(BUCKET).download(key)
-        return json.loads(data)
-    except Exception:
+        res = (
+            _get_supabase()
+            .table(SUBS_TABLE)
+            .select("*")
+            .eq("email", email)
+            .limit(1)
+            .execute()
+        )
+        rows = res.data or []
+        return rows[0] if rows else None
+    except Exception as e:
+        logger.warning("subscriptions read failed for %s: %s", email, e)
         return None
 
 
-def _write_json_sync(key: str, value: dict) -> None:
-    data = json.dumps(value).encode("utf-8")
-    if use_local_storage():
-        dest = local_file_path(key)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(data)
-        return
-    from services.storage import _get_supabase
-
-    _get_supabase().storage.from_(BUCKET).upload(
-        key,
-        data,
-        file_options={"upsert": "true", "content-type": "application/json"},
-    )
+def _write_record_sync(email: str, record: dict) -> None:
+    row = {**record, "email": email, "updated_at": datetime.now(timezone.utc).isoformat()}
+    # Postgres timestamptz rejects an empty string — store NULL when unknown.
+    if not row.get("current_period_end"):
+        row["current_period_end"] = None
+    _get_supabase().table(SUBS_TABLE).upsert(row, on_conflict="email").execute()
 
 
-async def _read_json(key: str) -> dict | None:
-    return await asyncio.to_thread(_read_json_sync, key)
+async def _read_record(email: str) -> dict | None:
+    return await asyncio.to_thread(_read_record_sync, email)
 
 
-async def _write_json(key: str, value: dict) -> None:
-    await asyncio.to_thread(_write_json_sync, key, value)
+async def _write_record(email: str, record: dict) -> None:
+    await asyncio.to_thread(_write_record_sync, email, record)
 
 
 # ---------------------------------------------------------------------------
@@ -304,7 +298,7 @@ async def _reconcile_from_polar(email: str) -> dict | None:
             mine[0],
         )
         record = _record_from_subscription(email, chosen)
-        await _write_json(_customer_key(email), record)
+        await _write_record(email, record)
         return record
     except Exception as e:
         logger.warning("Polar reconcile failed for %s: %s", email, e)
@@ -330,7 +324,7 @@ async def get_status(email: str | None) -> dict:
         norm = _normalize_email(email or "")
     except BillingError:
         return base
-    record = await _read_json(_customer_key(norm))
+    record = await _read_record(norm)
     if not record or not record.get("active"):
         fresh = await _reconcile_from_polar(norm)
         if fresh:
@@ -421,5 +415,5 @@ async def handle_webhook(payload: bytes, headers: dict) -> None:
         "subscription_id": data.get("id") or "",
         "last_event": etype,
     }
-    await _write_json(_customer_key(email), record)
+    await _write_record(email, record)
     logger.info("Billing: %s -> %s active=%s", email, etype, active)
