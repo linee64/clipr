@@ -290,7 +290,11 @@ async def _reconcile_from_polar(email: str) -> dict | None:
                 (cust.get("external_id") or "").lower(),
                 (cust.get("email") or "").lower(),
             )
-        mine = [s for s in items if _mine(s)] or items
+        # Fail CLOSED on entitlement: only subscriptions that actually match this
+        # customer (external_id/email) count. Never fall back to the full unfiltered
+        # list — if the query filter wasn't honoured server-side, that would let a
+        # free user inherit Pro from a different customer's active subscription.
+        mine = [s for s in items if _mine(s)]
         if not mine:
             return None
         chosen = next(

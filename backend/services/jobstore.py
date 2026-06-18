@@ -81,6 +81,21 @@ async def read_remote(job_id: str) -> dict | None:
     return await asyncio.to_thread(_read_remote_sync, job_id)
 
 
+async def finish(job_id: str) -> None:
+    """Persist a job's terminal (done/error) state to durable storage immediately.
+
+    The heartbeat only mirrors state every HEARTBEAT_SECS, and the worker sets the final
+    status in memory without bumping updated_ts — so an OOM-kill in the gap between
+    "done" and the next tick would leave the durable record stuck at "processing" with a
+    stale timestamp, and a successful render would read back as interrupted. Call this
+    the instant a terminal state is set. Stamping updated_ts also stops a same-process
+    poll from flagging the just-finished job as stale. Best-effort (never raises)."""
+    record = jobs.get(job_id)
+    if record is not None:
+        record["updated_ts"] = time.time()
+    await asyncio.to_thread(_persist_sync, job_id)
+
+
 def is_stale(record: dict | None) -> bool:
     """True if a still-"processing" job stopped heart-beating (its worker died)."""
     if not record or record.get("status") not in ("pending", "processing"):

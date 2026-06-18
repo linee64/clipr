@@ -39,6 +39,12 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 SCHEDULE_PREFIX = "schedules/"
 PLATFORMS = ("twitter", "linkedin")
 
+# A schedule claimed as "processing" for longer than this lost its worker (the single
+# uvicorn process OOM'd / restarted mid-publish). The next tick reaps it back to
+# "pending" so the post still goes out. Comfortably above the 180s download timeout plus
+# the chunked social upload, so a healthy in-flight post is never reaped early.
+SCHEDULE_STALE_SECS = 600
+
 _CID_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 
 
@@ -231,7 +237,9 @@ async def cancel_schedule(cid: str | None, schedule_id: str) -> None:
         return
     sch = await _read(key)
     # Only the owning browser can cancel, and an already-posted one can't be unsent.
-    if sch and sch.get("cid") == cid and sch.get("status") in ("pending", "error"):
+    # "processing" is cancelable too: it's either genuinely in-flight or a stale claim
+    # left by a crashed worker, and the user needs a way to clear the latter.
+    if sch and sch.get("cid") == cid and sch.get("status") in ("pending", "error", "processing"):
         await _delete(key)
 
 
@@ -300,12 +308,28 @@ async def run_due() -> None:
             except ScheduleError:
                 continue
             sch = await _read(key)
-            if not sch or sch.get("status") != "pending":
+            if not sch:
+                continue
+            status = sch.get("status")
+            if status == "processing":
+                # A worker that died mid-publish (OOM/restart) leaves the schedule stuck
+                # in "processing" forever — run_due never re-picks it and the user can't
+                # cancel it, so the post silently never goes out. Reap a stale claim back
+                # to "pending" so it gets retried. The generous timeout makes a double
+                # post (crash right after the upload completed) very unlikely.
+                claimed = float(sch.get("claimed_at") or 0)
+                if not claimed or (now - claimed) <= SCHEDULE_STALE_SECS:
+                    continue
+                logger.warning("Reaping stale scheduled post %s (stuck in processing)", sid)
+                status = "pending"
+            elif status != "pending":
                 continue
             if float(sch.get("scheduled_at", 0)) > now:
                 continue
-            # Claim it before the slow post so a re-entrant tick won't pick it again.
+            # Claim it before the slow post so a re-entrant tick won't pick it again, and
+            # stamp when so a crash mid-publish can be detected and reaped (above).
             sch["status"] = "processing"
+            sch["claimed_at"] = time.time()
             await _write(key, sch)
             try:
                 result = await _publish(sch)

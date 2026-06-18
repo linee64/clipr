@@ -66,7 +66,27 @@ def _ensure_sync(email: str) -> dict:
 
 
 def _bump_sync(email: str, field: str) -> int:
+    """Atomically increment a usage counter.
+
+    Uses a Postgres function (migrations/003_usage_increment.sql) so two concurrent
+    requests for the same email can't lose an update (the old read-in-Python-then-write
+    let both read N and both write N+1, undercounting and letting a free user exceed the
+    cap). Falls back to the read-modify-write if that function isn't present yet, so the
+    meter keeps working before the migration is applied.
+    """
     sb = _get_supabase()
+    _ensure_sync(email)  # guarantee the row exists before we increment it
+    try:
+        res = sb.rpc("clipr_bump_usage", {"p_email": email, "p_field": field}).execute()
+        val = res.data
+        if isinstance(val, list):
+            val = val[0] if val else None
+        if val is not None:
+            return int(val)
+    except Exception as e:
+        logger.warning(
+            "atomic usage RPC unavailable, falling back to read-modify-write: %s", e
+        )
     cur = _ensure_sync(email)
     val = int(cur.get(field) or 0) + 1
     sb.table(ACCOUNTS_TABLE).update({field: val, "updated_at": _now_iso()}).eq(
@@ -107,12 +127,18 @@ async def _is_pro(email: str) -> bool:
     return await billing.is_active(email)
 
 
-async def consume(email: str | None, action: str) -> None:
-    """Enforce + record one use of a metered free-tier `action` (regen/voiceover).
+async def check_quota(email: str | None, action: str) -> None:
+    """Raise QuotaExceeded if a free account is already at the limit for `action`,
+    WITHOUT recording a use.
 
-    Pro accounts are unlimited (no-op). Free accounts: raise QuotaExceeded once the
-    limit is reached, otherwise increment the counter. With no resolvable email we
-    can't meter (anonymous/local dev) — allow rather than block.
+    Use this as an up-front gate for expensive/async work (e.g. an AI-voiceover render
+    that runs in the background and can fail/OOM): the caller checks quota here to return
+    429 immediately, then calls record_use() only once the work actually succeeds — so a
+    failed render never burns a free credit.
+
+    Pro accounts are unlimited (no-op). With no resolvable email, or if the accounts
+    table is missing / a transient DB error occurs, we fail OPEN (allow) so
+    billing-adjacent flows keep working.
     """
     email = _norm(email)
     if not email or action not in FREE_LIMITS:
@@ -123,17 +149,36 @@ async def consume(email: str | None, action: str) -> None:
         account = await _ensure(email)
         used = int(account.get(f"{action}_used") or 0)
     except Exception as e:
-        # Accounts table missing (migration not run yet) or a transient DB error:
-        # fail OPEN so billing-adjacent flows keep working. Only a real over-limit
-        # (below) blocks.
         logger.warning("usage meter unavailable for %s/%s: %s", email, action, e)
         return
     if used >= FREE_LIMITS[action]:
         raise QuotaExceeded(action, FREE_LIMITS[action])
+
+
+async def record_use(email: str | None, action: str) -> None:
+    """Record one use of a metered `action` (no enforcement). Call this only AFTER the
+    work genuinely succeeded. Pro is a no-op; failures fail OPEN (logged, not raised)."""
+    email = _norm(email)
+    if not email or action not in FREE_LIMITS:
+        return
+    if await _is_pro(email):
+        return
     try:
         await asyncio.to_thread(_bump_sync, email, f"{action}_used")
     except Exception as e:
         logger.warning("usage increment failed for %s/%s: %s", email, action, e)
+
+
+async def consume(email: str | None, action: str) -> None:
+    """Enforce + record one use in a single call (for in-request, trivially retryable
+    actions). For async/expensive work prefer check_quota() up front + record_use() on
+    success, so a failure doesn't burn a free credit.
+
+    Pro accounts are unlimited (no-op). Free accounts: raise QuotaExceeded once the
+    limit is reached, otherwise increment the counter.
+    """
+    await check_quota(email, action)
+    await record_use(email, action)
 
 
 async def require_voice_allowed(email: str | None, voice_id: str) -> None:

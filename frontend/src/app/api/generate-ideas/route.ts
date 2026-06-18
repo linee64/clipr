@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp, rateLimit } from "@/lib/apiRateLimit";
 
 export async function POST(req: Request) {
   try {
@@ -10,8 +11,26 @@ export async function POST(req: Request) {
       );
     }
 
+    // This route spends the server's Gemini budget. Throttle per-IP so an anonymous
+    // caller can't drain it (best-effort; see lib/apiRateLimit).
+    if (!rateLimit(`ideas:${clientIp(req)}`, 20, 60_000)) {
+      return NextResponse.json(
+        { error: "Too many requests — please slow down and try again shortly." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { product, audience, tone, platform, prompt } = body;
+
+    // Validate before spending an API call, and bound the prompt size so a huge body
+    // can't be used to amplify cost.
+    if (typeof prompt !== "string" || !prompt.trim()) {
+      return NextResponse.json({ error: "A prompt is required." }, { status: 400 });
+    }
+    if (prompt.length > 2000) {
+      return NextResponse.json({ error: "Prompt is too long." }, { status: 400 });
+    }
 
     const systemInstruction = `You are Clipr's short-form video idea strategist for TikTok, Reels, and YouTube Shorts.
 
@@ -65,11 +84,13 @@ Generate the 6 ideas now.`;
     );
 
     if (!response.ok) {
+      // Log the upstream detail server-side only — never forward Google's verbatim
+      // error body (project/quota/model metadata) to an untrusted caller.
       const errText = await response.text();
       console.error("Gemini API error response:", errText);
       return NextResponse.json(
-        { error: "Gemini API call failed", details: errText },
-        { status: response.status }
+        { error: "Idea generation is temporarily unavailable." },
+        { status: 502 }
       );
     }
 

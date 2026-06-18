@@ -401,18 +401,18 @@ export function UploadBySlotStep({
                       </span>
                     </div>
                     <Check className="w-4 h-4 text-[#10B981] shrink-0" />
-                    <div className="flex shrink-0 flex-col items-end gap-0.5">
+                    <div className="flex shrink-0 flex-col items-end gap-1.5 md:gap-0.5">
                       <button
                         type="button"
                         onClick={() => fileInputRefs.current[scene.order]?.click()}
-                        className="text-xs text-[#6B7C85] underline hover:text-[#EFEFEF]"
+                        className="text-xs text-[#6B7C85] underline hover:text-[#EFEFEF] py-1.5 -my-1 md:py-0 md:my-0"
                       >
                         Replace
                       </button>
                       <button
                         type="button"
                         onClick={() => setPexelsScene(scene.order)}
-                        className="text-[11px] text-[#6B7C85] underline hover:text-[#10B981]"
+                        className="text-[11px] text-[#6B7C85] underline hover:text-[#10B981] py-1.5 -my-1 md:py-0 md:my-0"
                       >
                         Library
                       </button>

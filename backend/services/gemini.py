@@ -66,13 +66,62 @@ The content must sound exactly like this creator — not like a generic AI tool.
 """
 
 
+def _extract_json_block(text: str) -> str | None:
+    """Return the first balanced {...} or [...] block in `text`, or None.
+
+    Recovers the JSON when the model wraps it in prose or appends a stray sentence, so a
+    bit of chatter around the payload doesn't fail the whole generation."""
+    start = -1
+    for i, ch in enumerate(text):
+        if ch in "{[":
+            start = i
+            break
+    if start < 0:
+        return None
+    depth = 0
+    in_str = False
+    esc = False
+    for j in range(start, len(text)):
+        ch = text[j]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in "{[":
+            depth += 1
+        elif ch in "}]":
+            depth -= 1
+            if depth == 0:
+                return text[start : j + 1]
+    return None
+
+
 def _parse_json_response(text: str):
-    text = text.strip()
+    """Parse the model's JSON output defensively.
+
+    Strips a ```json fence if present, and if the raw text isn't valid JSON (the model
+    wrapped it in prose or emitted a truncated/odd fence) falls back to extracting the
+    first balanced JSON block before raising — so a transient formatting blip doesn't
+    crash idea/storyboard generation with an opaque 500."""
+    text = (text or "").strip()
     if text.startswith("```"):
-        text = text.split("```")[1]
-        if text.startswith("json"):
-            text = text[4:]
-    return json.loads(text.strip())
+        body = text[3:]
+        if body[:4].lower() == "json":
+            body = body[4:]
+        text = body.split("```", 1)[0].strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        snippet = _extract_json_block(text)
+        if snippet is not None:
+            return json.loads(snippet)
+        raise
 
 
 IDEA_PROMPT = """
@@ -233,6 +282,10 @@ Return ONLY valid JSON:
 """
     response = model.generate_content(prompt)
     script = _parse_json_response(response.text)
+    # Guard against the model returning a JSON array or scalar instead of the requested
+    # object — indexing it below would otherwise raise a confusing TypeError.
+    if not isinstance(script, dict):
+        raise ValueError("The model returned an unexpected storyboard format; try again.")
     # The template owns the look — force grade/vibe so the rendered montage matches
     # the chosen template regardless of what the model echoed back.
     script["color_grade"] = grade

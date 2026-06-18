@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp, rateLimit } from "@/lib/apiRateLimit";
 
 export async function POST(req: Request) {
   try {
@@ -7,8 +8,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Gemini API key is not configured in .env.local" }, { status: 500 });
     }
 
+    // This route spends the server's Gemini budget. Throttle per-IP (best-effort).
+    if (!rateLimit(`script:${clientIp(req)}`, 30, 60_000)) {
+      return NextResponse.json(
+        { error: "Too many requests — please slow down and try again shortly." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { product, audience, tone, samplePost, platform, ideaTitle, ideaHook } = body;
+
+    // Need at least an idea title to generate a script; reject before spending a call.
+    if (typeof ideaTitle !== "string" || !ideaTitle.trim()) {
+      return NextResponse.json({ error: "An idea title is required." }, { status: 400 });
+    }
 
     const systemInstruction = `You are an expert short-form video content strategist and scriptwriter.
 Your goal is to generate one viral short-form video script (TikTok, Instagram Reels, YouTube Shorts, or LinkedIn post) based on the user's idea, product, target audience, tone of voice, and platform.
@@ -71,9 +85,13 @@ Platform: ${platform}`,
     );
 
     if (!response.ok) {
+      // Log upstream detail server-side only; don't forward Google's verbatim error body.
       const errText = await response.text();
       console.error("Gemini API error response:", errText);
-      return NextResponse.json({ error: "Gemini API call failed", details: errText }, { status: response.status });
+      return NextResponse.json(
+        { error: "Script generation is temporarily unavailable." },
+        { status: 502 }
+      );
     }
 
     const data = await response.json();

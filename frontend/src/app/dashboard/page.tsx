@@ -352,11 +352,13 @@ export default function Dashboard() {
       if (status.active) {
         setPlanState((s) => (s.plan === "pro" ? s : setPlan("pro")));
       } else if (typeof status.trial_days_left === "number") {
-        setPlanState({
-          plan: "trial",
-          daysLeft: status.trial_days_left,
-          expired: !!status.trial_expired,
-        });
+        // Don't clobber a locally-upgraded Pro back to trial. On a stub/demo deploy
+        // (Polar not wired) the backend reports active:false but still returns a trial
+        // count, so an unguarded write here would silently downgrade a just-upgraded
+        // user after any metered action. Only drive the countdown for non-Pro plans.
+        const daysLeft = status.trial_days_left;
+        const expired = !!status.trial_expired;
+        setPlanState((s) => (s.plan === "pro" ? s : { plan: "trial", daysLeft, expired }));
       }
     } catch {
       /* offline / not configured — keep the local plan */
@@ -989,7 +991,17 @@ export default function Dashboard() {
         throw new Error("Failed to generate ideas from AI");
       }
 
-      const aiIdeas: IdeaCard[] = await response.json();
+      // The AI route returns whatever Gemini produced. If it isn't an array (the model
+      // sometimes wraps it in an object), throw so the catch below falls back to template
+      // ideas — otherwise the later `ideas.slice(...)` in render throws OUTSIDE this
+      // try/catch and white-screens the Create tab.
+      const parsed = await response.json();
+      const aiIdeas: IdeaCard[] | undefined = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed?.ideas)
+          ? parsed.ideas
+          : undefined;
+      if (!aiIdeas) throw new Error("AI returned an unexpected ideas shape");
       setIdeas(aiIdeas);
       setIsGenerating(false);
     } catch (err) {
@@ -1794,7 +1806,7 @@ export default function Dashboard() {
                               >
                                 View
                               </a>
-                            ) : s.status === "pending" || s.status === "error" ? (
+                            ) : s.status === "pending" || s.status === "error" || s.status === "processing" ? (
                               <button
                                 onClick={() => handleCancelSchedule(s.id)}
                                 className="shrink-0 text-[11px] text-[#6B7C85] hover:text-[#EF8B8B] transition-colors"

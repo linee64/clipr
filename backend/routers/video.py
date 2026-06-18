@@ -35,7 +35,12 @@ from services.editor import (
     transcribe_audio,
 )
 from services import jobstore, pexels, tts, usage
-from services.storage import download_file, local_file_path, upload_file, use_local_storage
+from services.storage import (
+    LOCAL_STORAGE_ROOT,
+    download_file,
+    upload_file,
+    use_local_storage,
+)
 from services.tracks import get_tracks_with_urls
 from workers.render import render_jobs, run_broll_render, run_render_job
 
@@ -94,8 +99,12 @@ async def get_stored_file(file_path: str):
     """Dev mode: serve files saved locally when Supabase is not configured."""
     if not use_local_storage():
         raise HTTPException(status_code=404, detail="Not available with Supabase storage")
-    path = local_file_path(file_path)
-    if not path.is_file():
+    # {file_path:path} preserves slashes and Starlette does NOT strip "..", so a request
+    # like ../../.env (or an absolute path) would otherwise escape the storage root and
+    # read arbitrary files. Resolve and require the result to stay inside the root.
+    root = LOCAL_STORAGE_ROOT.resolve()
+    path = (root / file_path).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(path)
 
@@ -216,14 +225,12 @@ async def list_tracks():
 @router.post("/silence/detect")
 async def silence_detect(request: SilenceDetectRequest):
     """Detect silent moments in a clip."""
+    local_path = os.path.join(TEMP_DIR, f"{request.clip_id}_silence_check.mp4")
     try:
-        local_path = os.path.join(TEMP_DIR, f"{request.clip_id}_silence_check.mp4")
         await download_file(f"clips/{request.clip_id}.mp4", local_path)
 
         silences = detect_silence(local_path, request.threshold, request.min_duration)
         duration = get_duration(local_path)
-
-        os.remove(local_path)
 
         return {
             "clip_id": request.clip_id,
@@ -234,6 +241,12 @@ async def silence_detect(request: SilenceDetectRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Always clean up the downloaded clip — detect_silence/get_duration can raise
+        # (e.g. a corrupt clip), and the success-path os.remove would then be skipped,
+        # leaking full-size files that fill the render box's small disk over time.
+        if os.path.exists(local_path):
+            os.remove(local_path)
 
 
 @router.post("/silence/remove")
@@ -340,12 +353,11 @@ async def beat_sync(request: BeatSyncRequest, background_tasks: BackgroundTasks)
 @router.post("/beat-sync/analyze")
 async def analyze_beats(audio_file_id: str):
     """Analyze audio and return beat timestamps for timeline visualization."""
+    local_audio = os.path.join(TEMP_DIR, f"{audio_file_id}_analyze.mp3")
     try:
-        local_audio = os.path.join(TEMP_DIR, f"{audio_file_id}_analyze.mp3")
         await download_file(f"audio/{audio_file_id}.mp3", local_audio)
 
         beats = detect_beats(local_audio)
-        os.remove(local_audio)
 
         return {
             "audio_file_id": audio_file_id,
@@ -355,6 +367,10 @@ async def analyze_beats(audio_file_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Clean up even if detect_beats raises, so repeated failures can't fill the disk.
+        if os.path.exists(local_audio):
+            os.remove(local_audio)
 
 
 @router.get("/subtitles/preview")
@@ -456,7 +472,12 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
         await usage.require_template_allowed(request.email, request.template_id)
         if request.add_voiceover:
             await usage.require_voice_allowed(request.email, request.voice_id)
-            await usage.consume(request.email, "voiceover")
+            # Gate up front (429 if already over the limit) but DON'T charge yet: the
+            # render runs in the background and can fail/OOM, or fall back to a music-only
+            # mix if TTS hiccups. The credit is recorded inside the worker only once a
+            # voiceover is actually produced (workers/render.py), so a failed or
+            # voiceover-less render never burns one of the 2 free AI-voiceover credits.
+            await usage.check_quota(request.email, "voiceover")
     except usage.PremiumRequired as e:
         raise HTTPException(status_code=403, detail=f"{e} Upgrade to unlock it.")
     except usage.QuotaExceeded as e:
@@ -481,6 +502,7 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
     background_tasks.add_task(
         run_broll_render,
         job_id=request.job_id,
+        email=request.email,
         scenes=[s.model_dump() for s in request.scenes],
         clip_ids=request.clip_ids,
         audio_file_id=request.audio_file_id,

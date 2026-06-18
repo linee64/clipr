@@ -50,6 +50,7 @@ TEMP_DIR = str(BACKEND_DIR / "temp")
 # the old name so existing imports (`from workers.render import render_jobs`) and
 # all the `render_jobs[job_id][...] = ...` updates keep working unchanged.
 from services.jobstore import jobs as render_jobs  # noqa: E402
+from services import jobstore, usage  # noqa: E402
 
 
 def _render_resolution(platform: str, full_res: str) -> str:
@@ -214,6 +215,11 @@ async def run_render_job(
         render_jobs[job_id]["status"] = "done"
         render_jobs[job_id]["progress"] = 100
         render_jobs[job_id]["output_url"] = output_url
+        # Mirror the terminal state to durable storage NOW, not on the next heartbeat
+        # tick (up to HEARTBEAT_SECS away): an OOM-kill in that window would otherwise
+        # leave the record at "processing" and a successful render reads back as
+        # interrupted on the next poll.
+        await jobstore.finish(job_id)
 
         shutil.rmtree(job_dir, ignore_errors=True)
 
@@ -223,6 +229,7 @@ async def run_render_job(
         print(f"[render_job {job_id}] FAILED:\n{traceback.format_exc()}", flush=True)
         render_jobs[job_id]["status"] = "error"
         render_jobs[job_id]["error"] = str(e)
+        await jobstore.finish(job_id)
 
 
 async def run_broll_render(
@@ -233,6 +240,7 @@ async def run_broll_render(
     audio_volume: float,
     color_grade: str,
     platform: str,
+    email: str = "",  # billing email; the voiceover credit is charged here on success
     beats_per_clip: int = 2,  # kept for API stability; b-roll pacing now comes from the template
     template_id: str = "",
     music_start: float | None = None,  # user-picked track start (trimmer); wins over auto
@@ -695,6 +703,10 @@ async def run_broll_render(
                         bg_music_volume,
                     )
                     caption_video_path = with_vo_path
+                    # A voiceover was genuinely synthesized and mixed in — charge the
+                    # free-tier credit NOW (not at request time), so a failed/OOM'd
+                    # render or a TTS fallback to music-only never burns a credit.
+                    await usage.record_use(email, "voiceover")
             except Exception:
                 print(
                     f"[broll_render {job_id}] voiceover failed, continuing without it:\n"
@@ -791,6 +803,9 @@ async def run_broll_render(
         render_jobs[job_id]["status"] = "done"
         render_jobs[job_id]["progress"] = 100
         render_jobs[job_id]["output_url"] = url
+        # Persist the terminal state immediately so an OOM-kill before the next
+        # heartbeat tick can't make a finished render read back as interrupted.
+        await jobstore.finish(job_id)
 
         shutil.rmtree(job_dir, ignore_errors=True)
 
@@ -800,3 +815,4 @@ async def run_broll_render(
         print(f"[broll_render {job_id}] FAILED:\n{traceback.format_exc()}", flush=True)
         render_jobs[job_id]["status"] = "error"
         render_jobs[job_id]["error"] = str(e)
+        await jobstore.finish(job_id)
