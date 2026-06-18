@@ -223,12 +223,18 @@ async def create_portal_session(email: str) -> str:
     _require_configured()
     email = _normalize_email(email)
     async with httpx.AsyncClient(timeout=30) as client:
+        # Trailing slash is required — Polar 307-redirects the bare path, which a
+        # POST won't follow cleanly.
         resp = await client.post(
-            f"{_api_base()}/v1/customer-sessions",
+            f"{_api_base()}/v1/customer-sessions/",
             headers=_auth_headers(),
             json={"external_customer_id": email},
         )
-    if resp.status_code == 404:
+    # No customer yet (hasn't checked out): Polar 404s, or 422s with a
+    # "Customer does not exist" validation error. Either way → friendly message.
+    if resp.status_code == 404 or (
+        resp.status_code == 422 and "does not exist" in resp.text.lower()
+    ):
         raise BillingError("No subscription found for this account yet.")
     if resp.status_code not in (200, 201):
         logger.warning("Polar portal session failed (%s): %s", resp.status_code, resp.text[:500])
