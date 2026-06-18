@@ -230,6 +230,9 @@ async def run_render_job(
         render_jobs[job_id]["status"] = "error"
         render_jobs[job_id]["error"] = str(e)
         await jobstore.finish(job_id)
+        # Clean up the scratch dir on failure too, so failed renders don't leak their
+        # intermediate files and fill the box's disk.
+        shutil.rmtree(os.path.join(TEMP_DIR, job_id), ignore_errors=True)
 
 
 async def run_broll_render(
@@ -257,6 +260,13 @@ async def run_broll_render(
         "description": "",
         "error": "",
     }
+
+    # A voiceover credit was reserved at request time iff voiceover was requested. We
+    # keep it only if a voiceover is actually mixed in AND the render completes; otherwise
+    # we refund it (music-only fallback, or a failed/OOM'd render) so a non-delivering
+    # render never burns one of the free AI-voiceover credits.
+    voiceover_reserved = bool(add_voiceover and (voice_id or "").strip())
+    voiceover_delivered = False
 
     try:
         if not scenes or not clip_ids:
@@ -703,10 +713,10 @@ async def run_broll_render(
                         bg_music_volume,
                     )
                     caption_video_path = with_vo_path
-                    # A voiceover was genuinely synthesized and mixed in — charge the
-                    # free-tier credit NOW (not at request time), so a failed/OOM'd
-                    # render or a TTS fallback to music-only never burns a credit.
-                    await usage.record_use(email, "voiceover")
+                    # A voiceover was genuinely synthesized and mixed in. The credit was
+                    # reserved at request time; mark it delivered so we KEEP it once the
+                    # render completes (and don't refund it on the success path below).
+                    voiceover_delivered = True
             except Exception:
                 print(
                     f"[broll_render {job_id}] voiceover failed, continuing without it:\n"
@@ -807,6 +817,11 @@ async def run_broll_render(
         # heartbeat tick can't make a finished render read back as interrupted.
         await jobstore.finish(job_id)
 
+        # The render delivered. Keep the reserved voiceover credit only if a voiceover was
+        # actually produced; if it fell back to music-only, release the reservation.
+        if voiceover_reserved and not voiceover_delivered:
+            await usage.refund(email, "voiceover")
+
         shutil.rmtree(job_dir, ignore_errors=True)
 
     except Exception as e:
@@ -816,3 +831,10 @@ async def run_broll_render(
         render_jobs[job_id]["status"] = "error"
         render_jobs[job_id]["error"] = str(e)
         await jobstore.finish(job_id)
+        # The render produced no deliverable — release any reserved voiceover credit so a
+        # failed/OOM'd render doesn't burn one of the free credits.
+        if voiceover_reserved:
+            await usage.refund(email, "voiceover")
+        # Clean up the scratch dir on failure too (the success path rmtrees below);
+        # otherwise every failed render leaks its full intermediate tree and fills disk.
+        shutil.rmtree(os.path.join(TEMP_DIR, job_id), ignore_errors=True)

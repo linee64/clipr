@@ -472,12 +472,13 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
         await usage.require_template_allowed(request.email, request.template_id)
         if request.add_voiceover:
             await usage.require_voice_allowed(request.email, request.voice_id)
-            # Gate up front (429 if already over the limit) but DON'T charge yet: the
-            # render runs in the background and can fail/OOM, or fall back to a music-only
-            # mix if TTS hiccups. The credit is recorded inside the worker only once a
-            # voiceover is actually produced (workers/render.py), so a failed or
-            # voiceover-less render never burns one of the 2 free AI-voiceover credits.
-            await usage.check_quota(request.email, "voiceover")
+            # Reserve the credit atomically here (429 if over the limit). Reserving up
+            # front — rather than a read-only check now + a charge later in the worker —
+            # is what makes the cap concurrency-safe: N parallel renders serialize on the
+            # row, so only the remaining credits succeed. The worker REFUNDS this if the
+            # render fails/OOMs or falls back to music-only, so a non-delivering render
+            # never keeps one of the 2 free AI-voiceover credits.
+            await usage.reserve(request.email, "voiceover")
     except usage.PremiumRequired as e:
         raise HTTPException(status_code=403, detail=f"{e} Upgrade to unlock it.")
     except usage.QuotaExceeded as e:

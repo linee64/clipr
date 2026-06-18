@@ -351,11 +351,19 @@ export default function Dashboard() {
       setBillingConfigured(!!status.configured);
       if (status.active) {
         setPlanState((s) => (s.plan === "pro" ? s : setPlan("pro")));
+      } else if (status.configured) {
+        // Polar is the source of truth on a configured deploy: not active => not Pro.
+        // Clear any locally-persisted Pro (a real subscription that lapsed/cancelled)
+        // and reflect the server trial/expired state, so a lapsed subscriber is
+        // correctly downgraded instead of being shown "Pro" forever.
+        const daysLeft = typeof status.trial_days_left === "number" ? status.trial_days_left : 0;
+        const expired = !!status.trial_expired;
+        setPlan("trial");
+        setPlanState({ plan: "trial", daysLeft, expired });
       } else if (typeof status.trial_days_left === "number") {
-        // Don't clobber a locally-upgraded Pro back to trial. On a stub/demo deploy
-        // (Polar not wired) the backend reports active:false but still returns a trial
-        // count, so an unguarded write here would silently downgrade a just-upgraded
-        // user after any metered action. Only drive the countdown for non-Pro plans.
+        // Stub/demo deploy (Polar NOT wired): the backend reports active:false but still
+        // returns a trial count, so don't clobber a locally-upgraded Pro back to trial
+        // after a metered action — only drive the countdown for non-Pro plans.
         const daysLeft = status.trial_days_left;
         const expired = !!status.trial_expired;
         setPlanState((s) => (s.plan === "pro" ? s : { plan: "trial", daysLeft, expired }));
@@ -991,17 +999,29 @@ export default function Dashboard() {
         throw new Error("Failed to generate ideas from AI");
       }
 
-      // The AI route returns whatever Gemini produced. If it isn't an array (the model
-      // sometimes wraps it in an object), throw so the catch below falls back to template
-      // ideas — otherwise the later `ideas.slice(...)` in render throws OUTSIDE this
-      // try/catch and white-screens the Create tab.
+      // The AI route returns whatever Gemini produced. Validate the top-level shape AND
+      // normalize each item to the IdeaCard shape: the model can omit fields like `tags`
+      // despite the prompt, and a later unguarded read (e.g. selectedIdea.tags[1]) during
+      // render throws OUTSIDE this try/catch and white-screens the Create tab. Throwing
+      // here instead routes to the catch fallback (template ideas).
       const parsed = await response.json();
-      const aiIdeas: IdeaCard[] | undefined = Array.isArray(parsed)
+      const rawList: unknown = Array.isArray(parsed)
         ? parsed
-        : Array.isArray(parsed?.ideas)
-          ? parsed.ideas
+        : Array.isArray((parsed as { ideas?: unknown })?.ideas)
+          ? (parsed as { ideas: unknown[] }).ideas
           : undefined;
-      if (!aiIdeas) throw new Error("AI returned an unexpected ideas shape");
+      if (!Array.isArray(rawList)) throw new Error("AI returned an unexpected ideas shape");
+      const aiIdeas: IdeaCard[] = rawList.map((it, i) => {
+        const o = (it ?? {}) as Record<string, unknown>;
+        return {
+          id: typeof o.id === "string" && o.id ? o.id : `ai-idea-${i + 1}`,
+          title: typeof o.title === "string" ? o.title : "Untitled idea",
+          hook: typeof o.hook === "string" ? o.hook : "",
+          vibe: typeof o.vibe === "string" ? o.vibe : "",
+          tags: Array.isArray(o.tags) ? o.tags.filter((t): t is string => typeof t === "string") : [],
+          estimate: typeof o.estimate === "string" ? o.estimate : "High potential",
+        };
+      });
       setIdeas(aiIdeas);
       setIsGenerating(false);
     } catch (err) {
@@ -1654,7 +1674,7 @@ export default function Dashboard() {
                               {/* Card Header Row */}
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-[10px] uppercase tracking-wider font-medium border border-[#152226] bg-[#11191B] rounded-full px-2.5 py-1 text-[#6B7C85] truncate min-w-0">
-                                  {idea.vibe || idea.tags[0] || "dark and focused"}
+                                  {idea.vibe || idea.tags?.[0] || "dark and focused"}
                                 </span>
                                 <span className="text-[9px] uppercase font-bold tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 rounded-full px-2 py-1 shrink-0">
                                   {idea.estimate || "High potential"}
@@ -1690,8 +1710,8 @@ export default function Dashboard() {
                               id: selectedIdea.id,
                               title: selectedIdea.title,
                               hook: selectedIdea.hook,
-                              vibe: selectedIdea.vibe || selectedIdea.tags[0] || "dark and focused",
-                              platform: selectedIdea.tags[1] || selectedPlatform,
+                              vibe: selectedIdea.vibe || selectedIdea.tags?.[0] || "dark and focused",
+                              platform: selectedIdea.tags?.[1] || selectedPlatform,
                               estimate: selectedIdea.estimate,
                             }}
                             defaultPlatform={selectedPlatform}

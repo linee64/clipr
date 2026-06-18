@@ -331,6 +331,14 @@ async def run_due() -> None:
             sch["status"] = "processing"
             sch["claimed_at"] = time.time()
             await _write(key, sch)
+            # Honor a cancel that landed right after we claimed: re-read and skip the
+            # publish if the record was deleted/changed, so a just-cancelled post isn't
+            # sent. (A cancel during the publish itself can't be un-posted, but the CAS
+            # below still prevents resurrecting the deleted record.)
+            claim = await _read(key)
+            if not claim or claim.get("cid") != sch.get("cid") or claim.get("status") != "processing":
+                logger.info("Scheduled post %s cancelled before publish; skipping", sid)
+                continue
             try:
                 result = await _publish(sch)
                 sch["status"] = "posted"
@@ -342,7 +350,13 @@ async def run_due() -> None:
                 sch["status"] = "error"
                 sch["error"] = str(e)
                 logger.warning("Scheduled post %s failed: %s", sid, e)
-            await _write(key, sch)
+            # Compare-and-set: only persist the outcome if our claim still stands. If the
+            # owner cancelled (deleted the record) during _publish, don't recreate it.
+            latest = await _read(key)
+            if latest and latest.get("cid") == sch.get("cid") and latest.get("status") == "processing":
+                await _write(key, sch)
+            else:
+                logger.info("Scheduled post %s cancelled mid-publish; not resurrecting", sid)
 
 
 async def run_loop() -> None:

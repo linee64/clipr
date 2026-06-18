@@ -13,10 +13,11 @@ async def get_visual_script(request: VisualScriptRequest):
     # an idea is free). Pro is unlimited; over the limit returns 429 so the frontend
     # can prompt an upgrade.
     if request.regenerate:
-        # Gate up front (429 if over the limit) but DON'T count it yet — only a
-        # successful regeneration should burn one of the free credits.
+        # Reserve the credit atomically up front (429 if over the limit) so concurrent
+        # regens can't slip past the cap; we refund below if generation fails, so a
+        # transient model/format error never costs the user a free regeneration.
         try:
-            await usage.check_quota(request.email, "regen")
+            await usage.reserve(request.email, "regen")
         except usage.QuotaExceeded as e:
             raise HTTPException(
                 status_code=429,
@@ -36,9 +37,8 @@ async def get_visual_script(request: VisualScriptRequest):
         script["template_id"] = template.get("id", "")
         response = VisualScriptResponse(**script)
     except Exception as e:
+        # Release the reserved regen so a failed generation doesn't burn a free credit.
+        if request.regenerate:
+            await usage.refund(request.email, "regen")
         raise HTTPException(status_code=500, detail=str(e))
-    # Generation succeeded — now count the regen (a transient model/format error above
-    # raises 500 before this, so it never costs the user a free regeneration).
-    if request.regenerate:
-        await usage.record_use(request.email, "regen")
     return response

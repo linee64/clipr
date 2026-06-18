@@ -171,8 +171,8 @@ async def record_use(email: str | None, action: str) -> None:
 
 async def consume(email: str | None, action: str) -> None:
     """Enforce + record one use in a single call (for in-request, trivially retryable
-    actions). For async/expensive work prefer check_quota() up front + record_use() on
-    success, so a failure doesn't burn a free credit.
+    actions). For async/expensive work prefer reserve() up front + refund() on failure,
+    so concurrent requests can't exceed the cap and a failure doesn't burn a credit.
 
     Pro accounts are unlimited (no-op). Free accounts: raise QuotaExceeded once the
     limit is reached, otherwise increment the counter.
@@ -181,13 +181,87 @@ async def consume(email: str | None, action: str) -> None:
     await record_use(email, action)
 
 
+def _reserve_sync(email: str, field: str, limit: int) -> bool:
+    """Atomic check-and-increment via clipr_consume_usage: increments only while under
+    the limit, in ONE statement, so concurrent same-email requests serialize on the row
+    and can't collectively exceed the cap. Returns True if reserved, False if over.
+    Raises if the RPC is unavailable (caller falls back)."""
+    sb = _get_supabase()
+    _ensure_sync(email)  # the conditional UPDATE needs the row to exist
+    res = sb.rpc(
+        "clipr_consume_usage", {"p_email": email, "p_field": field, "p_limit": limit}
+    ).execute()
+    val = res.data
+    if isinstance(val, list):
+        val = val[0] if val else None
+    return val is not None  # NULL -> over the limit (no row updated)
+
+
+async def reserve(email: str | None, action: str) -> None:
+    """Atomically reserve one use of `action` up front (gate + charge in one step).
+
+    Raises QuotaExceeded if the free account is already at the limit. Pro / no email /
+    missing accounts table fail OPEN (allow). Pair with refund() to release the credit
+    if the work it paid for didn't ultimately deliver (failed render, music-only TTS
+    fallback) — that gives charge-on-success semantics while still being concurrency-safe
+    (unlike a read-only check + a much-later record, which N parallel requests can race).
+    """
+    email = _norm(email)
+    if not email or action not in FREE_LIMITS:
+        return
+    if await _is_pro(email):
+        return
+    limit = FREE_LIMITS[action]
+    try:
+        reserved = await asyncio.to_thread(_reserve_sync, email, f"{action}_used", limit)
+    except Exception as e:
+        # RPC missing (migration 004 not applied yet) or a transient DB error: fall back
+        # to the non-atomic gate+increment so the meter still works pre-migration.
+        logger.warning("atomic reserve unavailable for %s/%s, falling back: %s", email, action, e)
+        await check_quota(email, action)
+        await record_use(email, action)
+        return
+    if not reserved:
+        raise QuotaExceeded(action, limit)
+
+
+def _refund_sync(email: str, field: str) -> None:
+    sb = _get_supabase()
+    try:
+        sb.rpc("clipr_refund_usage", {"p_email": email, "p_field": field}).execute()
+        return
+    except Exception:
+        pass  # RPC absent (pre-migration) -> best-effort read-modify-write decrement
+    cur = _ensure_sync(email)
+    val = max(int(cur.get(field) or 0) - 1, 0)
+    sb.table(ACCOUNTS_TABLE).update({field: val, "updated_at": _now_iso()}).eq(
+        "email", email
+    ).execute()
+
+
+async def refund(email: str | None, action: str) -> None:
+    """Release a previously reserved use (best-effort, floored at 0). Pro / no email is a
+    no-op. Failures fail OPEN (logged, not raised)."""
+    email = _norm(email)
+    if not email or action not in FREE_LIMITS:
+        return
+    if await _is_pro(email):
+        return
+    try:
+        await asyncio.to_thread(_refund_sync, email, f"{action}_used")
+    except Exception as e:
+        logger.warning("usage refund failed for %s/%s: %s", email, action, e)
+
+
 async def require_voice_allowed(email: str | None, voice_id: str) -> None:
     """Block a Pro-only voice for a free account."""
     if not voice_id:
         return
     if await _is_pro(_norm(email)):
         return
-    if tts.is_premium_voice_id(voice_id):
+    # is_premium_voice_id may do a one-time blocking ElevenLabs fetch on a cold cache;
+    # run it off the event loop so it can't freeze concurrent requests (e.g. status polls).
+    if await asyncio.to_thread(tts.is_premium_voice_id, voice_id):
         raise PremiumRequired("This AI voice is available on Pro.")
 
 
