@@ -445,21 +445,21 @@ export default function Home() {
       {/* SIGN-UP MODAL — opened by every "Get started" CTA */}
       <AnimatePresence>
         {signupOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[60] flex items-start md:items-center justify-center overflow-y-auto p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
               onClick={() => setSignupOpen(false)}
-              className="absolute inset-0 bg-black/75 backdrop-blur-[8px]"
+              className="fixed inset-0 bg-black/75 backdrop-blur-[8px]"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
-              className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border border-[#10B981]/30 bg-zinc-950/95 backdrop-blur-xl p-6 sm:p-8 shadow-2xl"
+              className="relative z-10 my-auto w-full max-w-md overflow-hidden rounded-3xl border border-[#10B981]/30 bg-zinc-950/95 backdrop-blur-xl p-6 sm:p-8 shadow-2xl"
               style={{ boxShadow: "0 0 40px rgba(16,185,129,0.12)" }}
             >
               <div

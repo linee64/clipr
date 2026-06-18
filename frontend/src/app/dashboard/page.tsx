@@ -1944,15 +1944,15 @@ export default function Dashboard() {
                               </div>
                             )}
 
-                            <div className="flex justify-between items-center pt-2 border-t border-[#152226]">
+                            <div className="flex flex-wrap justify-between items-center gap-y-2 md:flex-nowrap pt-2 border-t border-[#152226]">
                               <span className="text-[10px] text-[#6B7C85] font-mono">{item.date}</span>
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex flex-wrap items-center justify-end gap-1.5 md:flex-nowrap">
                                 {X_ENABLED && (
                                   <button
                                     onClick={() => handlePostSavedToX(item)}
                                     disabled={xPostingId === item.id}
                                     title={xStatus?.connected ? "Post to X" : "Connect X to post"}
-                                    className="p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors disabled:opacity-50"
+                                    className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors disabled:opacity-50"
                                   >
                                     {xPostingId === item.id ? (
                                       <span className="block w-3.5 h-3.5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
@@ -1966,7 +1966,7 @@ export default function Dashboard() {
                                     onClick={() => handlePostSavedToLinkedIn(item)}
                                     disabled={liPostingId === item.id}
                                     title={liStatus?.connected ? "Post to LinkedIn" : "Connect LinkedIn to post"}
-                                    className="p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors disabled:opacity-50"
+                                    className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors disabled:opacity-50"
                                   >
                                     {liPostingId === item.id ? (
                                       <span className="block w-3.5 h-3.5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
@@ -1984,7 +1984,7 @@ export default function Dashboard() {
                                     })
                                   }
                                   title="Schedule auto-post"
-                                  className="p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors"
+                                  className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors"
                                 >
                                   <Clock className="w-3.5 h-3.5" />
                                 </button>
@@ -1994,14 +1994,14 @@ export default function Dashboard() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   title="Download"
-                                  className="p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors"
+                                  className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors"
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                 </a>
                                 <button
                                   onClick={() => deleteSavedVideo(item.id)}
                                   title="Delete"
-                                  className="p-1 rounded text-[#6B7C85] hover:text-[#EF8B8B] transition-colors"
+                                  className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#EF8B8B] transition-colors"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
