@@ -22,6 +22,7 @@ handles Polar's Standard-Webhooks secret encoding for us.
 """
 
 import asyncio
+import base64
 import hashlib
 import json
 import logging
@@ -256,19 +257,6 @@ async def get_status(email: str | None) -> dict:
 # ---------------------------------------------------------------------------
 # Webhook: the source of truth for subscription state
 # ---------------------------------------------------------------------------
-def _event_to_dict(event) -> tuple[str, dict]:
-    """Normalize a validated polar-sdk event into (type, data-dict)."""
-    etype = getattr(event, "type", "") or ""
-    data = getattr(event, "data", None)
-    if data is None:
-        return etype, {}
-    try:
-        return etype, data.model_dump(mode="json")
-    except Exception:
-        # Already a plain dict, or some other serializable shape.
-        return etype, dict(data) if isinstance(data, dict) else {}
-
-
 def _email_from(data: dict) -> str:
     """Pull our identifying email out of a subscription/order payload."""
     customer = data.get("customer") or {}
@@ -294,21 +282,27 @@ async def handle_webhook(payload: bytes, headers: dict) -> None:
     if not secret:
         raise BillingNotConfigured("POLAR_WEBHOOK_SECRET is not set on the server.")
 
-    from polar_sdk.webhooks import (  # imported lazily so the dep is optional locally
-        WebhookUnknownTypeError,
+    # Verify the Standard-Webhooks signature and get the raw JSON. We read the few
+    # fields we need straight from the dict rather than going through polar-sdk's
+    # strict typed models, so a schema change on Polar's side can't make us reject a
+    # legitimately-signed event. The Webhook ctor base64-DECODES its secret, so the
+    # `polar_whs_...` secret is base64-encoded first to recover the real signing key.
+    from standardwebhooks.webhooks import (  # lazy import so the dep stays optional
+        Webhook,
         WebhookVerificationError,
-        validate_event,
     )
 
     try:
-        event = validate_event(payload=payload, headers=headers, secret=secret)
+        wh = Webhook(base64.b64encode(secret.encode()).decode())
+        event = wh.verify(payload, headers)  # -> dict, or raises on a bad signature
     except WebhookVerificationError as e:
         raise BillingError(f"Invalid webhook signature: {e}")
-    except WebhookUnknownTypeError:
-        # A valid, signed event of a type the SDK doesn't model — nothing to do.
-        return
+    except Exception as e:
+        # Malformed signature header / unparseable body — reject (403), not 500.
+        raise BillingError(f"Rejected webhook: {e}")
 
-    etype, data = _event_to_dict(event)
+    etype = (event.get("type") or "") if isinstance(event, dict) else ""
+    data = (event.get("data") or {}) if isinstance(event, dict) else {}
 
     # We only care about subscription lifecycle (and the order that creates one).
     if not etype.startswith("subscription."):
