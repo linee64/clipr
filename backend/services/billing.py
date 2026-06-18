@@ -188,8 +188,26 @@ def _polar_error_hint(resp: httpx.Response) -> str:
     return f" [{code}]" if code else ""
 
 
+async def _polar_post(path: str, body: dict) -> httpx.Response:
+    """POST to the Polar API, retrying once on a transient network error.
+
+    A blip reaching Polar (DNS hiccup, dropped connection) otherwise bubbles up as
+    an opaque 502; instead we retry, then surface a clear, friendly message.
+    """
+    url = f"{_api_base()}{path}"
+    last: Exception | None = None
+    for attempt in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                return await client.post(url, headers=_auth_headers(), json=body)
+        except httpx.RequestError as e:
+            last = e
+            logger.warning("Polar POST %s network error (attempt %d): %s", path, attempt + 1, e)
+    raise BillingError("Couldn't reach Polar — please check your connection and try again.")
+
+
 async def create_checkout(email: str) -> str:
-    """Create a Polar checkout for the $20/mo product and return its hosted URL."""
+    """Create a Polar checkout for the $25/mo product and return its hosted URL."""
     _require_configured()
     email = _normalize_email(email)
     body = {
@@ -199,10 +217,7 @@ async def create_checkout(email: str) -> str:
         # Links the Polar customer to our side so the webhook can map it back.
         "external_customer_id": email,
     }
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(
-            f"{_api_base()}/v1/checkouts/", headers=_auth_headers(), json=body
-        )
+    resp = await _polar_post("/v1/checkouts/", body)
     if resp.status_code not in (200, 201):
         logger.warning("Polar checkout failed (%s): %s", resp.status_code, resp.text[:500])
         raise BillingError(
@@ -222,14 +237,9 @@ async def create_portal_session(email: str) -> str:
     """
     _require_configured()
     email = _normalize_email(email)
-    async with httpx.AsyncClient(timeout=30) as client:
-        # Trailing slash is required — Polar 307-redirects the bare path, which a
-        # POST won't follow cleanly.
-        resp = await client.post(
-            f"{_api_base()}/v1/customer-sessions/",
-            headers=_auth_headers(),
-            json={"external_customer_id": email},
-        )
+    # Trailing slash is required — Polar 307-redirects the bare path, which a POST
+    # won't follow cleanly.
+    resp = await _polar_post("/v1/customer-sessions/", {"external_customer_id": email})
     # No customer yet (hasn't checked out): Polar 404s, or 422s with a
     # "Customer does not exist" validation error. Either way → friendly message.
     if resp.status_code == 404 or (
