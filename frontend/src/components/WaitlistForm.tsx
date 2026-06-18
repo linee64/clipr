@@ -287,7 +287,7 @@ export function WaitlistForm() {
           Already have an account?{" "}
           <button
             type="button"
-            onClick={() => { window.location.href = "/dashboard"; }}
+            onClick={() => { window.location.href = "/login"; }}
             className="text-[#10B981] font-semibold hover:underline"
           >
             Log in

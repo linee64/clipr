@@ -81,7 +81,7 @@ export default function Home() {
 
           <div className="flex items-center gap-1 sm:gap-2">
             <button
-              onClick={() => { window.location.href = "/dashboard"; }}
+              onClick={() => { window.location.href = "/login"; }}
               className="text-sm font-medium text-zinc-300 hover:text-white transition-colors px-2 sm:px-3 py-1.5"
             >
               Log in
