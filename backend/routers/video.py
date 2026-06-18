@@ -68,15 +68,18 @@ async def _store_clip_from_temp(clip_id: str, temp_path: str) -> str:
     an identical clips/<id>.mp4 the render can download."""
     upload_path = temp_path
     compressed_path = None
-    if os.path.getsize(temp_path) > _COMPRESS_OVER_BYTES:
-        compressed_path = os.path.join(TEMP_DIR, f"{clip_id}_c.mp4")
-        await asyncio.to_thread(compress_clip_for_upload, temp_path, compressed_path)
-        upload_path = compressed_path
-
-    remote_path = f"clips/{clip_id}.mp4"
     try:
+        if os.path.getsize(temp_path) > _COMPRESS_OVER_BYTES:
+            compressed_path = os.path.join(TEMP_DIR, f"{clip_id}_c.mp4")
+            await asyncio.to_thread(compress_clip_for_upload, temp_path, compressed_path)
+            upload_path = compressed_path
+
+        remote_path = f"clips/{clip_id}.mp4"
         return await upload_file(upload_path, remote_path)
     finally:
+        # Cover the whole body: compress_clip_for_upload can OOM/raise on a big clip, and
+        # that must still remove the full-size source (and any partial compressed file)
+        # rather than leak it onto the constrained disk — honoring "always cleans up".
         for p in (temp_path, compressed_path):
             if p and os.path.exists(p):
                 os.remove(p)

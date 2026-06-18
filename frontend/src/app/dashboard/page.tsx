@@ -1010,7 +1010,10 @@ export default function Dashboard() {
         : Array.isArray((parsed as { ideas?: unknown })?.ideas)
           ? (parsed as { ideas: unknown[] }).ideas
           : undefined;
-      if (!Array.isArray(rawList)) throw new Error("AI returned an unexpected ideas shape");
+      // Treat an empty (but validly-shaped) array as a failure too, so a degenerate
+      // model response routes to the template fallback below instead of a blank feed.
+      if (!Array.isArray(rawList) || rawList.length === 0)
+        throw new Error("AI returned no ideas");
       const aiIdeas: IdeaCard[] = rawList.map((it, i) => {
         const o = (it ?? {}) as Record<string, unknown>;
         return {

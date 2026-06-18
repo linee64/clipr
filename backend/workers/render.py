@@ -700,9 +700,6 @@ async def run_broll_render(
                             )
                         else:
                             retimed.append(scene)  # no phrase -> keep montage timing
-                    # Captions below read scenes_with_timing -> now the voice timeline.
-                    scenes_with_timing = retimed
-
                     with_vo_path = os.path.join(job_dir, "with_voiceover.mp4")
                     await asyncio.to_thread(
                         mix_voiceover_per_scene,
@@ -713,6 +710,10 @@ async def run_broll_render(
                         bg_music_volume,
                     )
                     caption_video_path = with_vo_path
+                    # Mix succeeded — only NOW commit the voice-span caption timeline, so a
+                    # mix failure (handled below) keeps the original montage-timed captions
+                    # over the music-only fallback instead of timing them to absent speech.
+                    scenes_with_timing = retimed
                     # A voiceover was genuinely synthesized and mixed in. The credit was
                     # reserved at request time; mark it delivered so we KEEP it once the
                     # render completes (and don't refund it on the success path below).

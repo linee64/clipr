@@ -367,6 +367,10 @@ export function CreateFlow({
             clearInterval(pollingRef.current);
             pollingRef.current = null;
           }
+          // Re-fetch the free-tier counts once the render finishes: the server may have
+          // REFUNDED the reserved voiceover credit asynchronously (music-only fallback or
+          // a failed render), and the one refresh at start time only saw the reservation.
+          if (!isPro) onUsageRefresh();
         }
       } catch (err) {
         setRenderError(err instanceof Error ? err.message : "Poll failed");
@@ -533,10 +537,13 @@ export function CreateFlow({
       if (isUpgradeError(err)) {
         onRequireUpgrade();
         onUsageRefresh();
+        setCurrentStep(4);
       } else {
+        // Surface the failure on the render screen (RenderStep shows renderError + a
+        // Retry) instead of silently bouncing back to the template picker with no feedback.
         setRenderError(err instanceof Error ? err.message : "Render failed to start");
+        setCurrentStep(5);
       }
-      setCurrentStep(4);
     } finally {
       setIsStartingRender(false);
     }
