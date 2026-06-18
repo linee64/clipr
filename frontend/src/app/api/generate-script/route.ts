@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     }
     // Bound every user-controlled field (all are forwarded into the Gemini prompt) so a
     // huge body can't amplify cost — same 2000-char cap the generate-ideas route enforces.
-    for (const v of [product, audience, tone, samplePost, ideaTitle, ideaHook]) {
+    for (const v of [product, audience, tone, samplePost, platform, ideaTitle, ideaHook]) {
       if (typeof v === "string" && v.length > 2000) {
         return NextResponse.json({ error: "Input is too long." }, { status: 400 });
       }

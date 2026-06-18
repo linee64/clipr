@@ -31,6 +31,13 @@ export async function POST(req: Request) {
     if (prompt.length > 2000) {
       return NextResponse.json({ error: "Prompt is too long." }, { status: 400 });
     }
+    // Bound the other forwarded fields too — they're all interpolated into the Gemini
+    // prompt, so an oversized value is the same cost-amplification vector as `prompt`.
+    for (const v of [product, audience, tone, platform]) {
+      if (typeof v === "string" && v.length > 2000) {
+        return NextResponse.json({ error: "Input is too long." }, { status: 400 });
+      }
+    }
 
     const systemInstruction = `You are Clipr's short-form video idea strategist for TikTok, Reels, and YouTube Shorts.
 

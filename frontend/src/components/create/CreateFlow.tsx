@@ -331,9 +331,11 @@ export function CreateFlow({
   useEffect(() => {
     if (!renderJobId) return;
 
+    let failures = 0;
     const poll = async () => {
       try {
         const status = await getRenderStatus(renderJobId);
+        failures = 0; // a successful poll resets the transient-failure streak
         setRenderStatus(status);
         if (status.status === "done") {
           setCurrentStep(6);
@@ -373,10 +375,17 @@ export function CreateFlow({
           if (!isPro) onUsageRefresh();
         }
       } catch (err) {
-        setRenderError(err instanceof Error ? err.message : "Poll failed");
-        if (pollingRef.current) {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
+        // Tolerate transient poll failures (network blip / brief 5xx / a 404 right after
+        // submit) — a render runs for a while and one failed status check shouldn't kill
+        // polling or flash an error. Give up only after several consecutive failures.
+        // (Genuine render failures arrive as status:"error" above, not as an exception.)
+        failures += 1;
+        if (failures >= 5) {
+          setRenderError(err instanceof Error ? err.message : "Poll failed");
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
         }
       }
     };

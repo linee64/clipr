@@ -89,12 +89,20 @@ async def _upload_one_clip(file: UploadFile) -> dict:
     clip_id = str(uuid.uuid4())
     temp_path = os.path.join(TEMP_DIR, f"{clip_id}_upload.mp4")
 
-    async with aiofiles.open(temp_path, "wb") as f:
-        content = await file.read()
-        await f.write(content)
+    try:
+        async with aiofiles.open(temp_path, "wb") as f:
+            content = await file.read()
+            await f.write(content)
 
-    url = await _store_clip_from_temp(clip_id, temp_path)
-    return {"clip_id": clip_id, "url": url, "filename": file.filename or ""}
+        url = await _store_clip_from_temp(clip_id, temp_path)
+        return {"clip_id": clip_id, "url": url, "filename": file.filename or ""}
+    except Exception:
+        # _store_clip_from_temp removes temp_path in its own finally; this covers the
+        # window where the read/write fails before it runs (so a partial temp file isn't
+        # left behind). os.path.exists guards against a double-remove.
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        raise
 
 
 @router.get("/files/{file_path:path}")

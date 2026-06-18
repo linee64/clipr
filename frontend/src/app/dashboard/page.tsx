@@ -1896,13 +1896,7 @@ export default function Dashboard() {
                         Videos you render show up here automatically. Make your first one from the Home tab.
                       </p>
                       <button
-                        onClick={() => {
-                          setSidebarActive("Home");
-                          setActiveTab("Create");
-                          setSelectedIdeaId(null);
-                          setSelectedIdea(null);
-                          setHeroExitState("visible");
-                        }}
+                        onClick={() => handleNav("Home")}
                         className="mt-2 bg-[#10B981] hover:bg-[#0D9E6E] text-[#070B0D] text-xs font-semibold rounded-lg px-4 py-2 transition-all shadow-[0_0_12px_rgba(16,185,129,0.3)]"
                       >
                         Create a video

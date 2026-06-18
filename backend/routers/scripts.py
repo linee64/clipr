@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 from models.schemas import VisualScriptRequest, VisualScriptResponse
 from services import usage
@@ -26,7 +28,10 @@ async def get_visual_script(request: VisualScriptRequest):
     try:
         # Pick a style template so each storyboard (and its montage) varies.
         template = pick_template(request.platform)
-        script = generate_visual_script(
+        # generate_visual_script makes a blocking (multi-second) Gemini HTTP call; run it
+        # off the event loop so it doesn't freeze every other request (e.g. render polls).
+        script = await asyncio.to_thread(
+            generate_visual_script,
             idea_title=request.idea_title,
             hook_phrase=request.hook_phrase,
             platform=request.platform,
