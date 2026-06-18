@@ -1,0 +1,3 @@
+# Test / dev-only dependencies. NOT installed in the Railway prod image (that uses
+# requirements.txt). Install locally with:  pip install -r requirements-dev.txt
+pytest>=8
