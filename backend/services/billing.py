@@ -174,6 +174,20 @@ async def _write_json(key: str, value: dict) -> None:
 # ---------------------------------------------------------------------------
 # Checkout + customer portal
 # ---------------------------------------------------------------------------
+def _polar_error_hint(resp: httpx.Response) -> str:
+    """A short, non-sensitive Polar error code to append to a user-facing message,
+    so misconfig (e.g. a token missing `checkouts:write`) is self-diagnosable.
+    Polar returns {"error": "...", "error_description": "..."} or a 422 detail."""
+    try:
+        body = resp.json() or {}
+    except Exception:
+        return ""
+    code = body.get("error") or ""
+    if not code and isinstance(body.get("detail"), list) and body["detail"]:
+        code = (body["detail"][0] or {}).get("type") or ""
+    return f" [{code}]" if code else ""
+
+
 async def create_checkout(email: str) -> str:
     """Create a Polar checkout for the $20/mo product and return its hosted URL."""
     _require_configured()
@@ -191,7 +205,9 @@ async def create_checkout(email: str) -> str:
         )
     if resp.status_code not in (200, 201):
         logger.warning("Polar checkout failed (%s): %s", resp.status_code, resp.text[:500])
-        raise BillingError("Couldn't start checkout — please try again.")
+        raise BillingError(
+            "Couldn't start checkout" + _polar_error_hint(resp) + " — please try again."
+        )
     url = (resp.json() or {}).get("url")
     if not url:
         raise BillingError("Checkout was created but Polar returned no URL.")
@@ -216,7 +232,9 @@ async def create_portal_session(email: str) -> str:
         raise BillingError("No subscription found for this account yet.")
     if resp.status_code not in (200, 201):
         logger.warning("Polar portal session failed (%s): %s", resp.status_code, resp.text[:500])
-        raise BillingError("Couldn't open the billing portal — please try again.")
+        raise BillingError(
+            "Couldn't open the billing portal" + _polar_error_hint(resp) + " — please try again."
+        )
     url = (resp.json() or {}).get("customer_portal_url")
     if not url:
         raise BillingError("Polar returned no portal URL.")
