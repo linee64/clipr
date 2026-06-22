@@ -367,6 +367,9 @@ export interface BillingStatus {
   /** free-tier AI-voiceover renders used / allowed */
   voiceover_used?: number;
   voiceover_limit?: number;
+  /** monthly video renders used / allowed (plan-specific cap) */
+  videos_used?: number;
+  videos_limit?: number;
 }
 
 /** The user's billing identity — the email captured at onboarding (clipr_email). */

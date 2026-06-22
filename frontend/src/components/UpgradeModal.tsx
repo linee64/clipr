@@ -15,7 +15,7 @@ function Spark({ className = "w-4 h-4" }: { className?: string }) {
 }
 
 const FEATURES = [
-  "Unlimited AI video renders",
+  "20 AI video renders per month",
   "Every reference style & template",
   "Auto-post to X, TikTok & LinkedIn",
   "Beat-synced cuts + word-by-word captions",

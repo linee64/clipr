@@ -167,7 +167,7 @@ def generate_ideas(topic, platform, format, niche, tone) -> list[dict]:
     return _parse_json_response(response.text)
 
 
-def generate_visual_script(idea_title, hook_phrase, platform, tone, niche, template=None) -> dict:
+def generate_visual_script(idea_title, hook_phrase, platform, tone, niche, product="", template=None) -> dict:
     _require_gemini()
     import re
 
@@ -202,6 +202,7 @@ Style: aesthetic, cinematic, dark, intentional — like @heyeaslo on Instagram.
 Idea: {idea_title}
 Opening hook: {hook_phrase}
 Creator niche: {niche}
+Product/Topic: {product}
 Platform: {platform}
 
 LANGUAGE: Write EVERYTHING in {lang}. Every "phrase", every "film_suggestion", and the "caption"

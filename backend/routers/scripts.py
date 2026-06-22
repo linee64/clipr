@@ -37,6 +37,7 @@ async def get_visual_script(request: VisualScriptRequest):
             platform=request.platform,
             tone=request.tone,
             niche=request.niche,
+            product=request.product,
             template=template,
         )
         script["template_id"] = template.get("id", "")

@@ -477,9 +477,12 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
             detail="voice_id is required when add_voiceover is enabled.",
         )
 
-    # Server-side free-tier enforcement (Pro bypasses all of it). Premium reference
-    # style / AI voice are Pro-only (403); AI-voiceover renders are metered (429).
+    # Server-side enforcement: monthly video cap (Free + Pro), premium reference
+    # style / AI voice (Pro-only, 403), and AI-voiceover renders (free-tier, 429).
+    video_reserved = False
     try:
+        await usage.reserve_video(request.email)
+        video_reserved = True
         await usage.require_template_allowed(request.email, request.template_id)
         if request.add_voiceover:
             await usage.require_voice_allowed(request.email, request.voice_id)
@@ -491,12 +494,26 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
             # never keeps one of the 2 free AI-voiceover credits.
             await usage.reserve(request.email, "voiceover")
     except usage.PremiumRequired as e:
+        if video_reserved:
+            await usage.refund_video(request.email)
         raise HTTPException(status_code=403, detail=f"{e} Upgrade to unlock it.")
     except usage.QuotaExceeded as e:
-        raise HTTPException(
-            status_code=429,
-            detail=f"You've used your {e.limit} free AI voiceovers. Upgrade to Pro for unlimited.",
-        )
+        if e.action != "video" and video_reserved:
+            await usage.refund_video(request.email)
+        if e.action == "video":
+            from services import billing as billing_svc
+
+            is_pro = await billing_svc.is_active(request.email)
+            detail = (
+                f"You've used your {e.limit} videos this month. Your allowance resets next month."
+                if is_pro
+                else f"You've used your {e.limit} free videos this month. Upgrade to Pro for 20/month."
+            )
+        else:
+            detail = (
+                f"You've used your {e.limit} free AI voiceovers. Upgrade to Pro for unlimited."
+            )
+        raise HTTPException(status_code=429, detail=detail)
 
     # Note: seeding a template track into storage (an upload that can take seconds on
     # a cold worker) happens inside run_broll_render now, not here — so this request

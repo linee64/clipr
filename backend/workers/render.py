@@ -832,10 +832,11 @@ async def run_broll_render(
         render_jobs[job_id]["status"] = "error"
         render_jobs[job_id]["error"] = str(e)
         await jobstore.finish(job_id)
-        # The render produced no deliverable — release any reserved voiceover credit so a
-        # failed/OOM'd render doesn't burn one of the free credits.
+        # The render produced no deliverable — release reserved credits so a failed
+        # render doesn't burn monthly video or free voiceover allowances.
         if voiceover_reserved:
             await usage.refund(email, "voiceover")
+        await usage.refund_video(email)
         # Clean up the scratch dir on failure too (the success path rmtrees below);
         # otherwise every failed render leaks its full intermediate tree and fills disk.
         shutil.rmtree(os.path.join(TEMP_DIR, job_id), ignore_errors=True)

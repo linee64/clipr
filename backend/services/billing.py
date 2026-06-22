@@ -201,7 +201,7 @@ async def _polar_post(path: str, body: dict) -> httpx.Response:
 
 
 async def create_checkout(email: str) -> str:
-    """Create a Polar checkout for the $25/mo product and return its hosted URL."""
+    """Create a Polar checkout for the $15/mo product and return its hosted URL."""
     _require_configured()
     email = _normalize_email(email)
     body = {

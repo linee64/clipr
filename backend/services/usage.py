@@ -4,8 +4,12 @@ This is the trust boundary the UI gates mirror — clearing browser storage can'
 grant more free usage, because the counts and the trial start live in the Supabase
 `accounts` table (see migrations/002_accounts.sql), keyed by email.
 
-Pro (an active Polar subscription) bypasses everything. Free accounts get:
-  - a 3-day trial (countdown, surfaced in /api/billing/status),
+Pro (an active Polar subscription) bypasses regen/voiceover limits and unlocks
+premium features. All accounts are metered on monthly video renders:
+  - Free: 10 videos/month
+  - Pro: 20 videos/month
+Free accounts also get:
+  - a 5-day trial (countdown, surfaced in /api/billing/status),
   - `regen` (storyboard regenerations): 3,
   - `voiceover` (AI-voiceover renders): 2,
   - premium AI voices and premium reference styles are blocked.
@@ -22,8 +26,9 @@ from services.storage import _get_supabase
 logger = logging.getLogger("clipr.usage")
 
 ACCOUNTS_TABLE = "accounts"
-TRIAL_DAYS = 3
+TRIAL_DAYS = 5
 FREE_LIMITS = {"regen": 3, "voiceover": 2}
+VIDEO_LIMITS = {"free": 10, "pro": 20}
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -48,6 +53,35 @@ def _norm(email: str | None) -> str:
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _current_period() -> str:
+    """UTC calendar month key for monthly video metering (YYYY-MM)."""
+    return datetime.now(timezone.utc).strftime("%Y-%m")
+
+
+def _videos_used_this_month(account: dict) -> int:
+    if account.get("videos_period") != _current_period():
+        return 0
+    return int(account.get("videos_used") or 0)
+
+
+def _reset_videos_period_if_needed_sync(email: str) -> None:
+    """Zero the monthly video counter when the calendar month has rolled over."""
+    sb = _get_supabase()
+    cur = _ensure_sync(email)
+    period = _current_period()
+    if cur.get("videos_period") == period:
+        return
+    sb.table(ACCOUNTS_TABLE).update(
+        {"videos_used": 0, "videos_period": period, "updated_at": _now_iso()}
+    ).eq("email", email).execute()
+
+
+def _touch_videos_period_sync(email: str) -> None:
+    _get_supabase().table(ACCOUNTS_TABLE).update(
+        {"videos_period": _current_period(), "updated_at": _now_iso()}
+    ).eq("email", email).execute()
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +137,7 @@ async def _ensure(email: str) -> dict:
 # Trial
 # ---------------------------------------------------------------------------
 def _trial_left(account: dict) -> tuple[int, bool]:
-    """(whole days left, expired) for the account's 3-day trial."""
+    """(whole days left, expired) for the account's 5-day trial."""
     started = account.get("trial_started_at")
     start_dt = None
     if isinstance(started, str) and started:
@@ -125,6 +159,10 @@ def _trial_left(account: dict) -> tuple[int, bool]:
 # ---------------------------------------------------------------------------
 async def _is_pro(email: str) -> bool:
     return await billing.is_active(email)
+
+
+async def _video_limit(email: str) -> int:
+    return VIDEO_LIMITS["pro"] if await _is_pro(email) else VIDEO_LIMITS["free"]
 
 
 async def check_quota(email: str | None, action: str) -> None:
@@ -253,6 +291,55 @@ async def refund(email: str | None, action: str) -> None:
         logger.warning("usage refund failed for %s/%s: %s", email, action, e)
 
 
+async def reserve_video(email: str | None) -> None:
+    """Atomically reserve one monthly video render (applies to Free and Pro).
+
+    Raises QuotaExceeded when the account has used its plan allowance for the
+    current calendar month. Pair with refund_video() if the render doesn't deliver.
+    """
+    email = _norm(email)
+    if not email:
+        return
+    limit = await _video_limit(email)
+    try:
+        reserved = await asyncio.to_thread(_video_reserve_sync, email, limit)
+    except Exception as e:
+        logger.warning("atomic video reserve unavailable for %s, falling back: %s", email, e)
+        try:
+            await asyncio.to_thread(_reset_videos_period_if_needed_sync, email)
+            account = await _ensure(email)
+            used = _videos_used_this_month(account)
+        except Exception as inner:
+            logger.warning("video meter unavailable for %s: %s", email, inner)
+            return
+        if used >= limit:
+            raise QuotaExceeded("video", limit)
+        await asyncio.to_thread(_bump_sync, email, "videos_used")
+        await asyncio.to_thread(_touch_videos_period_sync, email)
+        return
+    if not reserved:
+        raise QuotaExceeded("video", limit)
+
+
+def _video_reserve_sync(email: str, limit: int) -> bool:
+    _reset_videos_period_if_needed_sync(email)
+    reserved = _reserve_sync(email, "videos_used", limit)
+    if reserved:
+        _touch_videos_period_sync(email)
+    return reserved
+
+
+async def refund_video(email: str | None) -> None:
+    """Release a previously reserved monthly video credit (best-effort)."""
+    email = _norm(email)
+    if not email:
+        return
+    try:
+        await asyncio.to_thread(_refund_sync, email, "videos_used")
+    except Exception as e:
+        logger.warning("video refund failed for %s: %s", email, e)
+
+
 async def require_voice_allowed(email: str | None, voice_id: str) -> None:
     """Block a Pro-only voice for a free account."""
     if not voice_id:
@@ -280,6 +367,10 @@ async def require_template_allowed(email: str | None, template_id: str) -> None:
 # ---------------------------------------------------------------------------
 async def account_status(email: str | None) -> dict:
     """Trial + usage snapshot for an email; starts the trial on first call."""
+    email = _norm(email)
+    video_limit = VIDEO_LIMITS["free"]
+    if email:
+        video_limit = await _video_limit(email)
     base = {
         "trial_days_left": TRIAL_DAYS,
         "trial_expired": False,
@@ -287,8 +378,9 @@ async def account_status(email: str | None) -> dict:
         "regen_limit": FREE_LIMITS["regen"],
         "voiceover_used": 0,
         "voiceover_limit": FREE_LIMITS["voiceover"],
+        "videos_used": 0,
+        "videos_limit": video_limit,
     }
-    email = _norm(email)
     if not email:
         return base
     try:
@@ -303,4 +395,6 @@ async def account_status(email: str | None) -> dict:
         "trial_expired": expired,
         "regen_used": int(account.get("regen_used") or 0),
         "voiceover_used": int(account.get("voiceover_used") or 0),
+        "videos_used": _videos_used_this_month(account),
+        "videos_limit": video_limit,
     }

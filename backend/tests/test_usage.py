@@ -197,3 +197,48 @@ def test_refund_failure_fails_open(monkeypatch):
 
     monkeypatch.setattr(usage, "_refund_sync", boom)
     _run(usage.refund("a@b.co", "voiceover"))  # fail OPEN -> must not raise
+
+
+# ---------------------------------------------------------------------- reserve_video
+def test_reserve_video_under_limit_ok(monkeypatch):
+    async def fake_limit(email):
+        return usage.VIDEO_LIMITS["free"]
+
+    monkeypatch.setattr(usage, "_video_limit", fake_limit)
+    monkeypatch.setattr(usage, "_video_reserve_sync", lambda e, lim: True)
+    _run(usage.reserve_video("a@b.co"))
+
+
+def test_reserve_video_over_limit_raises(monkeypatch):
+    async def fake_limit(email):
+        return usage.VIDEO_LIMITS["free"]
+
+    monkeypatch.setattr(usage, "_video_limit", fake_limit)
+    monkeypatch.setattr(usage, "_video_reserve_sync", lambda e, lim: False)
+    with pytest.raises(usage.QuotaExceeded) as exc:
+        _run(usage.reserve_video("a@b.co"))
+    assert exc.value.action == "video"
+    assert exc.value.limit == usage.VIDEO_LIMITS["free"]
+
+
+def test_reserve_video_pro_uses_pro_limit(monkeypatch):
+    seen = []
+
+    async def fake_limit(email):
+        return usage.VIDEO_LIMITS["pro"]
+
+    def fake_reserve(email, limit):
+        seen.append(limit)
+        return True
+
+    monkeypatch.setattr(usage, "_video_limit", fake_limit)
+    monkeypatch.setattr(usage, "_video_reserve_sync", fake_reserve)
+    _run(usage.reserve_video("a@b.co"))
+    assert seen == [usage.VIDEO_LIMITS["pro"]]
+
+
+def test_refund_video_calls_sync(monkeypatch):
+    seen = []
+    monkeypatch.setattr(usage, "_refund_sync", lambda e, f: seen.append((e, f)))
+    _run(usage.refund_video("a@b.co"))
+    assert seen == [("a@b.co", "videos_used")]

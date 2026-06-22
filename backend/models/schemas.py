@@ -47,6 +47,7 @@ class VisualScriptRequest(BaseModel):
     platform: str
     tone: str
     niche: str
+    product: str = ""
     # Billing identity (clipr_email) for server-side free-tier metering. Optional so
     # anonymous/local use still works; when present and the user is on free, a
     # `regenerate` call is counted against the regen allowance.

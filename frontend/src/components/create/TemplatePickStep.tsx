@@ -16,6 +16,8 @@ interface TemplatePickStepProps {
   onRender: () => void;
   onBack: () => void;
   isStartingRender: boolean;
+  /** Monthly video renders remaining */
+  videosLeft: number;
   /** true when a track (library or upload) is currently chosen */
   hasMusic?: boolean;
   /** name of the track that will be used (reference-matched or user-picked) */
@@ -38,6 +40,7 @@ export function TemplatePickStep({
   onRender,
   onBack,
   isStartingRender,
+  videosLeft,
   hasMusic,
   musicLabel,
   musicIsCustom,
@@ -98,7 +101,9 @@ export function TemplatePickStep({
   // Styles flagged music_manual require the user to choose music before rendering.
   const needsMusic = !!selectedTemplate?.music_manual && !hasMusic;
   const canRender =
-    !isStartingRender && (noTemplates || (!!selectedTemplateId && !needsMusic));
+    !isStartingRender &&
+    videosLeft > 0 &&
+    (noTemplates || (!!selectedTemplateId && !needsMusic));
 
   return (
     <div className="w-full p-4 sm:p-6">
@@ -271,6 +276,13 @@ export function TemplatePickStep({
         )}
 
         <div className="mt-6 flex flex-col sm:flex-row gap-3">
+          <p className="text-[11px] text-[#6B7C85] sm:hidden -mb-1">
+            {videosLeft > 0
+              ? `${videosLeft} video${videosLeft === 1 ? "" : "s"} left this month`
+              : isPro
+                ? "Monthly video limit reached — resets next month"
+                : "Monthly video limit reached — upgrade for 20/month"}
+          </p>
           <button
             type="button"
             onClick={onBack}
@@ -292,15 +304,33 @@ export function TemplatePickStep({
             type="button"
             onClick={onRender}
             disabled={!canRender}
+            title={
+              videosLeft <= 0
+                ? isPro
+                  ? "Monthly video limit reached"
+                  : "Monthly video limit reached — upgrade for more"
+                : undefined
+            }
             className={`sm:flex-1 py-3 rounded-lg text-sm font-medium transition-colors ${
               canRender
                 ? "bg-[#10B981] text-white hover:bg-[#12cf90]"
                 : "bg-[#152226] text-[#3A4A50] cursor-not-allowed"
             }`}
           >
-            {isStartingRender ? "Starting…" : "Render with this style →"}
+            {isStartingRender
+              ? "Starting…"
+              : videosLeft <= 0
+                ? "Video limit reached"
+                : "Render with this style →"}
           </button>
         </div>
+        <p className="hidden sm:block mt-2 text-[11px] text-[#6B7C85] text-center">
+          {videosLeft > 0
+            ? `${videosLeft} video${videosLeft === 1 ? "" : "s"} left this month`
+            : isPro
+              ? "Monthly video limit reached — resets next month"
+              : "Monthly video limit reached — upgrade for 20/month"}
+        </p>
       </div>
     </div>
   );

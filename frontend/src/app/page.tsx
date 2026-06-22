@@ -144,7 +144,7 @@ export default function Home() {
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
             <p className="text-[10px] text-zinc-500 mt-3 tracking-wide">
-              Free 3-day trial · No credit card · Cancel anytime
+              Free 5-day trial · No credit card · Cancel anytime
             </p>
           </motion.div>
 
@@ -372,13 +372,13 @@ export default function Home() {
                 <div className="text-center">
                   <span className="text-zinc-500 text-xs uppercase tracking-wider block font-bold">Full Workflow</span>
                   <div className="flex flex-col items-center mt-1.5 space-y-0.5">
-                    <span className="text-base text-zinc-500 line-through font-semibold">$29</span>
+                    <span className="text-base text-zinc-500 line-through font-semibold">$25</span>
                     <div className="flex items-baseline justify-center">
-                      <span className="text-4xl font-black text-white">$25</span>
+                      <span className="text-4xl font-black text-white">$15</span>
                       <span className="text-zinc-500 text-xs ml-1">/ month</span>
                     </div>
                     <span className="inline-block text-[9px] font-mono font-bold uppercase tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/20 px-2 py-0.5 rounded-full mt-1">
-                      Save $4 · Limited time
+                      Save $10 · Limited time
                     </span>
                   </div>
                 </div>
@@ -403,10 +403,10 @@ export default function Home() {
 
               <div className="pt-6 space-y-2">
                 <Button variant="primary" size="sm" className="w-full py-2.5 rounded-lg text-xs" onClick={openSignup}>
-                  Start 3-day free trial
+                  Start 5-day free trial
                 </Button>
                 <p className="text-[9px] text-zinc-500 text-center tracking-wide">
-                  Free 3-day trial · Then $25/mo · Cancel anytime
+                  Free 5-day trial · Then $15/mo · Cancel anytime
                 </p>
               </div>
             </motion.div>

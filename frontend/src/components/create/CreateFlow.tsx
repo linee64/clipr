@@ -36,6 +36,7 @@ export interface CreateFlowIdea {
   vibe: string;
   platform: string;
   estimate?: string;
+  product?: string;
 }
 
 interface CreateFlowProps {
@@ -59,6 +60,8 @@ interface CreateFlowProps {
   /** Server-side free-tier allowances remaining (Infinity for Pro). */
   regenLeft: number;
   voiceoverLeft: number;
+  /** Monthly video renders remaining (plan-specific cap). */
+  videosLeft: number;
   /** Re-fetch the server usage counts after a metered action. */
   onUsageRefresh: () => void;
 }
@@ -210,6 +213,7 @@ export function CreateFlow({
   onRequireUpgrade,
   regenLeft,
   voiceoverLeft,
+  videosLeft,
   onUsageRefresh,
 }: CreateFlowProps) {
   const [currentStep, setCurrentStep] = useState<FlowStep>(2);
@@ -276,11 +280,13 @@ export function CreateFlow({
       const savedDna = localStorage.getItem("clipr_dna");
       let tone = "Casual founder";
       let niche = "content creators";
+      let product = "";
       if (savedDna) {
         try {
           const dna = JSON.parse(savedDna);
           tone = dna.tone === "casual" ? "Casual founder" : "Formal expert";
           niche = dna.audience || niche;
+          product = dna.product || "";
         } catch {
           /* defaults */
         }
@@ -292,6 +298,7 @@ export function CreateFlow({
         platform: outputPlatform,
         tone,
         niche,
+        product: idea.product || product,
         regenerate,
       });
       setVisualScript(data);
@@ -455,6 +462,10 @@ export function CreateFlow({
 
   const handleStartRender = async () => {
     if (!visualScript) return;
+    if (videosLeft <= 0) {
+      if (!isPro) onRequireUpgrade();
+      return;
+    }
     // AI voiceover is limited on the free tier — gate before doing any work so a
     // free user who's out of uses gets the upgrade prompt instead of a render.
     const useVoiceover = voiceover.enabled && !!voiceover.voiceId;
@@ -528,8 +539,8 @@ export function CreateFlow({
           : {}),
       });
 
-      // The server counted this AI-voiceover render — refresh remaining "left".
-      if (useVoiceover && !isPro) onUsageRefresh();
+      // The server counted this render — refresh remaining allowances.
+      onUsageRefresh();
 
       setRenderJobId(jobId);
       setRenderStatus({
@@ -544,9 +555,15 @@ export function CreateFlow({
       // A Pro-only voice/style or an exhausted free allowance the client didn't
       // catch (e.g. stale counts) → prompt upgrade rather than a raw error.
       if (isUpgradeError(err)) {
-        onRequireUpgrade();
-        onUsageRefresh();
-        setCurrentStep(4);
+        const msg = err instanceof Error ? err.message : "";
+        if (isPro && /videos/i.test(msg)) {
+          setRenderError(msg);
+          setCurrentStep(4);
+        } else {
+          onRequireUpgrade();
+          onUsageRefresh();
+          setCurrentStep(4);
+        }
       } else {
         // Surface the failure on the render screen (RenderStep shows renderError + a
         // Retry) instead of silently bouncing back to the template picker with no feedback.
@@ -683,6 +700,7 @@ export function CreateFlow({
           onRender={handleStartRender}
           onBack={() => setCurrentStep(3)}
           isStartingRender={isStartingRender}
+          videosLeft={videosLeft}
           hasMusic={!!audioFile}
           musicLabel={audioFile?.name}
           musicIsCustom={audioUserPicked}

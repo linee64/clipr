@@ -50,7 +50,7 @@ import {
 } from "@/lib/api";
 import type { TemplateOption, ScheduledPost } from "@/lib/types";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import { readPlan, setPlan, TRIAL_DAYS, type PlanState } from "@/lib/plan";
+import { readPlan, setPlan, TRIAL_DAYS, PRO_PRICE, FREE_VIDEO_LIMIT, type PlanState } from "@/lib/plan";
 
 // X (Twitter) wordmark — the stylised "X".
 function XLogo({ className = "w-4 h-4" }: { className?: string }) {
@@ -385,6 +385,10 @@ export default function Dashboard() {
   const freeVoiceoverLeft = isProPlan
     ? Infinity
     : Math.max(0, (billing?.voiceover_limit ?? 2) - (billing?.voiceover_used ?? 0));
+  const videosLeft = Math.max(
+    0,
+    (billing?.videos_limit ?? (isProPlan ? 20 : FREE_VIDEO_LIMIT)) - (billing?.videos_used ?? 0),
+  );
 
   // Header "Connect accounts" popover (connect X right from the Home tab).
   const [connectMenuOpen, setConnectMenuOpen] = useState(false);
@@ -1047,7 +1051,8 @@ export default function Dashboard() {
       if (savedDna) {
         try {
           const dna = JSON.parse(savedDna);
-          setIdeas(generateDynamicIdeas(dna.product, dna.platform));
+          const fallbackProduct = inputVal.trim() || dna.product || "Clipr platform";
+          setIdeas(generateDynamicIdeas(fallbackProduct, dna.platform));
         } catch {
           setIdeas(IDEA_CARDS);
         }
@@ -1733,6 +1738,7 @@ export default function Dashboard() {
                               vibe: selectedIdea.vibe || selectedIdea.tags?.[0] || "dark and focused",
                               platform: selectedIdea.tags?.[1] || selectedPlatform,
                               estimate: selectedIdea.estimate,
+                              product: inputVal.trim() || dnaInfo.product || "Clipr platform",
                             }}
                             defaultPlatform={selectedPlatform}
                             onBack={handleExitCreateFlow}
@@ -1743,6 +1749,7 @@ export default function Dashboard() {
                             onRequireUpgrade={() => setUpgradeOpen(true)}
                             regenLeft={freeRegenLeft}
                             voiceoverLeft={freeVoiceoverLeft}
+                            videosLeft={videosLeft}
                             onUsageRefresh={refreshBilling}
                           />
                         </div>
@@ -2201,18 +2208,20 @@ export default function Dashboard() {
                           Clipr Pro
                         </span>
                         <span className="text-xs text-[#6B7C85]">
-                          <span className="text-[#EFEFEF] font-semibold">$25</span>/mo
+                          <span className="text-[#EFEFEF] font-semibold">{PRO_PRICE}</span>/mo
                         </span>
                       </div>
 
                       {planState.plan === "pro" ? (
-                        <p className="text-xs text-[#10B981]">Your subscription is active — everything&apos;s unlocked.</p>
+                        <p className="text-xs text-[#10B981]">
+                          Pro active — {videosLeft} of {billing?.videos_limit ?? 20} videos left this month.
+                        </p>
                       ) : (
                         <>
                           <p className="text-xs text-[#6B7C85]">
                             {planState.expired
                               ? "Your free trial has ended — upgrade to keep rendering and posting."
-                              : `Free trial — ${planState.daysLeft} of ${TRIAL_DAYS} days left.`}
+                              : `Free trial — ${planState.daysLeft} of ${TRIAL_DAYS} days left · ${videosLeft} of ${billing?.videos_limit ?? FREE_VIDEO_LIMIT} videos this month.`}
                           </p>
                           {!planState.expired && (
                             <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#152226]">

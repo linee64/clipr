@@ -20,7 +20,7 @@ auto-posts to X and LinkedIn on a schedule.
 - **Subtitle presets** — TikTok Bold / Plaque / Center Caps + several kinetic/editorial styles.
 - **Auto-posting** — one-click connect & scheduled posting to **X (Twitter)** and **LinkedIn** (backend-owned OAuth).
 - **Calendar scheduler** — queue renders to publish at a chosen time; a background loop posts them when due.
-- **Billing & freemium** — $25/mo Pro via **Polar**, with a server-side 3-day trial and free-tier limits (capped storyboard regens & AI voiceovers; premium voices/reference styles gated to Pro).
+- **Billing & freemium** — $15/mo Pro via **Polar**, with a server-side 5-day trial and usage limits: **10 videos/month** (Free) or **20 videos/month** (Pro), plus capped storyboard regens & AI voiceovers on Free; premium voices/reference styles gated to Pro.
 
 ## Tech stack
 
@@ -128,9 +128,16 @@ the **X/LinkedIn OAuth callbacks** at the frontend passthrough routes (see `.env
 
 ## Pricing
 
-**$25/month** Pro subscription with a **3-day free trial**, billed via Polar. Free tier:
-limited storyboard regenerations and AI voiceovers; premium voices and reference styles
-require Pro. Limits are enforced server-side (not just in the UI).
+**$15/month** Pro subscription with a **5-day free trial**, billed via Polar.
+
+| | Free | Pro |
+|---|---|---|
+| Videos / month | 10 | 20 |
+| Storyboard regens | 3 (lifetime) | Unlimited |
+| AI voiceovers | 2 (lifetime) | Unlimited |
+| Premium voices & styles | — | ✓ |
+
+Limits are enforced server-side (not just in the UI).
 
 ---
 

@@ -48,16 +48,15 @@ const STOCK_QUERY_STOPWORDS = new Set([
 function toStockQuery(suggestion: string): string {
   const seen = new Set<string>();
   const keywords: string[] = [];
-  for (const raw of (suggestion || "").toLowerCase().split(/[^a-z0-9]+/)) {
+  const regex = new RegExp("[^\\p{L}\\p{N}]+", "u");
+  for (const raw of (suggestion || "").toLowerCase().split(regex)) {
     if (raw.length < 2 || STOCK_QUERY_STOPWORDS.has(raw) || seen.has(raw)) continue;
     seen.add(raw);
     keywords.push(raw);
-    if (keywords.length >= 8) break;
   }
   if (keywords.length > 0) return keywords.join(" ");
-  // All-filler line (rare) — fall back to the raw head so we still search something.
-  return (suggestion || "").split(/[:,.;—–\n]/)[0].trim().split(/\s+/)
-    .filter(Boolean).slice(0, 6).join(" ");
+  // Fall back to the raw suggestion if all filtered out
+  return (suggestion || "").trim();
 }
 
 /** Animated equalizer bars shown on a track that's currently previewing. */
