@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Check, ChevronLeft, Film, Loader2, Lock, Music, RefreshCw } from "lucide-react";
 import { resolveBackendUrl, sampleTemplates } from "@/lib/api";
+import { VideoQuotaBadge } from "@/components/VideoQuotaBadge";
 import type { TemplateOption } from "@/lib/types";
 
 interface TemplatePickStepProps {
@@ -18,6 +19,7 @@ interface TemplatePickStepProps {
   isStartingRender: boolean;
   /** Monthly video renders remaining */
   videosLeft: number;
+  videosLimit: number;
   /** true when a track (library or upload) is currently chosen */
   hasMusic?: boolean;
   /** name of the track that will be used (reference-matched or user-picked) */
@@ -41,6 +43,7 @@ export function TemplatePickStep({
   onBack,
   isStartingRender,
   videosLeft,
+  videosLimit,
   hasMusic,
   musicLabel,
   musicIsCustom,
@@ -275,14 +278,9 @@ export function TemplatePickStep({
           </div>
         )}
 
-        <div className="mt-6 flex flex-col sm:flex-row gap-3">
-          <p className="text-[11px] text-[#6B7C85] sm:hidden -mb-1">
-            {videosLeft > 0
-              ? `${videosLeft} video${videosLeft === 1 ? "" : "s"} left this month`
-              : isPro
-                ? "Monthly video limit reached — resets next month"
-                : "Monthly video limit reached — upgrade for 20/month"}
-          </p>
+        <div className="mt-6 space-y-3">
+          <VideoQuotaBadge left={videosLeft} limit={videosLimit} />
+          <div className="flex flex-col sm:flex-row gap-3">
           <button
             type="button"
             onClick={onBack}
@@ -323,14 +321,8 @@ export function TemplatePickStep({
                 ? "Video limit reached"
                 : "Render with this style →"}
           </button>
+          </div>
         </div>
-        <p className="hidden sm:block mt-2 text-[11px] text-[#6B7C85] text-center">
-          {videosLeft > 0
-            ? `${videosLeft} video${videosLeft === 1 ? "" : "s"} left this month`
-            : isPro
-              ? "Monthly video limit reached — resets next month"
-              : "Monthly video limit reached — upgrade for 20/month"}
-        </p>
       </div>
     </div>
   );

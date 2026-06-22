@@ -24,6 +24,7 @@ import type {
   VoiceoverSettings,
 } from "@/lib/types";
 import { StepIndicator, type FlowStep } from "./StepIndicator";
+import { VideoQuotaBadge } from "@/components/VideoQuotaBadge";
 import { StoryboardStep } from "./StoryboardStep";
 import { UploadBySlotStep } from "./UploadBySlotStep";
 import { TemplatePickStep } from "./TemplatePickStep";
@@ -62,6 +63,7 @@ interface CreateFlowProps {
   voiceoverLeft: number;
   /** Monthly video renders remaining (plan-specific cap). */
   videosLeft: number;
+  videosLimit: number;
   /** Re-fetch the server usage counts after a metered action. */
   onUsageRefresh: () => void;
 }
@@ -214,6 +216,7 @@ export function CreateFlow({
   regenLeft,
   voiceoverLeft,
   videosLeft,
+  videosLimit,
   onUsageRefresh,
 }: CreateFlowProps) {
   const [currentStep, setCurrentStep] = useState<FlowStep>(2);
@@ -590,7 +593,7 @@ export function CreateFlow({
 
   return (
     <div className="flex flex-col h-full overflow-y-auto scrollbar-thin bg-[#070B0D]">
-      <div className="flex items-center gap-3 px-4 sm:px-6 py-3 border-b border-[#152226] shrink-0">
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-[#152226] shrink-0">
         <button
           type="button"
           onClick={onBack}
@@ -599,6 +602,7 @@ export function CreateFlow({
           <ChevronLeft className="w-4 h-4" />
           Back to ideas
         </button>
+        <VideoQuotaBadge left={videosLeft} limit={videosLimit} compact />
       </div>
 
       <StepIndicator currentStep={currentStep} />
@@ -701,6 +705,7 @@ export function CreateFlow({
           onBack={() => setCurrentStep(3)}
           isStartingRender={isStartingRender}
           videosLeft={videosLeft}
+          videosLimit={videosLimit}
           hasMusic={!!audioFile}
           musicLabel={audioFile?.name}
           musicIsCustom={audioUserPicked}

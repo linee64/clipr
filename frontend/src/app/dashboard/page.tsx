@@ -50,7 +50,8 @@ import {
 } from "@/lib/api";
 import type { TemplateOption, ScheduledPost } from "@/lib/types";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import { readPlan, setPlan, TRIAL_DAYS, PRO_PRICE, FREE_VIDEO_LIMIT, type PlanState } from "@/lib/plan";
+import { readPlan, setPlan, TRIAL_DAYS, PRO_PRICE, FREE_VIDEO_LIMIT, PRO_VIDEO_LIMIT, type PlanState } from "@/lib/plan";
+import { VideoQuotaBadge } from "@/components/VideoQuotaBadge";
 
 // X (Twitter) wordmark — the stylised "X".
 function XLogo({ className = "w-4 h-4" }: { className?: string }) {
@@ -385,10 +386,9 @@ export default function Dashboard() {
   const freeVoiceoverLeft = isProPlan
     ? Infinity
     : Math.max(0, (billing?.voiceover_limit ?? 2) - (billing?.voiceover_used ?? 0));
-  const videosLeft = Math.max(
-    0,
-    (billing?.videos_limit ?? (isProPlan ? 20 : FREE_VIDEO_LIMIT)) - (billing?.videos_used ?? 0),
-  );
+  const videosLimit =
+    billing?.videos_limit ?? (isProPlan ? PRO_VIDEO_LIMIT : FREE_VIDEO_LIMIT);
+  const videosLeft = Math.max(0, videosLimit - (billing?.videos_used ?? 0));
 
   // Header "Connect accounts" popover (connect X right from the Home tab).
   const [connectMenuOpen, setConnectMenuOpen] = useState(false);
@@ -1257,10 +1257,10 @@ export default function Dashboard() {
                 }`}
               >
                 {planState.plan === "pro"
-                  ? "Pro · active"
+                  ? `Pro · ${videosLeft} video${videosLeft === 1 ? "" : "s"} left`
                   : planState.expired
                     ? "Trial ended"
-                    : `Pro trial · ${planState.daysLeft} day${planState.daysLeft === 1 ? "" : "s"} left`}
+                    : `Trial · ${videosLeft} video${videosLeft === 1 ? "" : "s"} left`}
               </span>
             </div>
           </div>
@@ -1750,6 +1750,7 @@ export default function Dashboard() {
                             regenLeft={freeRegenLeft}
                             voiceoverLeft={freeVoiceoverLeft}
                             videosLeft={videosLeft}
+                            videosLimit={videosLimit}
                             onUsageRefresh={refreshBilling}
                           />
                         </div>
@@ -2213,15 +2214,13 @@ export default function Dashboard() {
                       </div>
 
                       {planState.plan === "pro" ? (
-                        <p className="text-xs text-[#10B981]">
-                          Pro active — {videosLeft} of {billing?.videos_limit ?? 20} videos left this month.
-                        </p>
+                        <VideoQuotaBadge left={videosLeft} limit={videosLimit} />
                       ) : (
                         <>
                           <p className="text-xs text-[#6B7C85]">
                             {planState.expired
                               ? "Your free trial has ended — upgrade to keep rendering and posting."
-                              : `Free trial — ${planState.daysLeft} of ${TRIAL_DAYS} days left · ${videosLeft} of ${billing?.videos_limit ?? FREE_VIDEO_LIMIT} videos this month.`}
+                              : `Free trial — ${planState.daysLeft} of ${TRIAL_DAYS} days left.`}
                           </p>
                           {!planState.expired && (
                             <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#152226]">
@@ -2234,6 +2233,7 @@ export default function Dashboard() {
                               />
                             </div>
                           )}
+                          <VideoQuotaBadge left={videosLeft} limit={videosLimit} />
                         </>
                       )}
 
