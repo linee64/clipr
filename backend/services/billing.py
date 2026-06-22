@@ -129,6 +129,47 @@ def _normalize_email(email: str | None) -> str:
     return email
 
 
+def _unlimited_pro_emails() -> frozenset[str]:
+    """Comma-separated allowlist in CLIPR_UNLIMITED_PRO_EMAILS (env fallback)."""
+    raw = _env("CLIPR_UNLIMITED_PRO_EMAILS")
+    if not raw:
+        return frozenset()
+    return frozenset(
+        part.strip().lower()
+        for part in raw.split(",")
+        if part.strip() and _EMAIL_RE.match(part.strip().lower())
+    )
+
+
+def _account_unlimited_sync(email: str) -> bool:
+    """Read accounts.is_unlimited from Supabase (permanent founder flag)."""
+    try:
+        res = (
+            _get_supabase()
+            .table("accounts")
+            .select("is_unlimited")
+            .eq("email", email)
+            .limit(1)
+            .execute()
+        )
+        rows = res.data or []
+        return bool(rows and rows[0].get("is_unlimited"))
+    except Exception as e:
+        logger.warning("accounts is_unlimited read failed for %s: %s", email, e)
+        return False
+
+
+async def is_unlimited_pro(email: str | None) -> bool:
+    """Lifetime unlimited Pro — env allowlist or accounts.is_unlimited in DB."""
+    try:
+        norm = _normalize_email(email or "")
+    except BillingError:
+        return False
+    if norm in _unlimited_pro_emails():
+        return True
+    return await asyncio.to_thread(_account_unlimited_sync, norm)
+
+
 # ---------------------------------------------------------------------------
 # Subscription store — one row per email in the Supabase `subscriptions` table
 # ---------------------------------------------------------------------------
@@ -317,6 +358,8 @@ async def is_active(email: str | None) -> bool:
         norm = _normalize_email(email or "")
     except BillingError:
         return False
+    if await is_unlimited_pro(norm):
+        return True
     record = await _read_record(norm)
     return bool(record and record.get("active"))
 
@@ -335,11 +378,20 @@ async def get_status(email: str | None) -> dict:
         "current_period_end": "",
         "cancel_at_period_end": False,
         "configured": is_configured(),
+        "unlimited": False,
     }
     try:
         norm = _normalize_email(email or "")
     except BillingError:
         return base
+    if await is_unlimited_pro(norm):
+        return {
+            **base,
+            "plan": "pro",
+            "active": True,
+            "status": "unlimited",
+            "unlimited": True,
+        }
     record = await _read_record(norm)
     if not record or not record.get("active"):
         fresh = await _reconcile_from_polar(norm)

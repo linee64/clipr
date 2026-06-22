@@ -64,6 +64,7 @@ interface CreateFlowProps {
   /** Monthly video renders remaining (plan-specific cap). */
   videosLeft: number;
   videosLimit: number;
+  videosUnlimited?: boolean;
   /** Re-fetch the server usage counts after a metered action. */
   onUsageRefresh: () => void;
 }
@@ -217,6 +218,7 @@ export function CreateFlow({
   voiceoverLeft,
   videosLeft,
   videosLimit,
+  videosUnlimited = false,
   onUsageRefresh,
 }: CreateFlowProps) {
   const [currentStep, setCurrentStep] = useState<FlowStep>(2);
@@ -465,7 +467,7 @@ export function CreateFlow({
 
   const handleStartRender = async () => {
     if (!visualScript) return;
-    if (videosLeft <= 0) {
+    if (!videosUnlimited && videosLeft <= 0) {
       if (!isPro) onRequireUpgrade();
       return;
     }
@@ -602,7 +604,7 @@ export function CreateFlow({
           <ChevronLeft className="w-4 h-4" />
           Back to ideas
         </button>
-        <VideoQuotaBadge left={videosLeft} limit={videosLimit} compact className="self-start sm:self-auto" />
+        <VideoQuotaBadge left={videosLeft} limit={videosLimit} unlimited={videosUnlimited} compact className="self-start sm:self-auto" />
       </div>
 
       <StepIndicator currentStep={currentStep} />
@@ -706,6 +708,7 @@ export function CreateFlow({
           isStartingRender={isStartingRender}
           videosLeft={videosLeft}
           videosLimit={videosLimit}
+          videosUnlimited={videosUnlimited}
           hasMusic={!!audioFile}
           musicLabel={audioFile?.name}
           musicIsCustom={audioUserPicked}

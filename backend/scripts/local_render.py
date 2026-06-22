@@ -324,18 +324,8 @@ def local_broll_render(
         )
 
     ass_path = os.path.join(job_dir, "captions.ass")
-    closing_caption = template.get("closing_caption")
-    if closing_caption:
-        footage_total = sum(get_duration(p) for p in cut_paths)
-        segments = [
-            {
-                "start": card_total,
-                "end": card_total + max(0.1, footage_total - 0.04),
-                "text": str(closing_caption),
-            }
-        ]
-        generate_ass_simple(segments, ass_path, caption_style, resolution, caption_preset)
-    elif caption_style == "kinetic":
+    # Burn each scene's script phrase — not the template closing_caption placeholder.
+    if caption_style == "kinetic":
         generate_ass_kinetic(
             scenes_timed, beat_times, ass_path, resolution, caption_preset
         )

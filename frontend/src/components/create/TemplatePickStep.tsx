@@ -20,6 +20,7 @@ interface TemplatePickStepProps {
   /** Monthly video renders remaining */
   videosLeft: number;
   videosLimit: number;
+  videosUnlimited?: boolean;
   /** true when a track (library or upload) is currently chosen */
   hasMusic?: boolean;
   /** name of the track that will be used (reference-matched or user-picked) */
@@ -44,6 +45,7 @@ export function TemplatePickStep({
   isStartingRender,
   videosLeft,
   videosLimit,
+  videosUnlimited = false,
   hasMusic,
   musicLabel,
   musicIsCustom,
@@ -105,7 +107,7 @@ export function TemplatePickStep({
   const needsMusic = !!selectedTemplate?.music_manual && !hasMusic;
   const canRender =
     !isStartingRender &&
-    videosLeft > 0 &&
+    (videosUnlimited || videosLeft > 0) &&
     (noTemplates || (!!selectedTemplateId && !needsMusic));
 
   return (
@@ -279,7 +281,7 @@ export function TemplatePickStep({
         )}
 
         <div className="mt-6 space-y-3">
-          <VideoQuotaBadge left={videosLeft} limit={videosLimit} />
+          <VideoQuotaBadge left={videosLeft} limit={videosLimit} unlimited={videosUnlimited} />
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               type="button"
@@ -303,7 +305,7 @@ export function TemplatePickStep({
               onClick={onRender}
               disabled={!canRender}
               title={
-                videosLeft <= 0
+                !videosUnlimited && videosLeft <= 0
                   ? isPro
                     ? "Monthly video limit reached"
                     : "Monthly video limit reached — upgrade for more"
@@ -317,7 +319,7 @@ export function TemplatePickStep({
             >
               {isStartingRender
                 ? "Starting…"
-                : videosLeft <= 0
+                : !videosUnlimited && videosLeft <= 0
                   ? "Video limit reached"
                   : "Render with this style →"}
             </button>

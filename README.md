@@ -7,7 +7,7 @@ socials — collapsing the usual *idea → script → edit → schedule* grind i
 Describe what your video is about, and Clipr generates content ideas, writes a
 scene-by-scene storyboard, assembles an aesthetic b-roll montage (your clips or Pexels
 stock) with kinetic captions, optional AI voiceover, and beat-matched music — then
-auto-posts to X and LinkedIn on a schedule.
+auto-posts to X, LinkedIn, and Instagram Reels on a schedule.
 
 ---
 
@@ -18,7 +18,7 @@ auto-posts to X and LinkedIn on a schedule.
 - **B-roll render** — FFmpeg montage from uploaded clips or **Pexels** stock, color-graded per template, with kinetic/karaoke caption engines and beat-synced cuts (librosa).
 - **AI voiceover** — per-scene narration via **ElevenLabs**, timed to the montage; music ducks under the voice.
 - **Subtitle presets** — TikTok Bold / Plaque / Center Caps + several kinetic/editorial styles.
-- **Auto-posting** — one-click connect & scheduled posting to **X (Twitter)** and **LinkedIn** (backend-owned OAuth).
+- **Auto-posting** — one-click connect & scheduled posting to **X (Twitter)**, **LinkedIn**, and **Instagram Reels** (backend-owned OAuth).
 - **Calendar scheduler** — queue renders to publish at a chosen time; a background loop posts them when due.
 - **Billing & freemium** — $15/mo Pro via **Polar**, with a server-side 5-day trial and usage limits: **10 videos/month** (Free) or **20 videos/month** (Pro), plus capped storyboard regens & AI voiceovers on Free; premium voices/reference styles gated to Pro.
 
@@ -46,10 +46,10 @@ auto-posts to X and LinkedIn on a schedule.
 │       └── lib/              # api client, plan/trial logic, supabase client
 ├── backend/                  # FastAPI service
 │   ├── main.py               # app + CORS + scheduler startup
-│   ├── routers/              # scripts, video, ideas, templates, schedule, billing, twitter, linkedin, pexels
+│   ├── routers/              # scripts, video, ideas, templates, schedule, billing, twitter, linkedin, instagram, pexels
 │   ├── services/             # gemini, tts, editor, billing, usage, scheduler, storage, jobstore, …
 │   ├── workers/render.py     # long-running b-roll render job
-│   ├── migrations/           # 001–004 SQL (run in Supabase, in order)
+│   ├── migrations/           # 001–006 SQL (run in Supabase, in order)
 │   └── tests/                # pytest suite
 ├── Dockerfile                # backend image (Railway) — installs FFmpeg
 └── railway.json              # Railway build/deploy config
@@ -61,7 +61,7 @@ The Next.js app talks to the FastAPI backend (`NEXT_PUBLIC_API_BASE`). The backe
 generates ideas/storyboards (Gemini), renders video (FFmpeg/librosa/ElevenLabs) as a
 background job whose status is polled and mirrored to Supabase Storage (so a poll
 survives a worker restart), stores clips/audio/renders in Supabase, meters free-tier
-usage in a Supabase `accounts` table, and owns the X/LinkedIn OAuth + scheduled posting.
+usage in a Supabase `accounts` table, and owns the X/LinkedIn/Instagram OAuth + scheduled posting.
 Identity is the signed-in email; billing/usage are keyed by it.
 
 ---
@@ -83,9 +83,9 @@ python main.py                # serves on http://localhost:8000 (auto-reload)
 
 Configure `backend/.env` from **`backend/.env.example`**, which documents every variable
 and how to obtain it — Supabase (service-role key), Gemini, Pexels, ElevenLabs, X &
-LinkedIn OAuth, Polar billing, and `CORS_ORIGINS`.
+LinkedIn & Instagram (Meta) OAuth, Polar billing, and `CORS_ORIGINS`.
 
-**Supabase migrations:** run the files in `backend/migrations/` **in order** (001 → 004)
+**Supabase migrations:** run the files in `backend/migrations/` **in order** (001 → 006)
 in the Supabase SQL editor. They create the `subscriptions` and `accounts` tables and the
 atomic usage-metering functions (`clipr_bump_usage`, `clipr_consume_usage`,
 `clipr_refund_usage`). Also create a **public Storage bucket** named per `SUPABASE_BUCKET`.
@@ -100,6 +100,7 @@ npm install
 #   NEXT_PUBLIC_SUPABASE_URL=...        NEXT_PUBLIC_SUPABASE_ANON_KEY=...   (Supabase Auth)
 #   GEMINI_API_KEY=...                  (used by the /api/generate-* proxy routes)
 #   NEXT_PUBLIC_X_ENABLED=true          NEXT_PUBLIC_LINKEDIN_ENABLED=true
+#   NEXT_PUBLIC_INSTAGRAM_ENABLED=true   # off by default — UI shows "In development" until set
 npm run dev                   # http://localhost:3000
 ```
 
@@ -124,7 +125,19 @@ Prod **auto-deploys from `main`**:
 - **Backend → Railway.** Built from the `Dockerfile` (installs FFmpeg). Set the backend env vars as Railway service variables; `CORS_ORIGINS` must include the Vercel domain. Health check: `GET /` → `{"status":"Clipr API running"}`.
 
 After deploy, point the **Polar webhook** at `https://<backend>/api/billing/webhook` and
-the **X/LinkedIn OAuth callbacks** at the frontend passthrough routes (see `.env.example`).
+the **X/LinkedIn/Instagram OAuth callbacks** at the frontend passthrough routes (see `.env.example`).
+
+### Instagram / Meta setup
+
+1. Create a [Meta Developer](https://developers.facebook.com/) app and add **Facebook Login** + **Instagram API** (Content Publishing).
+2. Under Facebook Login → Settings, add **Valid OAuth Redirect URI**:  
+   `https://<your-frontend>/api/auth/instagram/callback`
+3. Request permissions: `instagram_business_basic`, `instagram_business_content_publish`, `pages_show_list`, `pages_read_engagement`.
+4. Until **App Review** is approved, only test users / app roles can publish.
+5. Each user needs an **Instagram Professional** account linked to a **Facebook Page**.
+6. Set `META_APP_ID`, `META_APP_SECRET`, `INSTAGRAM_CALLBACK_URL`, and `INSTAGRAM_POST_CONNECT_URL` on the backend; set `NEXT_PUBLIC_INSTAGRAM_ENABLED=true` on the frontend.
+
+Reels publishing uses a validated Supabase public `video_url` (Meta fetches the file). Local `/api/video/files/` paths are rejected for Instagram posts.
 
 ## Pricing
 

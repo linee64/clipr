@@ -92,7 +92,7 @@ export interface VoiceoverSettings {
 /** A rendered video scheduled to auto-post to a social network at a set time. */
 export interface ScheduledPost {
   id: string;
-  platform: "twitter" | "linkedin";
+  platform: "twitter" | "linkedin" | "instagram";
   output_url: string;
   caption: string;
   title: string;

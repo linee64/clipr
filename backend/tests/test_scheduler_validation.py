@@ -49,3 +49,19 @@ def test_create_schedule_rejects_bad_time(when):
 def test_create_schedule_rejects_bad_platform(platform):
     with pytest.raises(ScheduleError):
         _run(scheduler.create_schedule("validcid123", platform, "https://x/y.mp4", "", "", 9e9))
+
+
+def test_create_schedule_accepts_instagram(monkeypatch):
+    saved: list[dict] = []
+
+    async def fake_write(key, value):
+        saved.append(value)
+
+    monkeypatch.setattr(scheduler, "_write", fake_write)
+    result = _run(
+        scheduler.create_schedule(
+            "validcid123", "instagram", "https://x/y.mp4", "caption", "title", 9e9
+        )
+    )
+    assert result["platform"] == "instagram"
+    assert saved and saved[0]["platform"] == "instagram"

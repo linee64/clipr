@@ -26,7 +26,7 @@ from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 
-from services import linkedin, twitter
+from services import instagram, linkedin, twitter
 from services.storage import BUCKET, local_file_path, use_local_storage
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -38,7 +38,7 @@ TEMP_DIR = str(BACKEND_DIR / "temp")
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 SCHEDULE_PREFIX = "schedules/"
-PLATFORMS = ("twitter", "linkedin")
+PLATFORMS = ("twitter", "linkedin", "instagram")
 
 # A schedule claimed as "processing" for longer than this lost its worker (the single
 # uvicorn process OOM'd / restarted mid-publish). The next tick reaps it back to
@@ -196,7 +196,7 @@ async def create_schedule(
     cid = _safe_cid(cid)
     platform = (platform or "").strip().lower()
     if platform not in PLATFORMS:
-        raise ScheduleError("Pick a supported platform (X or LinkedIn).")
+        raise ScheduleError("Pick a supported platform (X, LinkedIn, or Instagram).")
     if not (output_url or "").strip():
         raise ScheduleError("No video to schedule.")
     try:
@@ -292,6 +292,10 @@ async def _download_video(output_url: str, dest: str) -> None:
 
 async def _publish(sch: dict) -> dict:
     platform = sch.get("platform")
+    if platform == "instagram":
+        return await instagram.post_reel(
+            sch["output_url"], sch.get("caption", ""), sch["cid"]
+        )
     tmp = os.path.join(TEMP_DIR, f"sched_{uuid.uuid4().hex}.mp4")
     try:
         await _download_video(sch["output_url"], tmp)

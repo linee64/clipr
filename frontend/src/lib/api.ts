@@ -341,6 +341,66 @@ export async function disconnectLinkedIn(): Promise<void> {
 }
 
 // ----------------------------------------------------------------------------
+// Instagram Reels auto-posting (Meta Graph API)
+// ----------------------------------------------------------------------------
+
+export interface InstagramStatus {
+  connected: boolean;
+  username?: string;
+  name?: string;
+  ig_user_id?: string;
+  configured?: boolean;
+  expired?: boolean;
+}
+
+/**
+ * Set NEXT_PUBLIC_INSTAGRAM_ENABLED=true when Meta app is ready; off by default (shown as in development).
+ */
+export const INSTAGRAM_ENABLED = process.env.NEXT_PUBLIC_INSTAGRAM_ENABLED === "true";
+
+export async function getInstagramStatus(): Promise<InstagramStatus> {
+  const res = await fetch(
+    `${API_BASE}/api/instagram/status?cid=${encodeURIComponent(getClientId())}`,
+    { cache: "no-store" }
+  );
+  return parseJson(res);
+}
+
+export async function startInstagramConnect(): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/instagram/login?cid=${encodeURIComponent(getClientId())}`,
+    { cache: "no-store" }
+  );
+  const { authorize_url } = await parseJson<{ authorize_url: string }>(res);
+  window.location.href = authorize_url;
+}
+
+export interface InstagramPostResult {
+  id: string;
+  url: string;
+}
+
+export async function postToInstagram(payload: {
+  output_url: string;
+  caption: string;
+}): Promise<InstagramPostResult> {
+  const res = await fetch(`${API_BASE}/api/instagram/post`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...payload, cid: getClientId() }),
+  });
+  return parseJson(res);
+}
+
+export async function disconnectInstagram(): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/instagram/disconnect?cid=${encodeURIComponent(getClientId())}`,
+    { method: "POST" }
+  );
+  await parseJson(res);
+}
+
+// ----------------------------------------------------------------------------
 // Billing (Polar subscription)
 // ----------------------------------------------------------------------------
 
@@ -367,9 +427,11 @@ export interface BillingStatus {
   /** free-tier AI-voiceover renders used / allowed */
   voiceover_used?: number;
   voiceover_limit?: number;
-  /** monthly video renders used / allowed (plan-specific cap) */
+  /** monthly video renders used / allowed (plan-specific cap; null = unlimited) */
   videos_used?: number;
-  videos_limit?: number;
+  videos_limit?: number | null;
+  /** lifetime unlimited Pro (founder / server allowlist) */
+  unlimited?: boolean;
 }
 
 /** The user's billing identity — the email captured at onboarding (clipr_email). */
@@ -426,7 +488,7 @@ export async function openBillingPortal(): Promise<void> {
 
 /** Schedule a rendered video to auto-post to X/LinkedIn at an absolute time. */
 export async function createSchedule(payload: {
-  platform: "twitter" | "linkedin";
+  platform: "twitter" | "linkedin" | "instagram";
   output_url: string;
   caption: string;
   title: string;

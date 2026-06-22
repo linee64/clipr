@@ -204,10 +204,17 @@ class LinkedInPostRequest(BaseModel):
     cid: str = ""
 
 
+class InstagramPostRequest(BaseModel):
+    # Rendered Reel video URL (Supabase public HTTPS), caption, and per-browser cid.
+    output_url: str
+    caption: str = ""
+    cid: str = ""
+
+
 class ScheduleCreateRequest(BaseModel):
     # Schedule a rendered video to auto-post to a social network at a given time.
     cid: str
-    platform: str  # "twitter" | "linkedin"
+    platform: str  # "twitter" | "linkedin" | "instagram"
     output_url: str
     caption: str = ""
     title: str = ""

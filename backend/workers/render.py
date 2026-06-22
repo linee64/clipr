@@ -728,29 +728,9 @@ async def run_broll_render(
         render_jobs[job_id]["progress"] = 80
 
         ass_path = os.path.join(job_dir, "broll_captions.ass")
-        closing_caption = template.get("closing_caption")
-        if closing_caption:
-            # One persistent payoff caption held across the whole footage montage
-            # (mirrors the reference's pinned "locked in." over the b-roll).
-            footage_total = await asyncio.to_thread(
-                lambda: sum(get_duration(p) for p in cut_paths)
-            )
-            segments = [
-                {
-                    "start": card_total,
-                    "end": card_total + max(0.1, footage_total - 0.04),
-                    "text": str(closing_caption),
-                }
-            ]
-            await asyncio.to_thread(
-                generate_ass_simple,
-                segments,
-                ass_path,
-                caption_style,
-                caption_resolution,
-                caption_preset,
-            )
-        elif caption_style == "kinetic":
+        # Scene phrases from the user's script — never the template's closing_caption
+        # string (that field only records what appeared on the reference clip).
+        if caption_style == "kinetic":
             await asyncio.to_thread(
                 generate_ass_kinetic,
                 scenes_with_timing,

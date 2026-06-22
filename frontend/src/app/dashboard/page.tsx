@@ -40,12 +40,19 @@ import {
   postToLinkedIn,
   LINKEDIN_ENABLED,
   type LinkedInStatus,
+  getInstagramStatus,
+  startInstagramConnect,
+  disconnectInstagram,
+  postToInstagram,
+  INSTAGRAM_ENABLED,
+  type InstagramStatus,
   createSchedule,
   listSchedules,
   cancelSchedule,
   getBillingStatus,
   startCheckout,
   openBillingPortal,
+  generateIdeas,
   type BillingStatus,
 } from "@/lib/api";
 import type { TemplateOption, ScheduledPost } from "@/lib/types";
@@ -321,6 +328,7 @@ export default function Dashboard() {
   const [xToast, setXToast] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   // LinkedIn connection state (parallels X; the toast above is shared).
   const [liStatus, setLiStatus] = useState<LinkedInStatus | null>(null);
+  const [igStatus, setIgStatus] = useState<InstagramStatus | null>(null);
 
   // Subscription / trial state (local until a real billing provider is wired).
   const [planState, setPlanState] = useState<PlanState>({
@@ -379,16 +387,20 @@ export default function Dashboard() {
   }, [refreshBilling]);
 
   // Free-tier allowances remaining (Infinity for Pro), from the server counts.
-  const isProPlan = planState.plan === "pro";
+  const isProPlan = planState.plan === "pro" || !!billing?.unlimited;
   const freeRegenLeft = isProPlan
     ? Infinity
     : Math.max(0, (billing?.regen_limit ?? 3) - (billing?.regen_used ?? 0));
   const freeVoiceoverLeft = isProPlan
     ? Infinity
     : Math.max(0, (billing?.voiceover_limit ?? 2) - (billing?.voiceover_used ?? 0));
-  const videosLimit =
-    billing?.videos_limit ?? (isProPlan ? PRO_VIDEO_LIMIT : FREE_VIDEO_LIMIT);
-  const videosLeft = Math.max(0, videosLimit - (billing?.videos_used ?? 0));
+  const isUnlimitedPro = !!billing?.unlimited;
+  const videosLimit = isUnlimitedPro
+    ? Infinity
+    : billing?.videos_limit ?? (isProPlan ? PRO_VIDEO_LIMIT : FREE_VIDEO_LIMIT);
+  const videosLeft = isUnlimitedPro
+    ? Infinity
+    : Math.max(0, videosLimit - (billing?.videos_used ?? 0));
 
   // Header "Connect accounts" popover (connect X right from the Home tab).
   const [connectMenuOpen, setConnectMenuOpen] = useState(false);
@@ -417,6 +429,10 @@ export default function Dashboard() {
       setXToast({ kind: "ok", text: "LinkedIn account connected." });
     } else if (params.has("li_error")) {
       setXToast({ kind: "error", text: `Couldn't connect LinkedIn: ${params.get("li_error")}` });
+    } else if (params.has("ig_connected")) {
+      setXToast({ kind: "ok", text: "Instagram account connected." });
+    } else if (params.has("ig_error")) {
+      setXToast({ kind: "error", text: `Couldn't connect Instagram: ${params.get("ig_error")}` });
     } else if (params.get("billing") === "success") {
       setXToast({ kind: "ok", text: "Payment received — welcome to Pro! 🎉" });
       // The webhook writes the subscription a beat after the redirect; poll briefly.
@@ -424,7 +440,7 @@ export default function Dashboard() {
     } else if (params.get("billing") === "cancelled") {
       setXToast({ kind: "error", text: "Checkout cancelled — no charge was made." });
     }
-    const oauthKeys = ["x_connected", "x_error", "li_connected", "li_error", "billing"];
+    const oauthKeys = ["x_connected", "x_error", "li_connected", "li_error", "ig_connected", "ig_error", "billing"];
     if (oauthKeys.some((k) => params.has(k))) {
       oauthKeys.forEach((k) => params.delete(k));
       const qs = params.toString();
@@ -436,7 +452,10 @@ export default function Dashboard() {
     if (LINKEDIN_ENABLED) {
       getLinkedInStatus().then(setLiStatus).catch(() => setLiStatus({ connected: false }));
     }
-    if (!X_ENABLED && !LINKEDIN_ENABLED) {
+    if (INSTAGRAM_ENABLED) {
+      getInstagramStatus().then(setIgStatus).catch(() => setIgStatus({ connected: false }));
+    }
+    if (!X_ENABLED && !LINKEDIN_ENABLED && !INSTAGRAM_ENABLED) {
       // Both integrations hidden on this deploy — make sure no client id lingers.
       try {
         localStorage.removeItem("clipr_cid");
@@ -486,6 +505,8 @@ export default function Dashboard() {
     if (X_ENABLED) getTwitterStatus().then(setXStatus).catch(() => setXStatus({ connected: false }));
     if (LINKEDIN_ENABLED)
       getLinkedInStatus().then(setLiStatus).catch(() => setLiStatus({ connected: false }));
+    if (INSTAGRAM_ENABLED)
+      getInstagramStatus().then(setIgStatus).catch(() => setIgStatus({ connected: false }));
   }, [activeTab]);
 
   const handleDisconnectX = async () => {
@@ -574,6 +595,52 @@ export default function Dashboard() {
     } finally {
       setLiPostingId(null);
     }
+  };
+
+  const handleDisconnectIg = async () => {
+    try {
+      await disconnectInstagram();
+    } catch {
+      /* ignore */
+    }
+    setIgStatus({ connected: false });
+    setXToast({ kind: "ok", text: "Instagram account disconnected." });
+  };
+
+  const [igPostingId, setIgPostingId] = useState<string | null>(null);
+
+  const handlePostSavedToInstagram = async (item: SavedVideo) => {
+    if (!igStatus?.connected) {
+      startInstagramConnect().catch((e) =>
+        setXToast({
+          kind: "error",
+          text: `Couldn't start Instagram connect: ${e instanceof Error ? e.message : "try again"}`,
+        })
+      );
+      return;
+    }
+    setIgPostingId(item.id);
+    try {
+      const result = await postToInstagram({
+        output_url: item.output_url,
+        caption: item.caption || item.title,
+      });
+      setXToast({ kind: "ok", text: "Posted to Instagram." });
+      if (result.url) window.open(result.url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      setXToast({
+        kind: "error",
+        text: e instanceof Error ? e.message : "Couldn't post to Instagram. Try again.",
+      });
+    } finally {
+      setIgPostingId(null);
+    }
+  };
+
+  const schedulePlatformLabel = (platform: string) => {
+    if (platform === "twitter") return "X";
+    if (platform === "instagram") return "Instagram";
+    return "LinkedIn";
   };
 
   // Subscription actions. When Polar is wired (billingConfigured), these redirect to
@@ -749,7 +816,7 @@ export default function Dashboard() {
   // Scheduling (auto-post a rendered video to a social network at a set time).
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleVideo, setScheduleVideo] = useState<{ output_url: string; title: string } | null>(null);
-  const [schedulePlatform, setSchedulePlatform] = useState<"twitter" | "linkedin">("twitter");
+  const [schedulePlatform, setSchedulePlatform] = useState<"twitter" | "linkedin" | "instagram">("twitter");
   const [scheduleDate, setScheduleDate] = useState(""); // YYYY-MM-DD (local)
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [scheduleCaption, setScheduleCaption] = useState("");
@@ -910,11 +977,18 @@ export default function Dashboard() {
   // Open the schedule modal for a specific rendered video.
   const openScheduleModal = (
     video: { output_url: string; title?: string; caption?: string },
-    platform?: "twitter" | "linkedin",
+    platform?: "twitter" | "linkedin" | "instagram",
   ) => {
     if (!video.output_url) return;
     setScheduleVideo({ output_url: video.output_url, title: video.title || "Untitled video" });
-    setSchedulePlatform(platform ?? (X_ENABLED ? "twitter" : "linkedin"));
+    const defaultPlatform = X_ENABLED
+      ? "twitter"
+      : LINKEDIN_ENABLED
+        ? "linkedin"
+        : INSTAGRAM_ENABLED
+          ? "instagram"
+          : "twitter";
+    setSchedulePlatform(platform ?? defaultPlatform);
     setScheduleCaption(video.caption ?? "");
     const now = new Date();
     setScheduleDate(
@@ -997,50 +1071,28 @@ export default function Dashboard() {
         try { dna = JSON.parse(savedDna); } catch {}
       }
 
-      const response = await fetch("/api/generate-ideas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          product: dna.product || "Clipr platform",
-          audience: dna.audience || "content creators",
-          tone: dna.tone || "casual",
-          platform: selectedPlatform || dna.platform || "TikTok",
-          prompt: inputVal
-        })
+      const topic = inputVal.trim() || dna.product || "Clipr platform";
+
+      const { ideas: rawIdeas } = await generateIdeas({
+        topic,
+        platform: selectedPlatform || dna.platform || "TikTok",
+        format: "Story",
+        niche: dna.audience || dna.product || "content creators",
+        tone: dna.tone || "casual",
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to generate ideas from AI");
+      if (!Array.isArray(rawIdeas) || rawIdeas.length === 0) {
+        throw new Error("AI returned no ideas");
       }
 
-      // The AI route returns whatever Gemini produced. Validate the top-level shape AND
-      // normalize each item to the IdeaCard shape: the model can omit fields like `tags`
-      // despite the prompt, and a later unguarded read (e.g. selectedIdea.tags[1]) during
-      // render throws OUTSIDE this try/catch and white-screens the Create tab. Throwing
-      // here instead routes to the catch fallback (template ideas).
-      const parsed = await response.json();
-      const rawList: unknown = Array.isArray(parsed)
-        ? parsed
-        : Array.isArray((parsed as { ideas?: unknown })?.ideas)
-          ? (parsed as { ideas: unknown[] }).ideas
-          : undefined;
-      // Treat an empty (but validly-shaped) array as a failure too, so a degenerate
-      // model response routes to the template fallback below instead of a blank feed.
-      if (!Array.isArray(rawList) || rawList.length === 0)
-        throw new Error("AI returned no ideas");
-      const aiIdeas: IdeaCard[] = rawList.map((it, i) => {
-        const o = (it ?? {}) as Record<string, unknown>;
-        return {
-          // Always index-based so React keys / selection ids are unique even if the
-          // model returns duplicate or missing ids (the model id carries no meaning here).
-          id: `ai-idea-${i + 1}`,
-          title: typeof o.title === "string" ? o.title : "Untitled idea",
-          hook: typeof o.hook === "string" ? o.hook : "",
-          vibe: typeof o.vibe === "string" ? o.vibe : "",
-          tags: Array.isArray(o.tags) ? o.tags.filter((t): t is string => typeof t === "string") : [],
-          estimate: typeof o.estimate === "string" ? o.estimate : "High potential",
-        };
-      });
+      const aiIdeas: IdeaCard[] = rawIdeas.map((it, i) => ({
+        id: `ai-idea-${i + 1}`,
+        title: it.title || "Untitled idea",
+        hook: it.hook_phrase || "",
+        vibe: it.vibe || "",
+        tags: [it.vibe, it.platform].filter((t): t is string => Boolean(t)),
+        estimate: it.potential || "High potential",
+      }));
       setIdeas(aiIdeas);
       setIsGenerating(false);
     } catch (err) {
@@ -1256,11 +1308,13 @@ export default function Dashboard() {
                       : "text-[#6B7C85]"
                 }`}
               >
-                {planState.plan === "pro"
-                  ? `Pro · ${videosLeft}/${videosLimit} videos`
-                  : planState.expired
-                    ? "Trial ended"
-                    : `Trial · ${videosLeft}/${videosLimit} videos`}
+                {isUnlimitedPro
+                  ? "Pro · Unlimited videos"
+                  : planState.plan === "pro"
+                    ? `Pro · ${videosLeft}/${videosLimit} videos`
+                    : planState.expired
+                      ? "Trial ended"
+                      : `Trial · ${videosLeft}/${videosLimit} videos`}
               </span>
             </div>
           </div>
@@ -1334,7 +1388,7 @@ export default function Dashboard() {
               >
                 <span className="flex items-center gap-1.5">
                   <span className="relative flex h-1.5 w-1.5">
-                    {(xStatus?.connected || liStatus?.connected) ? (
+                    {(xStatus?.connected || liStatus?.connected || igStatus?.connected) ? (
                       <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#10B981] shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
                     ) : (
                       <>
@@ -1343,12 +1397,13 @@ export default function Dashboard() {
                       </>
                     )}
                   </span>
-                  {(xStatus?.connected || liStatus?.connected) ? "Accounts" : "Connect accounts"}
+                  {(xStatus?.connected || liStatus?.connected || igStatus?.connected) ? "Accounts" : "Connect accounts"}
                 </span>
                 <span className="flex items-center space-x-1 pl-1.5 border-l border-[#152226]">
                   <XLogo className="w-2.5 h-2.5 text-[#EFEFEF]" />
                   {getPlatformIcon("TikTok", 10)}
                   {getPlatformIcon("LinkedIn", 10)}
+                  {getPlatformIcon("Reels", 10)}
                 </span>
               </button>
 
@@ -1431,6 +1486,53 @@ export default function Dashboard() {
                       <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">
                         {getPlatformIcon("LinkedIn", 14)}
                         <span>LinkedIn</span>
+                      </span>
+                      <span className="text-[9px] uppercase tracking-wider font-mono text-[#6B7C85]">In dev</span>
+                    </div>
+                  )}
+
+                  {/* Instagram Reels — live connect when enabled, else in development */}
+                  {INSTAGRAM_ENABLED ? (
+                    <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-2.5 py-2">
+                      <span className="flex items-center gap-2 text-xs text-[#EFEFEF] min-w-0">
+                        {getPlatformIcon("Reels", 14)}
+                        <span className="truncate">
+                          {igStatus?.connected && igStatus.username
+                            ? `@${igStatus.username}`
+                            : "Instagram Reels"}
+                        </span>
+                      </span>
+                      {igStatus?.connected ? (
+                        <button
+                          onClick={handleDisconnectIg}
+                          className="shrink-0 text-[10px] text-[#6B7C85] hover:text-[#EF8B8B] border border-[#152226] hover:border-[#EF8B8B]/40 px-2 py-1 rounded-md transition-colors"
+                        >
+                          Disconnect
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setConnectMenuOpen(false);
+                            startInstagramConnect().catch((e) =>
+                              setXToast({
+                                kind: "error",
+                                text: `Couldn't start Instagram connect: ${
+                                  e instanceof Error ? e.message : "try again"
+                                }`,
+                              })
+                            );
+                          }}
+                          className="shrink-0 text-[10px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-2.5 py-1 rounded-md transition-colors"
+                        >
+                          Connect
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-2.5 py-2 opacity-80">
+                      <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">
+                        {getPlatformIcon("Reels", 14)}
+                        <span>Instagram Reels</span>
                       </span>
                       <span className="text-[9px] uppercase tracking-wider font-mono text-[#6B7C85]">In dev</span>
                     </div>
@@ -1745,12 +1847,13 @@ export default function Dashboard() {
                             onSchedulePost={handleScheduleFromRender}
                             jumpToStep={flowJumpStep}
                             onJumpHandled={() => setFlowJumpStep(null)}
-                            isPro={planState.plan === "pro"}
+                            isPro={isProPlan}
                             onRequireUpgrade={() => setUpgradeOpen(true)}
                             regenLeft={freeRegenLeft}
                             voiceoverLeft={freeVoiceoverLeft}
                             videosLeft={videosLeft}
                             videosLimit={videosLimit}
+                            videosUnlimited={isUnlimitedPro}
                             onUsageRefresh={refreshBilling}
                           />
                         </div>
@@ -1773,7 +1876,10 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between border-b border-[#152226] pb-4">
                     <div className="space-y-1">
                       <h2 className="text-base font-semibold text-[#EFEFEF]">Content Calendar</h2>
-                      <p className="text-xs text-[#6B7C85]">Scheduled posts auto-publish to X / LinkedIn at their time.</p>
+                      <p className="text-xs text-[#6B7C85]">
+                        Scheduled posts auto-publish to{" "}
+                        {INSTAGRAM_ENABLED ? "X, LinkedIn, or Instagram" : "X and LinkedIn"} at their time.
+                      </p>
                     </div>
                     <button
                       onClick={loadSchedules}
@@ -1825,6 +1931,8 @@ export default function Dashboard() {
                             <span className="w-8 h-8 rounded-full bg-[#152226] flex items-center justify-center shrink-0 text-[#EFEFEF]">
                               {s.platform === "twitter" ? (
                                 <XLogo className="w-3.5 h-3.5" />
+                              ) : s.platform === "instagram" ? (
+                                getPlatformIcon("Reels", 14)
                               ) : (
                                 getPlatformIcon("LinkedIn", 14)
                               )}
@@ -1834,7 +1942,7 @@ export default function Dashboard() {
                                 {s.title || "Untitled video"}
                               </p>
                               <p className="text-[11px] text-[#6B7C85]">
-                                {s.platform === "twitter" ? "X" : "LinkedIn"} · {formatScheduleWhen(s.scheduled_at)}
+                                {schedulePlatformLabel(s.platform)} · {formatScheduleWhen(s.scheduled_at)}
                               </p>
                               {s.status === "error" && s.error && (
                                 <p className="text-[10px] text-[#EF8B8B] mt-0.5 line-clamp-1">{s.error}</p>
@@ -2029,6 +2137,20 @@ export default function Dashboard() {
                                     )}
                                   </button>
                                 )}
+                                {INSTAGRAM_ENABLED && (
+                                  <button
+                                    onClick={() => handlePostSavedToInstagram(item)}
+                                    disabled={igPostingId === item.id}
+                                    title={igStatus?.connected ? "Post to Instagram" : "Connect Instagram to post"}
+                                    className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors disabled:opacity-50"
+                                  >
+                                    {igPostingId === item.id ? (
+                                      <span className="block w-3.5 h-3.5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      getPlatformIcon("Reels", 14)
+                                    )}
+                                  </button>
+                                )}
                                 <button
                                   onClick={() =>
                                     openScheduleModal({
@@ -2214,7 +2336,7 @@ export default function Dashboard() {
                       </div>
 
                       {planState.plan === "pro" ? (
-                        <VideoQuotaBadge left={videosLeft} limit={videosLimit} />
+                        <VideoQuotaBadge left={videosLeft} limit={videosLimit} unlimited={isUnlimitedPro} />
                       ) : (
                         <>
                           <p className="text-xs text-[#6B7C85]">
@@ -2233,7 +2355,7 @@ export default function Dashboard() {
                               />
                             </div>
                           )}
-                          <VideoQuotaBadge left={videosLeft} limit={videosLimit} />
+                          <VideoQuotaBadge left={videosLeft} limit={videosLimit} unlimited={isUnlimitedPro} />
                         </>
                       )}
 
@@ -2360,6 +2482,56 @@ export default function Dashboard() {
                                   setXToast({
                                     kind: "error",
                                     text: `Couldn't start X connect: ${
+                                      e instanceof Error ? e.message : "try again"
+                                    }`,
+                                  })
+                                )
+                              }
+                              className="text-[11px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-3 py-1.5 rounded-lg transition-colors shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                            >
+                              Connect
+                            </button>
+                          )
+                        ) : (
+                          <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] uppercase tracking-wider font-mono text-[#6B7C85] border border-[#152226] bg-[#0D1416] px-2.5 py-1 rounded-lg cursor-not-allowed select-none">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#6B7C85]/70" />
+                            In development
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Instagram Reels — live connect when enabled, else in development */}
+                      <div
+                        className={`flex items-center justify-between rounded-lg bg-[#070B0D] border border-[#152226] px-3 py-2.5${INSTAGRAM_ENABLED ? "" : " opacity-80"}`}
+                      >
+                        <span className="flex items-center gap-2 text-xs text-[#EFEFEF]">
+                          {getPlatformIcon("Reels", 14)}
+                          <span>Instagram Reels</span>
+                          {INSTAGRAM_ENABLED && igStatus?.connected && igStatus.username && (
+                            <span className="text-[#6B7C85]">@{igStatus.username}</span>
+                          )}
+                        </span>
+                        {INSTAGRAM_ENABLED ? (
+                          igStatus?.connected ? (
+                            <div className="flex items-center gap-2.5">
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#10B981]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                                Connected
+                              </span>
+                              <button
+                                onClick={handleDisconnectIg}
+                                className="text-[11px] text-[#6B7C85] hover:text-[#EF8B8B] border border-[#152226] hover:border-[#EF8B8B]/40 px-2.5 py-1 rounded-lg transition-colors"
+                              >
+                                Disconnect
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                startInstagramConnect().catch((e) =>
+                                  setXToast({
+                                    kind: "error",
+                                    text: `Couldn't start Instagram connect: ${
                                       e instanceof Error ? e.message : "try again"
                                     }`,
                                   })
@@ -2708,7 +2880,7 @@ export default function Dashboard() {
                   <label className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85] font-bold">
                     Platform
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     {X_ENABLED && (
                       <button
                         onClick={() => setSchedulePlatform("twitter")}
@@ -2733,6 +2905,19 @@ export default function Dashboard() {
                       >
                         {getPlatformIcon("LinkedIn", 14)}
                         <span>LinkedIn</span>
+                      </button>
+                    )}
+                    {INSTAGRAM_ENABLED && (
+                      <button
+                        onClick={() => setSchedulePlatform("instagram")}
+                        className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-all ${
+                          schedulePlatform === "instagram"
+                            ? "border-[#10B981] bg-[#10B981]/10 text-[#EFEFEF]"
+                            : "border-[#152226] bg-[#070B0D] text-[#6B7C85] hover:border-[#1E343A]"
+                        }`}
+                      >
+                        {getPlatformIcon("Reels", 14)}
+                        <span>Instagram</span>
                       </button>
                     )}
                   </div>
@@ -2782,7 +2967,7 @@ export default function Dashboard() {
                   <p className="text-[11px] text-[#6B7C85]">
                     Posts to{" "}
                     <span className="text-[#EFEFEF] font-medium">
-                      {schedulePlatform === "twitter" ? "X" : "LinkedIn"}
+                      {schedulePlatformLabel(schedulePlatform)}
                     </span>{" "}
                     on <span className="text-[#EFEFEF] font-medium">{scheduleDate}</span> at{" "}
                     <span className="text-[#EFEFEF] font-medium">{formatTime(scheduleTime)}</span>

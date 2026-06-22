@@ -242,3 +242,18 @@ def test_refund_video_calls_sync(monkeypatch):
     monkeypatch.setattr(usage, "_refund_sync", lambda e, f: seen.append((e, f)))
     _run(usage.refund_video("a@b.co"))
     assert seen == [("a@b.co", "videos_used")]
+
+
+def test_reserve_video_skips_unlimited_allowlist(monkeypatch):
+    import asyncio
+
+    async def fake_unlimited(email):
+        return email == "vip@clipr.test"
+
+    monkeypatch.setattr(usage.billing, "is_unlimited_pro", fake_unlimited)
+
+    def boom(*_a, **_k):
+        raise AssertionError("should not reserve")
+
+    monkeypatch.setattr(usage, "_video_reserve_sync", boom)
+    _run(usage.reserve_video("vip@clipr.test"))

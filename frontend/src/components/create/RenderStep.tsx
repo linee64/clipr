@@ -19,6 +19,12 @@ import {
   LINKEDIN_ENABLED,
   type LinkedInStatus,
   type LinkedInPostResult,
+  getInstagramStatus,
+  startInstagramConnect,
+  postToInstagram,
+  INSTAGRAM_ENABLED,
+  type InstagramStatus,
+  type InstagramPostResult,
 } from "@/lib/api";
 
 // X (Twitter) wordmark — the stylised "X".
@@ -35,6 +41,25 @@ function LinkedInLogo({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
       <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.35V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.22.79 24 1.77 24h20.45c.98 0 1.78-.78 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z" />
+    </svg>
+  );
+}
+
+// Instagram Reels mark.
+function InstagramLogo({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden>
+      <defs>
+        <linearGradient id="ig-logo-grad" x1="0" y1="24" x2="24" y2="0">
+          <stop offset="0%" stopColor="#FFDC80" />
+          <stop offset="50%" stopColor="#E1306C" />
+          <stop offset="100%" stopColor="#833AB4" />
+        </linearGradient>
+      </defs>
+      <rect width="24" height="24" rx="6" fill="url(#ig-logo-grad)" />
+      <rect x="4" y="4" width="16" height="16" rx="4.5" stroke="white" strokeWidth="2" fill="none" />
+      <circle cx="12" cy="12" r="3.5" stroke="white" strokeWidth="2" fill="none" />
+      <circle cx="17.2" cy="6.8" r="1.2" fill="white" />
     </svg>
   );
 }
@@ -149,6 +174,38 @@ export function RenderStep({
       setLiPostError(e instanceof Error ? e.message : "Couldn't post to LinkedIn. Try again.");
     } finally {
       setLiPosting(false);
+    }
+  };
+
+  // Instagram Reels auto-post state (parallels X / LinkedIn).
+  const [igStatus, setIgStatus] = React.useState<InstagramStatus | null>(null);
+  const [igPosting, setIgPosting] = React.useState(false);
+  const [igPostResult, setIgPostResult] = React.useState<InstagramPostResult | null>(null);
+  const [igPostError, setIgPostError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!isDone || !INSTAGRAM_ENABLED) return;
+    let alive = true;
+    getInstagramStatus()
+      .then((s) => alive && setIgStatus(s))
+      .catch(() => alive && setIgStatus({ connected: false }));
+    return () => {
+      alive = false;
+    };
+  }, [isDone]);
+
+  const handlePostToInstagram = async () => {
+    const url = renderStatus?.output_url;
+    if (!url) return;
+    setIgPosting(true);
+    setIgPostError(null);
+    try {
+      const result = await postToInstagram({ output_url: url, caption: captionText });
+      setIgPostResult(result);
+    } catch (e) {
+      setIgPostError(e instanceof Error ? e.message : "Couldn't post to Instagram. Try again.");
+    } finally {
+      setIgPosting(false);
     }
   };
 
@@ -461,6 +518,51 @@ export function RenderStep({
                       )}
                     </button>
                   ))}
+
+                  {INSTAGRAM_ENABLED && (igPostResult ? (
+                    <a
+                      href={igPostResult.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#10B981]/40 text-[#10B981] rounded-lg py-3 text-sm font-medium hover:bg-[#10B981]/10 transition-colors"
+                    >
+                      <Check className="w-4 h-4" />
+                      Posted — view on Instagram
+                    </a>
+                  ) : igStatus && !igStatus.connected ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        startInstagramConnect().catch((e) =>
+                          setIgPostError(e instanceof Error ? e.message : "Couldn't open Instagram. Try again.")
+                        )
+                      }
+                      title="Connect your Instagram account to post"
+                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors"
+                    >
+                      <InstagramLogo className="w-3.5 h-3.5" />
+                      Connect Instagram to post
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handlePostToInstagram}
+                      disabled={igPosting || !igStatus}
+                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {igPosting ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+                          Posting to Instagram…
+                        </>
+                      ) : (
+                        <>
+                          <InstagramLogo className="w-3.5 h-3.5" />
+                          Post to Instagram
+                        </>
+                      )}
+                    </button>
+                  ))}
                 </div>
 
                 {X_ENABLED && postError && (
@@ -468,6 +570,9 @@ export function RenderStep({
                 )}
                 {LINKEDIN_ENABLED && liPostError && (
                   <p className="mt-2.5 text-xs text-[#EF8B8B] leading-relaxed">{liPostError}</p>
+                )}
+                {INSTAGRAM_ENABLED && igPostError && (
+                  <p className="mt-2.5 text-xs text-[#EF8B8B] leading-relaxed">{igPostError}</p>
                 )}
               </div>
             </div>

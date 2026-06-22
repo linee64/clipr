@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import (
     billing,
     ideas,
+    instagram,
     linkedin,
     pexels,
     schedule,
@@ -41,6 +42,7 @@ app.include_router(scripts.router)
 app.include_router(templates.router)
 app.include_router(twitter.router)
 app.include_router(linkedin.router)
+app.include_router(instagram.router)
 app.include_router(schedule.router)
 app.include_router(video.router)
 app.include_router(billing.router)

@@ -296,9 +296,12 @@ async def reserve_video(email: str | None) -> None:
 
     Raises QuotaExceeded when the account has used its plan allowance for the
     current calendar month. Pair with refund_video() if the render doesn't deliver.
+    Unlimited/founder accounts skip metering entirely.
     """
     email = _norm(email)
     if not email:
+        return
+    if await billing.is_unlimited_pro(email):
         return
     limit = await _video_limit(email)
     try:
@@ -368,8 +371,9 @@ async def require_template_allowed(email: str | None, template_id: str) -> None:
 async def account_status(email: str | None) -> dict:
     """Trial + usage snapshot for an email; starts the trial on first call."""
     email = _norm(email)
+    unlimited = bool(email and await billing.is_unlimited_pro(email))
     video_limit = VIDEO_LIMITS["free"]
-    if email:
+    if email and not unlimited:
         video_limit = await _video_limit(email)
     base = {
         "trial_days_left": TRIAL_DAYS,
@@ -379,7 +383,8 @@ async def account_status(email: str | None) -> dict:
         "voiceover_used": 0,
         "voiceover_limit": FREE_LIMITS["voiceover"],
         "videos_used": 0,
-        "videos_limit": video_limit,
+        "videos_limit": None if unlimited else video_limit,
+        "unlimited": unlimited,
     }
     if not email:
         return base
@@ -396,5 +401,6 @@ async def account_status(email: str | None) -> dict:
         "regen_used": int(account.get("regen_used") or 0),
         "voiceover_used": int(account.get("voiceover_used") or 0),
         "videos_used": _videos_used_this_month(account),
-        "videos_limit": video_limit,
+        "videos_limit": None if unlimited else video_limit,
+        "unlimited": unlimited,
     }
