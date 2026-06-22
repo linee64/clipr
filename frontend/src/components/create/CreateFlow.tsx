@@ -593,16 +593,16 @@ export function CreateFlow({
 
   return (
     <div className="flex flex-col h-full overflow-y-auto scrollbar-thin bg-[#070B0D]">
-      <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-[#152226] shrink-0">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-3 border-b border-[#152226] shrink-0 min-w-0">
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1 text-xs text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
+          className="flex items-center gap-1 text-xs text-[#6B7C85] hover:text-[#EFEFEF] transition-colors shrink-0"
         >
           <ChevronLeft className="w-4 h-4" />
           Back to ideas
         </button>
-        <VideoQuotaBadge left={videosLeft} limit={videosLimit} compact />
+        <VideoQuotaBadge left={videosLeft} limit={videosLimit} compact className="self-start sm:self-auto" />
       </div>
 
       <StepIndicator currentStep={currentStep} />

@@ -281,46 +281,46 @@ export function TemplatePickStep({
         <div className="mt-6 space-y-3">
           <VideoQuotaBadge left={videosLeft} limit={videosLimit} />
           <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            className="sm:w-auto flex items-center justify-center gap-1.5 py-3 px-4 bg-[#0D1416] border border-[#152226] text-[#6B7C85] rounded-lg text-sm hover:text-[#EFEFEF] transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back
-          </button>
-          <button
-            type="button"
-            onClick={handleShuffle}
-            disabled={isLoading || isStartingRender}
-            className="sm:flex-1 flex items-center justify-center gap-2 py-3 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg text-sm font-medium hover:bg-[#11191B] transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-            Show other styles
-          </button>
-          <button
-            type="button"
-            onClick={onRender}
-            disabled={!canRender}
-            title={
-              videosLeft <= 0
-                ? isPro
-                  ? "Monthly video limit reached"
-                  : "Monthly video limit reached — upgrade for more"
-                : undefined
-            }
-            className={`sm:flex-1 py-3 rounded-lg text-sm font-medium transition-colors ${
-              canRender
-                ? "bg-[#10B981] text-white hover:bg-[#12cf90]"
-                : "bg-[#152226] text-[#3A4A50] cursor-not-allowed"
-            }`}
-          >
-            {isStartingRender
-              ? "Starting…"
-              : videosLeft <= 0
-                ? "Video limit reached"
-                : "Render with this style →"}
-          </button>
+            <button
+              type="button"
+              onClick={onBack}
+              className="sm:w-auto flex items-center justify-center gap-1.5 py-3 px-4 bg-[#0D1416] border border-[#152226] text-[#6B7C85] rounded-lg text-sm hover:text-[#EFEFEF] transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={handleShuffle}
+              disabled={isLoading || isStartingRender}
+              className="sm:flex-1 flex items-center justify-center gap-2 py-3 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg text-sm font-medium hover:bg-[#11191B] transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+              Show other styles
+            </button>
+            <button
+              type="button"
+              onClick={onRender}
+              disabled={!canRender}
+              title={
+                videosLeft <= 0
+                  ? isPro
+                    ? "Monthly video limit reached"
+                    : "Monthly video limit reached — upgrade for more"
+                  : undefined
+              }
+              className={`sm:flex-1 py-3 rounded-lg text-sm font-medium transition-colors ${
+                canRender
+                  ? "bg-[#10B981] text-white hover:bg-[#12cf90]"
+                  : "bg-[#152226] text-[#3A4A50] cursor-not-allowed"
+              }`}
+            >
+              {isStartingRender
+                ? "Starting…"
+                : videosLeft <= 0
+                  ? "Video limit reached"
+                  : "Render with this style →"}
+            </button>
           </div>
         </div>
       </div>

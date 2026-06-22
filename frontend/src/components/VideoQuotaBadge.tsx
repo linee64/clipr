@@ -12,6 +12,16 @@ interface VideoQuotaBadgeProps {
   className?: string;
 }
 
+function normalize(left: number, limit: number) {
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 10;
+  const safeLeft = Number.isFinite(left) ? Math.max(0, Math.min(left, safeLimit)) : safeLimit;
+  const used = safeLimit - safeLeft;
+  const pct = safeLimit > 0 ? (safeLeft / safeLimit) * 100 : 0;
+  const empty = safeLeft <= 0;
+  const low = !empty && safeLeft <= 2;
+  return { safeLimit, safeLeft, used, pct, empty, low };
+}
+
 /** Monthly video-render allowance — visible quota chip with a mini progress bar. */
 export function VideoQuotaBadge({
   left,
@@ -19,55 +29,108 @@ export function VideoQuotaBadge({
   compact = false,
   className = "",
 }: VideoQuotaBadgeProps) {
-  const safeLimit = Math.max(1, limit);
-  const safeLeft = Math.max(0, left);
-  const used = Math.min(safeLimit, safeLimit - safeLeft);
-  const pct = (safeLeft / safeLimit) * 100;
-  const empty = safeLeft <= 0;
-  const low = !empty && safeLeft <= 2;
-
-  const accent = empty ? "#EF8B8B" : low ? "#F5A623" : "#10B981";
-  const border = empty
-    ? "border-[#EF8B8B]/30 bg-[#EF8B8B]/[0.06]"
-    : low
-      ? "border-[#F5A623]/30 bg-[#F5A623]/[0.06]"
-      : "border-[#10B981]/25 bg-[#10B981]/[0.06]";
+  const { safeLimit, safeLeft, used, pct, empty, low } = normalize(left, limit);
 
   if (compact) {
+    if (empty) {
+      return (
+        <span
+          className={`inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[#EF8B8B]/30 bg-[#EF8B8B]/10 px-2 py-0.5 text-[10px] font-semibold text-[#EF8B8B] ${className}`}
+          title={`${safeLeft} of ${safeLimit} video renders left this month`}
+        >
+          <Film className="h-3 w-3 shrink-0" aria-hidden />
+          <span className="truncate">{safeLeft}/{safeLimit} videos</span>
+        </span>
+      );
+    }
+    if (low) {
+      return (
+        <span
+          className={`inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-400 ${className}`}
+          title={`${safeLeft} of ${safeLimit} video renders left this month`}
+        >
+          <Film className="h-3 w-3 shrink-0" aria-hidden />
+          <span className="truncate">{safeLeft}/{safeLimit} videos</span>
+        </span>
+      );
+    }
     return (
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${border} ${className}`}
-        style={{ color: accent }}
+        className={`inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[#10B981]/25 bg-[#10B981]/10 px-2 py-0.5 text-[10px] font-semibold text-[#10B981] ${className}`}
         title={`${safeLeft} of ${safeLimit} video renders left this month`}
       >
         <Film className="h-3 w-3 shrink-0" aria-hidden />
-        {safeLeft}/{safeLimit} videos
+        <span className="truncate">{safeLeft}/{safeLimit} videos</span>
       </span>
     );
   }
 
+  if (empty) {
+    return (
+      <div
+        className={`rounded-lg border border-[#EF8B8B]/30 bg-[#EF8B8B]/10 px-3 py-2.5 space-y-2 ${className}`}
+        title="Monthly video render allowance"
+      >
+        <QuotaBody safeLeft={safeLeft} safeLimit={safeLimit} used={used} pct={pct} empty low={low} />
+      </div>
+    );
+  }
+  if (low) {
+    return (
+      <div
+        className={`rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 space-y-2 ${className}`}
+        title="Monthly video render allowance"
+      >
+        <QuotaBody safeLeft={safeLeft} safeLimit={safeLimit} used={used} pct={pct} empty={empty} low />
+      </div>
+    );
+  }
   return (
     <div
-      className={`rounded-lg border px-3 py-2.5 space-y-2 ${border} ${className}`}
+      className={`rounded-lg border border-[#10B981]/25 bg-[#10B981]/10 px-3 py-2.5 space-y-2 ${className}`}
       title="Monthly video render allowance"
     >
+      <QuotaBody safeLeft={safeLeft} safeLimit={safeLimit} used={used} pct={pct} empty={empty} low={low} />
+    </div>
+  );
+}
+
+function QuotaBody({
+  safeLeft,
+  safeLimit,
+  used,
+  pct,
+  empty,
+  low,
+}: {
+  safeLeft: number;
+  safeLimit: number;
+  used: number;
+  pct: number;
+  empty: boolean;
+  low: boolean;
+}) {
+  const accentClass = empty ? "text-[#EF8B8B]" : low ? "text-amber-400" : "text-[#10B981]";
+  const barClass = empty ? "bg-[#EF8B8B]" : low ? "bg-amber-400" : "bg-[#10B981]";
+
+  return (
+    <>
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#EFEFEF]">
-          <Film className="h-3.5 w-3.5 shrink-0" style={{ color: accent }} aria-hidden />
+          <Film className={`h-3.5 w-3.5 shrink-0 ${accentClass}`} aria-hidden />
           Video renders
         </span>
-        <span className="text-[11px] font-bold tabular-nums" style={{ color: accent }}>
+        <span className={`text-[11px] font-bold tabular-nums ${accentClass}`}>
           {safeLeft}
           <span className="font-normal text-[#6B7C85]"> / {safeLimit}</span>
         </span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#152226]">
         <div
-          className="h-full rounded-full transition-all duration-500"
+          className={`h-full rounded-full transition-all duration-500 ${barClass}`}
           style={{
             width: `${pct}%`,
-            backgroundColor: accent,
-            boxShadow: empty ? "none" : `0 0 8px ${accent}66`,
+            boxShadow: empty ? "none" : "0 0 8px rgba(16,185,129,0.35)",
           }}
         />
       </div>
@@ -78,6 +141,6 @@ export function VideoQuotaBadge({
             ? `${safeLeft} render${safeLeft === 1 ? "" : "s"} left this month.`
             : `${used} used · ${safeLeft} left this month.`}
       </p>
-    </div>
+    </>
   );
 }

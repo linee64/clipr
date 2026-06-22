@@ -1248,7 +1248,7 @@ export default function Dashboard() {
             <div className="min-w-0">
               <span className="text-sm font-semibold text-[#EFEFEF] block leading-tight truncate">{profile.name}</span>
               <span
-                className={`text-xs block mt-0.5 ${
+                className={`text-xs block mt-0.5 truncate ${
                   planState.plan === "pro"
                     ? "text-[#10B981]"
                     : planState.expired
@@ -1257,10 +1257,10 @@ export default function Dashboard() {
                 }`}
               >
                 {planState.plan === "pro"
-                  ? `Pro · ${videosLeft} video${videosLeft === 1 ? "" : "s"} left`
+                  ? `Pro · ${videosLeft}/${videosLimit} videos`
                   : planState.expired
                     ? "Trial ended"
-                    : `Trial · ${videosLeft} video${videosLeft === 1 ? "" : "s"} left`}
+                    : `Trial · ${videosLeft}/${videosLimit} videos`}
               </span>
             </div>
           </div>
