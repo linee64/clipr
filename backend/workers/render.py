@@ -384,6 +384,33 @@ async def run_broll_render(
             for card in outro_cards
             if str(card.get("text", "")).strip()
         ]
+
+        # Speed up transitions for scenes after the middle cards (accelerating towards the end)
+        if (
+            outro_cards
+            and str(template.get("outro_position") or "").strip().lower() == "middle"
+            and template.get("outro_start_at") is not None
+        ):
+            outro_start_at = float(template["outro_start_at"])
+            cum_duration = 0.0
+            after_scenes = []
+            for scene in scenes:
+                if cum_duration >= outro_start_at - 0.01:
+                    after_scenes.append(scene)
+                else:
+                    cum_duration += scene["duration_seconds"]
+            
+            if after_scenes:
+                total_after_duration = sum(s["duration_seconds"] for s in after_scenes)
+                m = len(after_scenes)
+                if m == 1:
+                    after_scenes[0]["duration_seconds"] = total_after_duration
+                else:
+                    # Accelerate from 1.4x of the average duration down to 0.6x of the average duration
+                    for idx, scene in enumerate(after_scenes):
+                        factor = 1.4 - 0.8 * (idx / (m - 1))
+                        scene["duration_seconds"] = (total_after_duration / m) * factor
+
         prebuilt_outro_voiceover = None
         if (
             add_voiceover
