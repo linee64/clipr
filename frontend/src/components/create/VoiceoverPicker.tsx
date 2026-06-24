@@ -160,7 +160,7 @@ export function VoiceoverPicker({
               <span className="text-[#6B7C85] font-normal">· optional</span>
             </h3>
             <p className="text-[11px] text-[#6B7C85] mt-0.5 truncate">
-              Narrate each scene&apos;s line — the music ducks under the voice
+              Add AI voice; some reference styles use it only on the black subtitle block
             </p>
           </div>
         </div>

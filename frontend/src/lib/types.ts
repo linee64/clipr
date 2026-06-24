@@ -171,6 +171,10 @@ export interface TemplateOption {
   recommended_track?: string;
   /** when true, the create flow won't auto-pick music — the user must choose it */
   music_manual?: boolean;
+  /** when true, render must include AI voice for this style's dedicated black subtitle block */
+  require_voiceover?: boolean;
+  /** optional UI hint explaining how the style uses AI voice */
+  voiceover_message?: string;
   /** work-in-progress style: shown but not selectable yet */
   wip?: boolean;
   /** Pro-only reference style — the picker shows a lock and blocks free users */

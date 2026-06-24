@@ -32,6 +32,7 @@ from services.editor import (  # noqa: E402
     add_background_audio_only,
     apply_end_fade,
     apply_music_hook_lead,
+    beat_interval_seconds,
     build_scene_timings_from_cuts,
     burn_subtitles_ass,
     concatenate_clips,
@@ -47,7 +48,11 @@ from services.editor import (  # noqa: E402
     plan_accel_cut_montage,
     plan_beat_cut_montage,
     plan_scene_cuts,
+    resolve_text_cards,
     render_text_card,
+    split_montage_at_time,
+    trim_montage_to_time,
+    trim_montage_to_ratio,
     _tool,
 )
 from services.templates import (  # noqa: E402
@@ -125,6 +130,9 @@ def local_broll_render(
     if audio_start > 0.01:
         beat_times = [b - audio_start for b in beat_times if b >= audio_start]
         print(f"  music offset: {audio_start:.2f}s")
+    beat_len = beat_interval_seconds(
+        beat_times, ((template.get("measured") or {}).get("bpm"))
+    )
 
     print(f"template={template.get('id')}  caption_style={caption_style}")
     print(f"  pacing: cut_len={target_cut_len} max_cuts={max_cuts} zooms={zooms}")
@@ -133,11 +141,14 @@ def local_broll_render(
 
     # Generated intro cards (mirrors run_broll_render): captions come from the
     # REFERENCE (template card text), bg/style/duration from the template.
-    intro_cards = template.get("intro_cards") or []
-    card_paths: list[str] = []
+    intro_cards = resolve_text_cards(template.get("intro_cards"), scenes)
+    outro_cards = resolve_text_cards(template.get("outro_cards"), scenes)
+    intro_card_paths: list[str] = []
     for ci, card in enumerate(intro_cards):
-        card_text = str(card.get("text", "")).lower()
-        card_out = os.path.join(job_dir, f"card_{ci:02d}.mp4")
+        card_text = str(card.get("text", "")).strip()
+        if card.get("lowercase", True):
+            card_text = card_text.lower()
+        card_out = os.path.join(job_dir, f"intro_card_{ci:02d}.mp4")
         render_text_card(
             card_out,
             float(card.get("duration", 1.6)),
@@ -147,9 +158,33 @@ def local_broll_render(
             resolution,
             fontcycle=card.get("fontcycle"),
             fontcycle_dur=card.get("fontcycle_dur"),
+            wrap_words=card.get("wrap_words"),
+            max_chars=card.get("max_chars"),
         )
-        card_paths.append(card_out)
-    print(f"  intro cards: {len(card_paths)}")
+        intro_card_paths.append(card_out)
+    outro_card_paths: list[str] = []
+    for ci, card in enumerate(outro_cards):
+        card_text = str(card.get("text", "")).strip()
+        if card.get("lowercase", True):
+            card_text = card_text.lower()
+        card_dur = float(card.get("duration", 1.6))
+        if card.get("beats_per_card"):
+            card_dur = max(0.18, beat_len * float(card["beats_per_card"]))
+        card_out = os.path.join(job_dir, f"outro_card_{ci:02d}.mp4")
+        render_text_card(
+            card_out,
+            card_dur,
+            card_text,
+            card.get("bg", "dark_gradient"),
+            card.get("style", "card_phrase"),
+            resolution,
+            fontcycle=card.get("fontcycle"),
+            fontcycle_dur=card.get("fontcycle_dur"),
+            wrap_words=card.get("wrap_words"),
+            max_chars=card.get("max_chars"),
+        )
+        outro_card_paths.append(card_out)
+    print(f"  intro cards: {len(intro_card_paths)}  outro cards: {len(outro_card_paths)}")
 
     cut_paths: list[str] = []
     scene_cut_counts: list[int] = []
@@ -185,11 +220,11 @@ def local_broll_render(
     if template.get("clip_per_beat"):
         # Fast beat-cut montage: cut to the NEXT clip every `clip_beats` beats
         # (clips repeat in sets), over the heard beats of the montage span.
-        card_total = sum(get_duration(p) for p in card_paths)
+        intro_total = sum(get_duration(p) for p in intro_card_paths)
         montage_total = sum(s["duration_seconds"] for s in scenes)
         plan = plan_beat_cut_montage(
             [get_duration(p) for p in clip_paths],
-            beat_times, card_total, montage_total, zooms,
+            beat_times, intro_total, montage_total, zooms,
             every=int(template.get("clip_beats", 1)),
         )
         for cut in plan:
@@ -299,33 +334,178 @@ def local_broll_render(
                 cut_idx += 1
             scene_cut_counts.append(len(cuts))
 
+    intro_total = sum(get_duration(p) for p in intro_card_paths)
+    full_footage_total = sum(get_duration(p) for p in cut_paths)
+    output_cut_paths = list(cut_paths)
+    output_scene_cut_counts = list(scene_cut_counts)
+    output_scenes = list(scenes)
+    before_cut_paths = list(cut_paths)
+    before_scene_cut_counts = list(scene_cut_counts)
+    before_scenes = list(scenes)
+    after_cut_paths: list[str] = []
+    after_scene_cut_counts: list[int] = []
+    after_scenes: list[dict] = []
+    before_footage_total = full_footage_total
+    after_footage_total = 0.0
+    footage_total = full_footage_total
+    dropped_footage_total = 0.0
+    cards_position = str(template.get("outro_position") or "end").strip().lower()
+    if (
+        outro_card_paths
+        and cards_position == "middle"
+        and template.get("outro_start_at") is not None
+    ):
+        (
+            before_cut_paths,
+            before_scene_cut_counts,
+            before_scenes,
+            after_cut_paths,
+            after_scene_cut_counts,
+            after_scenes,
+            before_footage_total,
+            after_footage_total,
+        ) = split_montage_at_time(
+            cut_paths,
+            scene_cut_counts,
+            scenes,
+            float(template.get("outro_start_at")),
+        )
+        output_cut_paths = before_cut_paths + after_cut_paths
+        output_scene_cut_counts = before_scene_cut_counts + after_scene_cut_counts
+        output_scenes = before_scenes + after_scenes
+        footage_total = before_footage_total + after_footage_total
+    elif outro_card_paths and template.get("outro_start_at") is not None:
+        (
+            output_cut_paths,
+            output_scene_cut_counts,
+            output_scenes,
+            footage_total,
+            dropped_footage_total,
+        ) = trim_montage_to_time(
+            cut_paths,
+            scene_cut_counts,
+            scenes,
+            float(template.get("outro_start_at")),
+        )
+    elif outro_card_paths and template.get("outro_start_ratio") is not None:
+        (
+            output_cut_paths,
+            output_scene_cut_counts,
+            output_scenes,
+            footage_total,
+            dropped_footage_total,
+        ) = trim_montage_to_ratio(
+            cut_paths,
+            scene_cut_counts,
+            scenes,
+            float(template.get("outro_start_ratio")),
+        )
+    if (
+        outro_card_paths
+        and cards_position != "middle"
+        and template.get("fit_outro_to_replaced_tail")
+    ):
+        fitted_paths: list[str] = []
+        fitted_total = 0.0
+        slack = max(0.12, beat_len * 0.35)
+        for p in outro_card_paths:
+            dur = get_duration(p)
+            if fitted_paths and dropped_footage_total > 0.01 and fitted_total + dur > dropped_footage_total + slack:
+                break
+            fitted_paths.append(p)
+            fitted_total += dur
+        if fitted_paths:
+            outro_card_paths = fitted_paths
+    mute_start = template.get("music_pause_start")
+    mute_dur = template.get("music_pause_dur")
+    if outro_card_paths and template.get("music_pause_at") == "outro_start":
+        mute_start = (
+            intro_total + before_footage_total
+            if cards_position == "middle"
+            else intro_total + footage_total
+        )
+        if str(template.get("voiceover_target") or "").strip().lower() == "outro_cards":
+            mute_dur = sum(get_duration(p) for p in outro_card_paths)
+        else:
+            pause_cards = max(1, int(template.get("music_pause_cards", 1)))
+            mute_dur = sum(get_duration(p) for p in outro_card_paths[:pause_cards])
+
     concat_path = os.path.join(job_dir, "concat.mp4")
-    concatenate_clips(card_paths + cut_paths, concat_path)
+    card_insert_total = sum(get_duration(p) for p in outro_card_paths)
+    concat_parts = (
+        intro_card_paths + before_cut_paths + outro_card_paths + after_cut_paths
+        if cards_position == "middle"
+        else intro_card_paths + output_cut_paths + outro_card_paths
+    )
+    concatenate_clips(concat_parts, concat_path)
 
     with_audio = os.path.join(job_dir, "with_audio.mp4")
-    add_background_audio_only(concat_path, audio_path, with_audio, audio_volume, audio_start)
+    music_volume = float(template.get("music_volume", audio_volume))
+    add_background_audio_only(
+        concat_path,
+        audio_path,
+        with_audio,
+        music_volume,
+        audio_start,
+        mute_start=mute_start,
+        mute_dur=mute_dur,
+        restart_after_mute=template.get("music_restart"),
+        restart_offset=template.get("music_restart_offset"),
+    )
 
-    card_total = sum(get_duration(p) for p in card_paths)
     if template.get("clip_per_beat"):
         # clip_per_beat isn't grouped per scene; lay caption windows on each scene's
         # share of the real footage length (mirrors run_broll_render).
-        footage_total = sum(get_duration(p) for p in cut_paths)
-        intended = sum(max(0.1, float(s["duration_seconds"])) for s in scenes) or 1.0
-        scale = footage_total / intended
         scenes_timed = []
-        cursor = card_total
-        for s in scenes:
-            d = max(0.1, float(s["duration_seconds"])) * scale
-            scenes_timed.append({**s, "start_time": cursor, "duration_seconds": d})
-            cursor += d
+        if cards_position == "middle" and after_scenes:
+            intended_before = sum(
+                max(0.1, float(s["duration_seconds"])) for s in before_scenes
+            ) or 1.0
+            scale_before = before_footage_total / intended_before
+            cursor = intro_total
+            for s in before_scenes:
+                d = max(0.1, float(s["duration_seconds"])) * scale_before
+                scenes_timed.append({**s, "start_time": cursor, "duration_seconds": d})
+                cursor += d
+            intended_after = sum(
+                max(0.1, float(s["duration_seconds"])) for s in after_scenes
+            ) or 1.0
+            scale_after = after_footage_total / intended_after
+            cursor = intro_total + before_footage_total + card_insert_total
+            for s in after_scenes:
+                d = max(0.1, float(s["duration_seconds"])) * scale_after
+                scenes_timed.append({**s, "start_time": cursor, "duration_seconds": d})
+                cursor += d
+        else:
+            intended = sum(max(0.1, float(s["duration_seconds"])) for s in output_scenes) or 1.0
+            scale = footage_total / intended
+            cursor = intro_total
+            for s in output_scenes:
+                d = max(0.1, float(s["duration_seconds"])) * scale
+                scenes_timed.append({**s, "start_time": cursor, "duration_seconds": d})
+                cursor += d
     else:
-        scenes_timed = build_scene_timings_from_cuts(
-            cut_paths, scene_cut_counts, scenes, card_total
-        )
+        if cards_position == "middle" and after_scenes:
+            before_timed = build_scene_timings_from_cuts(
+                before_cut_paths, before_scene_cut_counts, before_scenes, intro_total
+            )
+            after_timed = build_scene_timings_from_cuts(
+                after_cut_paths,
+                after_scene_cut_counts,
+                after_scenes,
+                intro_total + before_footage_total + card_insert_total,
+            )
+            scenes_timed = before_timed + after_timed
+        else:
+            scenes_timed = build_scene_timings_from_cuts(
+                output_cut_paths, output_scene_cut_counts, output_scenes, intro_total
+            )
 
     ass_path = os.path.join(job_dir, "captions.ass")
     # Burn each scene's script phrase — not the template closing_caption placeholder.
-    if caption_style == "kinetic":
+    if not template.get("captions_on_montage", True):
+        generate_ass_simple([], ass_path, caption_style, resolution, caption_preset)
+    elif caption_style == "kinetic":
         generate_ass_kinetic(
             scenes_timed, beat_times, ass_path, resolution, caption_preset
         )

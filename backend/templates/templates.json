@@ -1206,8 +1206,9 @@
       7
     ],
     "pacing": {
-      "target_cut_len": 0.4,
-      "max_cuts_per_scene": 6,
+      "target_cut_len": 0.34,
+      "max_cuts_per_scene": 10,
+      "min_cut": 0.2,
       "zooms": [
         1.0,
         1.15,
@@ -1221,8 +1222,8 @@
       "tone": "matched to the pacing of a reference montage"
     },
     "caption_style": "karaoke",
-    "color_grade": "moody",
-    "grade_filter": "eq=contrast=1.05:brightness=0.018:saturation=0.86",
+    "color_grade": "bw",
+    "grade_filter": "eq=saturation=0:contrast=1.2:brightness=-0.05",
     "music_vibe": "energetic / trap",
     "structure": [
       "hook",
@@ -1254,23 +1255,51 @@
       "caption_density": null
     },
     "locked": true,
-    "caption_font": "Playfair Display Medium",
-    "caption_size": 64,
+    "caption_font": "Trebuchet MS",
+    "caption_size": 56,
     "caption_bold": 1,
-    "caption_uppercase": true,
+    "caption_uppercase": false,
     "caption_alignment": 5,
     "caption_marginv": 0,
-    "caption_outline": 2,
-    "caption_shadow": 2,
-    "caption_emphasis_font": "Great Vibes",
+    "caption_outline": 0,
+    "caption_shadow": 1,
+    "caption_emphasis_font": "",
+    "caption_active_color": "&H1B06CC&",
     "caption_fade_ms": [
       100,
       80
     ],
+    "captions_on_montage": false,
     "flash_cut": true,
     "flash_ms": 60,
     "flash_every": 2,
     "recommended_track": "mist",
-    "music_hook": true
+    "music_volume": 1.0,
+    "music_hook": false,
+    "music_start": 0.0,
+    "require_voiceover": true,
+    "voiceover_message": "For this style, AI voice is used only on the black subtitle block. The song plays louder before it, fully cuts during the black block, then restarts from 2 seconds after the block ends.",
+    "voiceover_target": "outro_cards",
+    "outro_position": "middle",
+    "outro_start_at": 7.0,
+    "fit_outro_to_replaced_tail": true,
+    "outro_cards": {
+      "source": "scene_phrases",
+      "chunk_words": 5,
+      "chunk_words_max": 7,
+      "duration": 1.16,
+      "beats_per_card": 2.5,
+      "bg": "black",
+      "style": "card_editorial",
+      "lowercase": true,
+      "strip_punctuation": true,
+      "wrap_words": 3,
+      "max_chars": 18,
+      "max_cards": 12
+    },
+    "music_pause_at": "outro_start",
+    "music_pause_cards": 12,
+    "music_restart": true,
+    "music_restart_offset": 2.0
   }
 ]

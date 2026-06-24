@@ -13,9 +13,10 @@ interface TemplatePickStepProps {
   /** Pro unlocks premium reference styles */
   isPro: boolean;
   onRequireUpgrade: () => void;
-  onSelect: (id: string, recommendedTrack?: string, musicManual?: boolean) => void;
+  onSelect: (id: string, template?: TemplateOption | null) => void;
   onRender: () => void;
   onBack: () => void;
+  onConfigureVoiceover?: () => void;
   isStartingRender: boolean;
   /** Monthly video renders remaining */
   videosLeft: number;
@@ -27,6 +28,8 @@ interface TemplatePickStepProps {
   musicLabel?: string;
   /** true when the user picked their own track instead of the reference's */
   musicIsCustom?: boolean;
+  /** true when the current render request already includes a usable AI voice for this style's black block */
+  hasVoiceover?: boolean;
   onChangeMusic?: () => void;
 }
 
@@ -42,6 +45,7 @@ export function TemplatePickStep({
   onSelect,
   onRender,
   onBack,
+  onConfigureVoiceover,
   isStartingRender,
   videosLeft,
   videosLimit,
@@ -49,6 +53,7 @@ export function TemplatePickStep({
   hasMusic,
   musicLabel,
   musicIsCustom,
+  hasVoiceover,
   onChangeMusic,
 }: TemplatePickStepProps) {
   const [templates, setTemplates] = useState<TemplateOption[]>([]);
@@ -89,7 +94,7 @@ export function TemplatePickStep({
       templates.length &&
       !templates.some((t) => t.id === selectedTemplateId)
     ) {
-      onSelect("");
+      onSelect("", null);
     }
   }, [templates, selectedTemplateId, onSelect]);
 
@@ -105,10 +110,11 @@ export function TemplatePickStep({
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
   // Styles flagged music_manual require the user to choose music before rendering.
   const needsMusic = !!selectedTemplate?.music_manual && !hasMusic;
+  const needsVoiceover = !!selectedTemplate?.require_voiceover && !hasVoiceover;
   const canRender =
     !isStartingRender &&
     (videosUnlimited || videosLeft > 0) &&
-    (noTemplates || (!!selectedTemplateId && !needsMusic));
+    (noTemplates || (!!selectedTemplateId && !needsMusic && !needsVoiceover));
 
   return (
     <div className="w-full p-4 sm:p-6">
@@ -132,6 +138,21 @@ export function TemplatePickStep({
                 className="ml-auto shrink-0 font-medium text-[#10B981] hover:text-[#12cf90] hover:underline"
               >
                 Choose music
+              </button>
+            )}
+          </div>
+        ) : selectedTemplateId && needsVoiceover ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#10B981]/30 bg-[#10B981]/5 px-3 py-2 text-xs">
+            <span className="min-w-0 flex-1 text-[#EFEFEF]">
+              {selectedTemplate?.voiceover_message || "This style uses AI voice only on the black subtitle block — turn it on before rendering."}
+            </span>
+            {onConfigureVoiceover && (
+              <button
+                type="button"
+                onClick={onConfigureVoiceover}
+                className="ml-auto shrink-0 font-medium text-[#10B981] hover:text-[#12cf90] hover:underline"
+              >
+                Set black-block voice
               </button>
             )}
           </div>
@@ -195,7 +216,7 @@ export function TemplatePickStep({
                     onClick={() => {
                       if (wip) return; // in development — not selectable yet
                       if (locked) { onRequireUpgrade(); return; } // Pro-only style
-                      onSelect(t.id, t.recommended_track, t.music_manual);
+                      onSelect(t.id, t);
                     }}
                     className={`group relative text-left rounded-xl overflow-hidden border transition-all ${
                       wip

@@ -18,6 +18,7 @@ import type {
   PexelsVideo,
   RenderStatus,
   Scene,
+  TemplateOption,
   TemplateTrack,
   UploadedClipSlot,
   VisualScriptResponse,
@@ -234,6 +235,7 @@ export function CreateFlow({
   const [tracks, setTracks] = useState<TemplateTrack[]>([]);
   const [selectedMusicVibe, setSelectedMusicVibe] = useState("dark ambient");
   const [chosenTemplateId, setChosenTemplateId] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateOption | null>(null);
   // AI voiceover (off by default — opt-in in the upload step).
   const [voiceover, setVoiceover] = useState<VoiceoverSettings>({
     enabled: false,
@@ -474,6 +476,14 @@ export function CreateFlow({
     // AI voiceover is limited on the free tier — gate before doing any work so a
     // free user who's out of uses gets the upgrade prompt instead of a render.
     const useVoiceover = voiceover.enabled && !!voiceover.voiceId;
+    if (selectedTemplate?.require_voiceover && !useVoiceover) {
+      setRenderError(
+        selectedTemplate.voiceover_message ||
+          "This style uses AI voice only on the black subtitle block, so set it before rendering."
+      );
+      setCurrentStep(4);
+      return;
+    }
     if (useVoiceover && voiceoverLeft <= 0) {
       onRequireUpgrade();
       return;
@@ -680,9 +690,14 @@ export function CreateFlow({
           selectedTemplateId={chosenTemplateId}
           isPro={isPro}
           onRequireUpgrade={onRequireUpgrade}
-          onSelect={(id, recommendedTrack, musicManual) => {
+          hasVoiceover={voiceover.enabled && !!voiceover.voiceId}
+          onConfigureVoiceover={() => setCurrentStep(3)}
+          onSelect={(id, template) => {
             setChosenTemplateId(id || null);
+            setSelectedTemplate(template || null);
             if (!id) return;
+            const recommendedTrack = template?.recommended_track;
+            const musicManual = template?.music_manual;
             // Styles flagged music_manual never auto-pick a track — the user must
             // choose one (library or upload). Clear any auto-filled track (keep the
             // user's own pick) so they're prompted to choose.

@@ -9,6 +9,7 @@ from services.editor import (
     add_background_audio_only,
     apply_end_fade,
     apply_music_hook_lead,
+    beat_interval_seconds,
     build_scene_timings_from_cuts,
     burn_subtitles_ass,
     check_ffmpeg,
@@ -27,9 +28,15 @@ from services.editor import (
     plan_accel_cut_montage,
     plan_beat_cut_montage,
     plan_scene_cuts,
+    resolve_text_cards,
     render_text_card,
+    retime_text_cards_to_voice,
+    adjust_voiceover_and_cards,
     resize_for_platform,
+    split_montage_at_time,
     transcribe_audio,
+    trim_montage_to_time,
+    trim_montage_to_ratio,
     trim_clip,
 )
 from services.storage import download_file, upload_file
@@ -354,6 +361,9 @@ async def run_broll_render(
             )
         if audio_start > 0.01:
             beat_times = [b - audio_start for b in beat_times if b >= audio_start]
+        beat_len = beat_interval_seconds(
+            beat_times, ((template.get("measured") or {}).get("bpm"))
+        )
         caption_style = caption_style_of(template)
         # Template owns the whole look: grade comes from the template too (not just
         # the request payload), so the color can't drift from pacing/captions.
@@ -367,14 +377,53 @@ async def run_broll_render(
         # carrying a single bold phrase) for reference templates that define them.
         # Each card bakes in its own caption and matches the montage cut stream
         # params, so it concatenates ahead of the footage with no re-encode mismatch.
-        intro_cards = template.get("intro_cards") or []
+        intro_cards = resolve_text_cards(template.get("intro_cards"), scenes)
+        outro_cards = resolve_text_cards(template.get("outro_cards"), scenes)
+        outro_voice_lines = [
+            str(card.get("text", "")).strip()
+            for card in outro_cards
+            if str(card.get("text", "")).strip()
+        ]
+        prebuilt_outro_voiceover = None
+        if (
+            add_voiceover
+            and (voice_id or "").strip()
+            and str(template.get("voiceover_target") or "").strip().lower() == "outro_cards"
+            and outro_voice_lines
+        ):
+            vo_dir = os.path.join(job_dir, "voiceover")
+            os.makedirs(vo_dir, exist_ok=True)
+            vo_path = os.path.join(vo_dir, "narration.mp3")
+            prebuilt_outro_voiceover = await asyncio.to_thread(
+                generate_single_voiceover,
+                [{"phrase": line} for line in outro_voice_lines],
+                vo_path,
+                voice_id,
+                vo_speed,
+            )
+            spans = prebuilt_outro_voiceover.get("spans") if prebuilt_outro_voiceover else None
+            if spans:
+                adjusted_vo_path = os.path.join(vo_dir, "narration_sync.mp3")
+                outro_cards = await asyncio.to_thread(
+                    adjust_voiceover_and_cards,
+                    vo_path,
+                    spans,
+                    outro_cards,
+                    beat_len,
+                    adjusted_vo_path,
+                    min_duration=float(template.get("outro_voice_min_duration", 0.4)),
+                    hold_after_end=float(template.get("outro_voice_hold", 0.35)),
+                )
+                prebuilt_outro_voiceover["audio_path"] = adjusted_vo_path
         # Card captions come from the REFERENCE (the template's curated card text),
         # not the user's script — these are the reference's signature subtitles.
-        # bg / style / duration (the dark↔light alternation) are template-driven too.
-        card_paths: list[str] = []
+        # Outro cards may instead be built dynamically from the generated scene phrases.
+        intro_card_paths: list[str] = []
         for ci, card in enumerate(intro_cards):
-            card_text = str(card.get("text", "")).lower()
-            card_out = os.path.join(job_dir, f"card_{ci:02d}.mp4")
+            card_text = str(card.get("text", "")).strip()
+            if card.get("lowercase", True):
+                card_text = card_text.lower()
+            card_out = os.path.join(job_dir, f"intro_card_{ci:02d}.mp4")
             await asyncio.to_thread(
                 render_text_card,
                 card_out,
@@ -386,8 +435,34 @@ async def run_broll_render(
                 fontcycle=card.get("fontcycle"),
                 fontcycle_dur=card.get("fontcycle_dur"),
                 caption_resolution=caption_resolution,
+                wrap_words=card.get("wrap_words"),
+                max_chars=card.get("max_chars"),
             )
-            card_paths.append(card_out)
+            intro_card_paths.append(card_out)
+        outro_card_paths: list[str] = []
+        for ci, card in enumerate(outro_cards):
+            card_text = str(card.get("text", "")).strip()
+            if card.get("lowercase", True):
+                card_text = card_text.lower()
+            card_dur = float(card.get("duration", 1.6))
+            if card.get("beats_per_card"):
+                card_dur = max(0.18, beat_len * float(card["beats_per_card"]))
+            card_out = os.path.join(job_dir, f"outro_card_{ci:02d}.mp4")
+            await asyncio.to_thread(
+                render_text_card,
+                card_out,
+                card_dur,
+                card_text,
+                card.get("bg", "dark_gradient"),
+                card.get("style", "card_phrase"),
+                resolution,
+                fontcycle=card.get("fontcycle"),
+                fontcycle_dur=card.get("fontcycle_dur"),
+                caption_resolution=caption_resolution,
+                wrap_words=card.get("wrap_words"),
+                max_chars=card.get("max_chars"),
+            )
+            outro_card_paths.append(card_out)
 
         render_jobs[job_id]["progress"] = 15
 
@@ -428,13 +503,13 @@ async def run_broll_render(
             clip_durs = {
                 p: await asyncio.to_thread(get_duration, p) for p in clip_files
             }
-            card_total = await asyncio.to_thread(
-                lambda: sum(get_duration(p) for p in card_paths)
+            intro_total = await asyncio.to_thread(
+                lambda: sum(get_duration(p) for p in intro_card_paths)
             )
             montage_total = sum(s["duration_seconds"] for s in scenes)
             plan = plan_beat_cut_montage(
                 [clip_durs[p] for p in clip_files],
-                beat_times, card_total, montage_total, zooms,
+                beat_times, intro_total, montage_total, zooms,
                 every=int(template.get("clip_beats", 1)),
             )
             for cut in plan:
@@ -604,53 +679,220 @@ async def run_broll_render(
         await _extract_cuts_parallel(cut_specs, on_progress=_cut_progress)
         render_jobs[job_id]["progress"] = 45
 
+        intro_total = await asyncio.to_thread(
+            lambda: sum(get_duration(p) for p in intro_card_paths)
+        )
+        full_footage_total = await asyncio.to_thread(
+            lambda: sum(get_duration(p) for p in cut_paths)
+        )
+        output_cut_paths = list(cut_paths)
+        output_scene_cut_counts = list(scene_cut_counts)
+        output_scenes = list(scenes)
+        before_cut_paths = list(cut_paths)
+        before_scene_cut_counts = list(scene_cut_counts)
+        before_scenes = list(scenes)
+        after_cut_paths: list[str] = []
+        after_scene_cut_counts: list[int] = []
+        after_scenes: list[dict] = []
+        before_footage_total = full_footage_total
+        after_footage_total = 0.0
+        footage_total = full_footage_total
+        dropped_footage_total = 0.0
+        cards_position = str(template.get("outro_position") or "end").strip().lower()
+        if (
+            outro_card_paths
+            and cards_position == "middle"
+            and template.get("outro_start_at") is not None
+        ):
+            (
+                before_cut_paths,
+                before_scene_cut_counts,
+                before_scenes,
+                after_cut_paths,
+                after_scene_cut_counts,
+                after_scenes,
+                before_footage_total,
+                after_footage_total,
+            ) = await asyncio.to_thread(
+                split_montage_at_time,
+                cut_paths,
+                scene_cut_counts,
+                scenes,
+                float(template.get("outro_start_at")),
+            )
+            output_cut_paths = before_cut_paths + after_cut_paths
+            output_scene_cut_counts = before_scene_cut_counts + after_scene_cut_counts
+            output_scenes = before_scenes + after_scenes
+            footage_total = before_footage_total + after_footage_total
+        elif outro_card_paths and template.get("outro_start_at") is not None:
+            (
+                output_cut_paths,
+                output_scene_cut_counts,
+                output_scenes,
+                footage_total,
+                dropped_footage_total,
+            ) = await asyncio.to_thread(
+                trim_montage_to_time,
+                cut_paths,
+                scene_cut_counts,
+                scenes,
+                float(template.get("outro_start_at")),
+            )
+        elif outro_card_paths and template.get("outro_start_ratio") is not None:
+            (
+                output_cut_paths,
+                output_scene_cut_counts,
+                output_scenes,
+                footage_total,
+                dropped_footage_total,
+            ) = await asyncio.to_thread(
+                trim_montage_to_ratio,
+                cut_paths,
+                scene_cut_counts,
+                scenes,
+                float(template.get("outro_start_ratio")),
+            )
+        if (
+            outro_card_paths
+            and cards_position != "middle"
+            and template.get("fit_outro_to_replaced_tail")
+        ):
+            fitted_paths: list[str] = []
+            fitted_total = 0.0
+            slack = max(0.12, beat_len * 0.35)
+            for p in outro_card_paths:
+                dur = await asyncio.to_thread(get_duration, p)
+                if fitted_paths and dropped_footage_total > 0.01 and fitted_total + dur > dropped_footage_total + slack:
+                    break
+                fitted_paths.append(p)
+                fitted_total += dur
+            if fitted_paths:
+                outro_card_paths = fitted_paths
+        mute_start = template.get("music_pause_start")
+        mute_dur = template.get("music_pause_dur")
+        if outro_card_paths and template.get("music_pause_at") == "outro_start":
+            mute_start = (
+                intro_total + before_footage_total
+                if cards_position == "middle"
+                else intro_total + footage_total
+            )
+            if str(template.get("voiceover_target") or "").strip().lower() == "outro_cards":
+                # For black-block voiceover references, keep the music OFF for the whole
+                # black-card section so the track never comes back under the voice/text.
+                mute_dur = await asyncio.to_thread(
+                    lambda: sum(get_duration(p) for p in outro_card_paths)
+                )
+            else:
+                pause_cards = max(1, int(template.get("music_pause_cards", 1)))
+                mute_dur = await asyncio.to_thread(
+                    lambda: sum(get_duration(p) for p in outro_card_paths[:pause_cards])
+                )
+
         concat_path = os.path.join(job_dir, "concat.mp4")
-        # Prepend any generated intro cards ahead of the footage montage cuts.
-        await asyncio.to_thread(concatenate_clips, card_paths + cut_paths, concat_path)
+        card_insert_total = await asyncio.to_thread(
+            lambda: sum(get_duration(p) for p in outro_card_paths)
+        )
+        concat_parts = (
+            intro_card_paths + before_cut_paths + outro_card_paths + after_cut_paths
+            if cards_position == "middle"
+            else intro_card_paths + output_cut_paths + outro_card_paths
+        )
+        # Prepend intro cards and place the reference's black text-cards either in the
+        # middle or at the end, depending on the template.
+        await asyncio.to_thread(
+            concatenate_clips,
+            concat_parts,
+            concat_path,
+        )
         render_jobs[job_id]["progress"] = 62
 
         with_audio_path = os.path.join(job_dir, "with_audio.mp4")
+        music_volume = float(template.get("music_volume", audio_volume))
         await asyncio.to_thread(
             add_background_audio_only,
             concat_path,
             audio_path,
             with_audio_path,
-            audio_volume,
+            music_volume,
             audio_start,
+            mute_start=mute_start,
+            mute_dur=mute_dur,
+            restart_after_mute=template.get("music_restart"),
+            restart_offset=template.get("music_restart_offset"),
         )
         render_jobs[job_id]["progress"] = 75
 
-        # Cards occupy [0, card_total]; footage captions start after them. Card text
-        # is already baked into the card clips, so the final ASS carries only the
-        # footage captions, shifted by the total card duration.
-        card_total = await asyncio.to_thread(
-            lambda: sum(get_duration(p) for p in card_paths)
-        )
+        # Intro cards occupy [0, intro_total]; montage captions start after them. Outro
+        # card text is already baked into the card clips, so the final ASS carries only
+        # the montage captions, shifted by the intro duration.
         # Measure real scene windows from the rendered cuts so caption timing is exact.
         if template.get("clip_per_beat"):
             # clip_per_beat tiles cuts across the whole montage (NOT grouped per scene),
             # so per-scene cut counts can't time captions. Lay each scene's caption
             # window on its share of the real footage length (scaled to the actual
             # total) so per-scene captions follow the script over the fast clip-swaps.
-            footage_total = await asyncio.to_thread(
-                lambda: sum(get_duration(p) for p in cut_paths)
-            )
-            intended = sum(max(0.1, float(s["duration_seconds"])) for s in scenes) or 1.0
-            scale = footage_total / intended
             scenes_with_timing = []
-            cursor = card_total
-            for s in scenes:
-                d = max(0.1, float(s["duration_seconds"])) * scale
-                scenes_with_timing.append({**s, "start_time": cursor, "duration_seconds": d})
-                cursor += d
+            if cards_position == "middle" and after_scenes:
+                intended_before = sum(
+                    max(0.1, float(s["duration_seconds"])) for s in before_scenes
+                ) or 1.0
+                scale_before = before_footage_total / intended_before
+                cursor = intro_total
+                for s in before_scenes:
+                    d = max(0.1, float(s["duration_seconds"])) * scale_before
+                    scenes_with_timing.append(
+                        {**s, "start_time": cursor, "duration_seconds": d}
+                    )
+                    cursor += d
+                intended_after = sum(
+                    max(0.1, float(s["duration_seconds"])) for s in after_scenes
+                ) or 1.0
+                scale_after = after_footage_total / intended_after
+                cursor = intro_total + before_footage_total + card_insert_total
+                for s in after_scenes:
+                    d = max(0.1, float(s["duration_seconds"])) * scale_after
+                    scenes_with_timing.append(
+                        {**s, "start_time": cursor, "duration_seconds": d}
+                    )
+                    cursor += d
+            else:
+                intended = (
+                    sum(max(0.1, float(s["duration_seconds"])) for s in output_scenes)
+                    or 1.0
+                )
+                scale = footage_total / intended
+                cursor = intro_total
+                for s in output_scenes:
+                    d = max(0.1, float(s["duration_seconds"])) * scale
+                    scenes_with_timing.append(
+                        {**s, "start_time": cursor, "duration_seconds": d}
+                    )
+                    cursor += d
         else:
-            scenes_with_timing = await asyncio.to_thread(
-                build_scene_timings_from_cuts,
-                cut_paths,
-                scene_cut_counts,
-                scenes,
-                card_total,
-            )
+            if cards_position == "middle" and after_scenes:
+                before_timed = await asyncio.to_thread(
+                    build_scene_timings_from_cuts,
+                    before_cut_paths,
+                    before_scene_cut_counts,
+                    before_scenes,
+                    intro_total,
+                )
+                after_timed = await asyncio.to_thread(
+                    build_scene_timings_from_cuts,
+                    after_cut_paths,
+                    after_scene_cut_counts,
+                    after_scenes,
+                    intro_total + before_footage_total + card_insert_total,
+                )
+                scenes_with_timing = before_timed + after_timed
+            else:
+                scenes_with_timing = await asyncio.to_thread(
+                    build_scene_timings_from_cuts,
+                    output_cut_paths,
+                    output_scene_cut_counts,
+                    output_scenes,
+                    intro_total,
+                )
 
         # --- AI voiceover (optional) -------------------------------------------------
         # Generate the ENTIRE narration in ONE ElevenLabs call (all scene phrases joined),
@@ -666,58 +908,92 @@ async def run_broll_render(
                 vo_dir = os.path.join(job_dir, "voiceover")
                 os.makedirs(vo_dir, exist_ok=True)
                 vo_path = os.path.join(vo_dir, "narration.mp3")
-                vo = await asyncio.to_thread(
-                    generate_single_voiceover,
-                    scenes_with_timing, vo_path, voice_id, vo_speed,
-                )
-                spans = vo.get("spans") if vo else None
-                if spans:
-                    # Narration begins at the first voiced scene's footage start. Each
-                    # caption starts when its phrase is spoken, but is HELD until the next
-                    # phrase begins (so it doesn't flash for ~1s and leave the pauses
-                    # blank), and the LAST caption is held to the end of the video (so the
-                    # tail after the narration isn't left with no subtitle). The voice
-                    # still plays at the exact spans — only the caption windows stretch.
-                    first_idx = spans[0]["index"]
-                    audio_offset = float(scenes_with_timing[first_idx].get("start_time", 0.0))
-                    video_total = await asyncio.to_thread(get_duration, with_audio_path)
-                    held: dict = {}
-                    for k, sp in enumerate(spans):
-                        start = audio_offset + float(sp["start"])
-                        nxt = (
-                            audio_offset + float(spans[k + 1]["start"])
-                            if k + 1 < len(spans)
-                            else video_total
+                if (
+                    str(template.get("voiceover_target") or "").strip().lower()
+                    == "outro_cards"
+                    and outro_voice_lines
+                    and mute_start is not None
+                    and mute_dur is not None
+                ):
+                    vo = prebuilt_outro_voiceover
+                    if not vo or not vo.get("audio_path"):
+                        voice_scenes = [{"phrase": line} for line in outro_voice_lines]
+                        vo = await asyncio.to_thread(
+                            generate_single_voiceover,
+                            voice_scenes,
+                            vo_path,
+                            voice_id,
+                            vo_speed,
                         )
-                        end = max(start + 0.6, min(nxt, video_total))
-                        held[sp["index"]] = (start, end)
-                    retimed: list = []
-                    for idx, scene in enumerate(scenes_with_timing):
-                        if idx in held:
-                            start, end = held[idx]
-                            retimed.append(
-                                {**scene, "start_time": start, "duration_seconds": end - start}
-                            )
-                        else:
-                            retimed.append(scene)  # no phrase -> keep montage timing
-                    with_vo_path = os.path.join(job_dir, "with_voiceover.mp4")
-                    await asyncio.to_thread(
-                        mix_voiceover_per_scene,
-                        with_audio_path,
-                        [{"audio_path": vo["audio_path"], "start_time": audio_offset}],
-                        with_vo_path,
-                        vo_volume,
-                        bg_music_volume,
+                    if vo and vo.get("audio_path"):
+                        with_vo_path = os.path.join(job_dir, "with_voiceover.mp4")
+                        await asyncio.to_thread(
+                            mix_voiceover_per_scene,
+                            with_audio_path,
+                            [{
+                                "audio_path": vo["audio_path"],
+                                "start_time": float(mute_start),
+                                "max_duration": float(mute_dur),
+                            }],
+                            with_vo_path,
+                            vo_volume,
+                            bg_music_volume,
+                        )
+                        caption_video_path = with_vo_path
+                        voiceover_delivered = True
+                else:
+                    vo = await asyncio.to_thread(
+                        generate_single_voiceover,
+                        scenes_with_timing, vo_path, voice_id, vo_speed,
                     )
-                    caption_video_path = with_vo_path
-                    # Mix succeeded — only NOW commit the voice-span caption timeline, so a
-                    # mix failure (handled below) keeps the original montage-timed captions
-                    # over the music-only fallback instead of timing them to absent speech.
-                    scenes_with_timing = retimed
-                    # A voiceover was genuinely synthesized and mixed in. The credit was
-                    # reserved at request time; mark it delivered so we KEEP it once the
-                    # render completes (and don't refund it on the success path below).
-                    voiceover_delivered = True
+                    spans = vo.get("spans") if vo else None
+                    if spans:
+                        # Narration begins at the first voiced scene's footage start. Each
+                        # caption starts when its phrase is spoken, but is HELD until the next
+                        # phrase begins (so it doesn't flash for ~1s and leave the pauses
+                        # blank), and the LAST caption is held to the end of the video (so the
+                        # tail after the narration isn't left with no subtitle). The voice
+                        # still plays at the exact spans — only the caption windows stretch.
+                        first_idx = spans[0]["index"]
+                        audio_offset = float(scenes_with_timing[first_idx].get("start_time", 0.0))
+                        video_total = await asyncio.to_thread(get_duration, with_audio_path)
+                        held: dict = {}
+                        for k, sp in enumerate(spans):
+                            start = audio_offset + float(sp["start"])
+                            nxt = (
+                                audio_offset + float(spans[k + 1]["start"])
+                                if k + 1 < len(spans)
+                                else video_total
+                            )
+                            end = max(start + 0.6, min(nxt, video_total))
+                            held[sp["index"]] = (start, end)
+                        retimed: list = []
+                        for idx, scene in enumerate(scenes_with_timing):
+                            if idx in held:
+                                start, end = held[idx]
+                                retimed.append(
+                                    {**scene, "start_time": start, "duration_seconds": end - start}
+                                )
+                            else:
+                                retimed.append(scene)  # no phrase -> keep montage timing
+                        with_vo_path = os.path.join(job_dir, "with_voiceover.mp4")
+                        await asyncio.to_thread(
+                            mix_voiceover_per_scene,
+                            with_audio_path,
+                            [{"audio_path": vo["audio_path"], "start_time": audio_offset}],
+                            with_vo_path,
+                            vo_volume,
+                            bg_music_volume,
+                        )
+                        caption_video_path = with_vo_path
+                        # Mix succeeded — only NOW commit the voice-span caption timeline, so a
+                        # mix failure (handled below) keeps the original montage-timed captions
+                        # over the music-only fallback instead of timing them to absent speech.
+                        scenes_with_timing = retimed
+                        # A voiceover was genuinely synthesized and mixed in. The credit was
+                        # reserved at request time; mark it delivered so we KEEP it once the
+                        # render completes (and don't refund it on the success path below).
+                        voiceover_delivered = True
             except Exception:
                 print(
                     f"[broll_render {job_id}] voiceover failed, continuing without it:\n"
@@ -730,7 +1006,16 @@ async def run_broll_render(
         ass_path = os.path.join(job_dir, "broll_captions.ass")
         # Scene phrases from the user's script — never the template's closing_caption
         # string (that field only records what appeared on the reference clip).
-        if caption_style == "kinetic":
+        if not template.get("captions_on_montage", True):
+            await asyncio.to_thread(
+                generate_ass_simple,
+                [],
+                ass_path,
+                caption_style,
+                caption_resolution,
+                caption_preset,
+            )
+        elif caption_style == "kinetic":
             await asyncio.to_thread(
                 generate_ass_kinetic,
                 scenes_with_timing,

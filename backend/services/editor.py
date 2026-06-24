@@ -1,6 +1,8 @@
 import json
 import os
+import re
 import shutil
+import statistics
 import subprocess
 from pathlib import Path
 
@@ -368,46 +370,85 @@ def add_background_audio(
 def add_background_audio_only(
     video_path: str, audio_path: str, output_path: str, volume: float = 0.6,
     start_offset: float = 0.0,
+    mute_start: float | None = None,
+    mute_dur: float | None = None,
+    restart_after_mute: bool = False,
+    restart_offset: float | None = None,
 ):
     """Replace video audio with background music only — source clip audio is discarded.
 
     start_offset > 0 seeks into the track first, so the video opens on the hook/drop
     (the viral part) instead of the intro; the track still loops to cover the video.
+
+    mute_start/mute_dur allow for a dramatic pause (e.g. during an intro text card).
+    restart_after_mute=True makes the music resume from ``restart_offset`` after the
+    pause (defaulting to the original ``start_offset`` when no explicit restart point
+    is provided).
     """
     vol = max(0.05, min(float(volume), 2.0))
     seek = ["-ss", f"{max(0.0, float(start_offset)):.2f}"] if float(start_offset) > 0.01 else []
-    # Small music fade-in at the start and fade-out at the very end of the video so
-    # the track doesn't cut off abruptly.
-    afilter = f"[1:a]volume={vol}"
+    resume_offset = max(
+        0.0,
+        float(start_offset if restart_offset is None else restart_offset),
+    )
+
     dur = get_duration(video_path)
-    if dur and dur > 1.5:
-        afilter += f",afade=t=in:st=0:d=0.4,afade=t=out:st={max(0.0, dur - 0.9):.2f}:d=0.9"
-    afilter += "[aout]"
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-i",
-        video_path,
-        # loop the music so a track shorter than the montage can't truncate it;
-        # -shortest below then ends the output exactly at the video length
-        "-stream_loop",
-        "-1",
-        *seek,
-        "-i",
-        audio_path,
-        "-filter_complex",
-        afilter,
-        "-map",
-        "0:v",
-        "-map",
-        "[aout]",
-        "-c:v",
-        "copy",
-        "-c:a",
-        "aac",
-        "-shortest",
-        output_path,
-    ]
+    if mute_start is not None and mute_dur is not None:
+        ms = float(mute_start)
+        md = float(mute_dur)
+        me = ms + md
+        # Complex filter:
+        # 1. Take music from start_offset.
+        # 2. Part A: t=0 to ms.
+        # 3. Silence: duration md.
+        # 4. Part B: from t=me. If restart_after_mute, Part B starts from resume_offset.
+        if restart_after_mute:
+            # [1:a]atrim=start_offset:start_offset+ms[a1];
+            # anullsrc[silence];
+            # [1:a]atrim=resume_offset:end[a2];
+            # [a1][silence][a2]concat
+            fc = (
+                f"[1:a]atrim={start_offset}:{start_offset + ms},asetpts=PTS-STARTPTS[a1];"
+                f"anullsrc=r=44100:cl=stereo:d={md}[silence];"
+                f"[1:a]atrim={resume_offset}:{dur + resume_offset},asetpts=PTS-STARTPTS[a2];"
+                f"[a1][silence][a2]concat=n=3:v=0:a=1[amix]"
+            )
+        else:
+            # Just mute the volume in the interval
+            fc = f"[1:a]volume='if(between(t,{ms},{me}),0,{vol})'[amix]"
+
+        afilter = f"[amix]volume=1" # volume already applied or not needed
+        if not restart_after_mute:
+             # vol was not applied in the if(between...) above if I used vol instead of 1
+             pass
+        else:
+             # apply volume to the concatenated stream
+             afilter = f"[amix]volume={vol}"
+
+        if dur and dur > 1.5:
+            afilter += f",afade=t=in:st=0:d=0.4,afade=t=out:st={max(0.0, dur - 0.9):.2f}:d=0.9"
+        afilter += "[aout]"
+
+        cmd = [
+            "ffmpeg", "-y", "-i", video_path,
+            "-stream_loop", "-1", "-i", audio_path,
+            "-filter_complex", fc + ";" + afilter,
+            "-map", "0:v", "-map", "[aout]",
+            "-c:v", "copy", "-c:a", "aac", "-shortest", output_path
+        ]
+    else:
+        afilter = f"[1:a]volume={vol}"
+        if dur and dur > 1.5:
+            afilter += f",afade=t=in:st=0:d=0.4,afade=t=out:st={max(0.0, dur - 0.9):.2f}:d=0.9"
+        afilter += "[aout]"
+        cmd = [
+            "ffmpeg", "-y", "-i", video_path,
+            "-stream_loop", "-1", *seek, "-i", audio_path,
+            "-filter_complex", afilter,
+            "-map", "0:v", "-map", "[aout]",
+            "-c:v", "copy", "-c:a", "aac", "-shortest", output_path
+        ]
+
     _run(cmd)
 
 
@@ -463,8 +504,12 @@ def mix_voiceover_per_scene(
         # then delay it to the scene's start and set the voiceover level.
         delay_ms = max(0, int(round(float(v.get("start_time", 0.0)) * 1000)))
         lbl = f"vo{idx}"
+        trim = ""
+        max_dur = v.get("max_duration")
+        if max_dur is not None:
+            trim = f"atrim=0:{max(0.05, float(max_dur)):.3f},"
         parts.append(
-            f"[{idx + 1}:a]aformat=sample_rates=44100:channel_layouts=stereo,"
+            f"[{idx + 1}:a]{trim}aformat=sample_rates=44100:channel_layouts=stereo,"
             f"adelay={delay_ms}:all=1,volume={vo_vol:.3f}[{lbl}]"
         )
         vo_labels.append(f"[{lbl}]")
@@ -713,6 +758,38 @@ ASS_STYLES = {
         "Alignment": "5",
         "MarginV": "0",
     },
+    # Elegant white serif title card that uses the bundled Playfair face.
+    "card_playfair": {
+        "Name": "Default",
+        "Fontname": "Playfair Display Medium",
+        "Fontsize": "84",
+        "PrimaryColour": "&H00FFFFFF",
+        "SecondaryColour": "&H00FFFFFF",
+        "OutlineColour": "&H00000000",
+        "BackColour": "&H00000000",
+        "Bold": "0",
+        "Italic": "0",
+        "Outline": "0",
+        "Shadow": "0",
+        "Alignment": "5",
+        "MarginV": "0",
+    },
+    # Editorial end-card look: white Arial Black body with a red script accent word.
+    "card_editorial": {
+        "Name": "Default",
+        "Fontname": "Arial Black",
+        "Fontsize": "96",
+        "PrimaryColour": "&H00FFFFFF",
+        "SecondaryColour": "&H00FFFFFF",
+        "OutlineColour": "&H00000000",
+        "BackColour": "&H00000000",
+        "Bold": "0",
+        "Italic": "0",
+        "Outline": "0",
+        "Shadow": "1",
+        "Alignment": "5",
+        "MarginV": "0",
+    },
     # Base style for kinetic captions — per-Dialogue \\pos/\\fn/\\c/\\fs overrides do
     # the real work; this just sets sane defaults + outline for legibility over footage.
     "kinetic": {
@@ -749,6 +826,520 @@ KINETIC_LAYOUTS = [
     [(8, 0.50, 0.27), (5, 0.50, 0.49), (2, 0.50, 0.73)],   # vertical stack (pulled toward center)
     [(7, 0.16, 0.29), (5, 0.50, 0.49), (3, 0.84, 0.71)],   # corners + center
 ]
+
+_CARD_WORD_STRIP = ".,!?;:()[]{}<>\"'`~|/\\“”‘’«»…"
+
+
+def _split_card_words(text: str, strip_punctuation: bool = True) -> list[str]:
+    words: list[str] = []
+    for raw in str(text or "").split():
+        word = raw.strip()
+        if strip_punctuation:
+            word = word.strip(_CARD_WORD_STRIP)
+        if word:
+            words.append(word)
+    return words
+
+
+def beat_interval_seconds(
+    beat_times: list[float] | None,
+    fallback_bpm: float | None = None,
+    default: float = 0.46,
+) -> float:
+    """Estimate one beat in seconds from detected beat timestamps.
+
+    Falls back to the template/reference BPM when beat detection is sparse, then to a
+    conservative default close to the currently used trap references (~129 BPM).
+    """
+    beats = [float(b) for b in (beat_times or []) if b is not None]
+    deltas = [b - a for a, b in zip(beats, beats[1:]) if 0.18 <= (b - a) <= 1.2]
+    if deltas:
+        return max(0.18, float(statistics.median(deltas)))
+    if fallback_bpm and float(fallback_bpm) > 1:
+        return 60.0 / float(fallback_bpm)
+    return max(0.18, float(default))
+
+
+def trim_montage_to_ratio(
+    cut_paths: list[str],
+    scene_cut_counts: list[int],
+    scenes: list[dict],
+    start_ratio: float,
+) -> tuple[list[str], list[int], list[dict], float, float]:
+    """Keep the montage up to the nearest scene boundary around ``start_ratio``.
+
+    Returns:
+      kept_cut_paths, kept_scene_cut_counts, kept_scenes, kept_duration, dropped_duration
+
+    The trim happens on a scene boundary so caption/voice timings remain coherent.
+    When trimming would drop everything or nothing, the original montage is returned.
+    """
+    if not cut_paths or not scene_cut_counts or len(scene_cut_counts) != len(scenes):
+        total = sum(get_duration(p) for p in cut_paths)
+        return list(cut_paths), list(scene_cut_counts), list(scenes), total, 0.0
+
+    ratio = max(0.15, min(float(start_ratio), 0.85))
+    cut_durs = [get_duration(p) for p in cut_paths]
+    total = sum(cut_durs)
+    if total <= 0.01:
+        return list(cut_paths), list(scene_cut_counts), list(scenes), total, 0.0
+
+    grouped: list[tuple[int, float]] = []
+    cursor = 0
+    for count in scene_cut_counts:
+        count = max(0, int(count))
+        grouped.append((count, sum(cut_durs[cursor:cursor + count])))
+        cursor += count
+
+    target = total * ratio
+    prefix = 0.0
+    best_idx = len(grouped)
+    best_gap = abs(total - target)
+    running_counts = 0
+    for idx, (count, dur) in enumerate(grouped, start=1):
+        prefix += dur
+        running_counts += count
+        if idx >= len(grouped) or running_counts <= 0:
+            continue
+        gap = abs(prefix - target)
+        if gap < best_gap:
+            best_gap = gap
+            best_idx = idx
+
+    if best_idx <= 0 or best_idx >= len(grouped):
+        return list(cut_paths), list(scene_cut_counts), list(scenes), total, 0.0
+
+    keep_counts = list(scene_cut_counts[:best_idx])
+    keep_scenes = list(scenes[:best_idx])
+    keep_cut_total = sum(keep_counts)
+    kept_paths = list(cut_paths[:keep_cut_total])
+    kept_duration = sum(get_duration(p) for p in kept_paths)
+    dropped_duration = max(0.0, total - kept_duration)
+    return kept_paths, keep_counts, keep_scenes, kept_duration, dropped_duration
+
+
+def trim_montage_to_time(
+    cut_paths: list[str],
+    scene_cut_counts: list[int],
+    scenes: list[dict],
+    latest_time: float,
+) -> tuple[list[str], list[int], list[dict], float, float]:
+    """Keep the montage up to the latest whole-scene boundary not past ``latest_time``.
+
+    This is used by reference templates that need a signature text-card section to land
+    by a fixed timestamp (for example, "switch to black cards by 7.0s"), regardless of
+    how many clips or cuts the montage ended up generating.
+    """
+    if not cut_paths or not scene_cut_counts or len(scene_cut_counts) != len(scenes):
+        total = sum(get_duration(p) for p in cut_paths)
+        return list(cut_paths), list(scene_cut_counts), list(scenes), total, 0.0
+
+    target = max(0.25, float(latest_time))
+    cut_durs = [get_duration(p) for p in cut_paths]
+    total = sum(cut_durs)
+    if total <= 0.01:
+        return list(cut_paths), list(scene_cut_counts), list(scenes), total, 0.0
+
+    grouped: list[tuple[int, float]] = []
+    cursor = 0
+    for count in scene_cut_counts:
+        count = max(0, int(count))
+        grouped.append((count, sum(cut_durs[cursor:cursor + count])))
+        cursor += count
+
+    prefix = 0.0
+    best_idx = 0
+    running_counts = 0
+    for idx, (count, dur) in enumerate(grouped, start=1):
+        prefix += dur
+        running_counts += count
+        if idx >= len(grouped) or running_counts <= 0:
+            continue
+        if prefix <= target + 1e-6:
+            best_idx = idx
+        else:
+            break
+
+    if best_idx <= 0:
+        prefix = 0.0
+        running_counts = 0
+        best_gap = float("inf")
+        for idx, (count, dur) in enumerate(grouped, start=1):
+            prefix += dur
+            running_counts += count
+            if idx >= len(grouped) or running_counts <= 0:
+                continue
+            gap = abs(prefix - target)
+            if gap < best_gap:
+                best_gap = gap
+                best_idx = idx
+            if prefix >= target:
+                break
+
+    if best_idx <= 0 or best_idx >= len(grouped):
+        return list(cut_paths), list(scene_cut_counts), list(scenes), total, 0.0
+
+    keep_counts = list(scene_cut_counts[:best_idx])
+    keep_scenes = list(scenes[:best_idx])
+    keep_cut_total = sum(keep_counts)
+    kept_paths = list(cut_paths[:keep_cut_total])
+    kept_duration = sum(get_duration(p) for p in kept_paths)
+    dropped_duration = max(0.0, total - kept_duration)
+    return kept_paths, keep_counts, keep_scenes, kept_duration, dropped_duration
+
+
+def split_montage_at_time(
+    cut_paths: list[str],
+    scene_cut_counts: list[int],
+    scenes: list[dict],
+    split_time: float,
+) -> tuple[
+    list[str],
+    list[int],
+    list[dict],
+    list[str],
+    list[int],
+    list[dict],
+    float,
+    float,
+]:
+    """Split the montage on the latest whole-scene boundary not past ``split_time``."""
+    if not cut_paths or not scene_cut_counts or len(scene_cut_counts) != len(scenes):
+        total = sum(get_duration(p) for p in cut_paths)
+        return (
+            list(cut_paths),
+            list(scene_cut_counts),
+            list(scenes),
+            [],
+            [],
+            [],
+            total,
+            0.0,
+        )
+
+    target = max(0.25, float(split_time))
+    cut_durs = [get_duration(p) for p in cut_paths]
+
+    grouped: list[tuple[int, float]] = []
+    cursor = 0
+    for count in scene_cut_counts:
+        count = max(0, int(count))
+        grouped.append((count, sum(cut_durs[cursor:cursor + count])))
+        cursor += count
+
+    prefix = 0.0
+    split_idx = 0
+    running_counts = 0
+    for idx, (count, dur) in enumerate(grouped, start=1):
+        prefix += dur
+        running_counts += count
+        if idx >= len(grouped) or running_counts <= 0:
+            continue
+        if prefix <= target + 1e-6:
+            split_idx = idx
+        else:
+            break
+
+    if split_idx <= 0:
+        prefix = 0.0
+        running_counts = 0
+        best_gap = float("inf")
+        for idx, (count, dur) in enumerate(grouped, start=1):
+            prefix += dur
+            running_counts += count
+            if idx >= len(grouped) or running_counts <= 0:
+                continue
+            gap = abs(prefix - target)
+            if gap < best_gap:
+                best_gap = gap
+                split_idx = idx
+            if prefix >= target:
+                break
+
+    if split_idx <= 0 or split_idx >= len(grouped):
+        total = sum(cut_durs)
+        return (
+            list(cut_paths),
+            list(scene_cut_counts),
+            list(scenes),
+            [],
+            [],
+            [],
+            total,
+            0.0,
+        )
+
+    before_counts = list(scene_cut_counts[:split_idx])
+    after_counts = list(scene_cut_counts[split_idx:])
+    before_cut_total = sum(before_counts)
+    before_paths = list(cut_paths[:before_cut_total])
+    after_paths = list(cut_paths[before_cut_total:])
+    before_scenes = list(scenes[:split_idx])
+    after_scenes = list(scenes[split_idx:])
+    before_duration = sum(get_duration(p) for p in before_paths)
+    after_duration = sum(get_duration(p) for p in after_paths)
+    return (
+        before_paths,
+        before_counts,
+        before_scenes,
+        after_paths,
+        after_counts,
+        after_scenes,
+        before_duration,
+        after_duration,
+    )
+
+
+def resolve_text_cards(card_spec, scenes: list | None = None) -> list[dict]:
+    """Resolve static card lists and template-driven dynamic card specs.
+
+    Supported dynamic shape:
+        {
+          "source": "scene_phrases",
+          "chunk_words": 2,
+          "duration": 0.46,
+          "bg": "black",
+          "style": "card_editorial"
+        }
+    """
+    if not card_spec:
+        return []
+    if isinstance(card_spec, list):
+        return [dict(card) for card in card_spec if isinstance(card, dict)]
+    if not isinstance(card_spec, dict):
+        return []
+
+    source = str(card_spec.get("source") or "").strip().lower()
+    if source != "scene_phrases":
+        return []
+
+    words: list[str] = []
+    strip_punctuation = bool(card_spec.get("strip_punctuation", True))
+    for scene in scenes or []:
+        words.extend(_split_card_words(scene.get("phrase", ""), strip_punctuation))
+
+    chunk_words = max(1, int(card_spec.get("chunk_words") or 1))
+    chunk_words_max = max(chunk_words, int(card_spec.get("chunk_words_max") or chunk_words))
+    duration = max(0.18, float(card_spec.get("duration") or 0.46))
+    max_cards_raw = card_spec.get("max_cards")
+    max_cards = max(1, int(max_cards_raw)) if max_cards_raw is not None else None
+
+    chunks: list[list[str]] = []
+    idx = 0
+    while idx < len(words):
+        remaining = len(words) - idx
+        size = min(chunk_words_max, remaining)
+        # Avoid an awkward 1-2 word tail when the template allows a soft 4-5 word range.
+        while (
+            remaining - size > 0
+            and remaining - size < chunk_words
+            and size > chunk_words
+        ):
+            size -= 1
+        chunk = words[idx:idx + size]
+        if chunk:
+            chunks.append(chunk)
+        idx += size
+
+    cards: list[dict] = []
+    for chunk in chunks:
+        if max_cards is not None and len(cards) >= max_cards:
+            break
+        if not chunk:
+            continue
+        cards.append(
+            {
+                "duration": duration,
+                "beats_per_card": card_spec.get("beats_per_card"),
+                "text": " ".join(chunk),
+                "bg": card_spec.get("bg", "black"),
+                "style": card_spec.get("style", "card_phrase"),
+                "lowercase": bool(card_spec.get("lowercase", True)),
+                "fontcycle": card_spec.get("fontcycle"),
+                "fontcycle_dur": card_spec.get("fontcycle_dur"),
+                "wrap_words": card_spec.get("wrap_words"),
+                "max_chars": card_spec.get("max_chars"),
+            }
+        )
+    return cards
+
+
+def retime_text_cards_to_voice(
+    cards: list[dict],
+    spans: list[dict] | None,
+    min_duration: float = 0.4,
+    hold_after_end: float = 0.35,
+) -> list[dict]:
+    """Retain card order/text, but size each card so card-sequence time stays
+    locked to the TTS audio timeline.
+
+    Cards are concatenated video clips; card N starts at sum(durations[0..N-1]).
+    The TTS audio starts at the same point.  For the text to appear exactly when
+    the voice says it: sum(durations[0..N-1]) must equal spans[N].start.
+
+    Therefore: duration[N] = spans[N+1].start − spans[N].start (for non-last
+    cards), and duration[last] = spoken_end + hold − spans[last].start.
+    """
+    if not cards or not spans:
+        return list(cards or [])
+    retimed: list[dict] = []
+    usable = min(len(cards), len(spans))
+    for idx in range(usable):
+        card = dict(cards[idx])
+        cur = spans[idx]
+        start = max(0.0, float(cur.get("start", 0.0)))
+        spoken_end = max(start + 0.1, float(cur.get("end", start + 0.1)))
+
+        if idx + 1 < usable:
+            # Duration = gap from this phrase's voice-start to the next phrase's
+            # voice-start.  This is the only formula that keeps the cumulative
+            # card timeline locked to the TTS timeline.
+            next_start = float(spans[idx + 1].get("start", spoken_end))
+            duration = max(float(min_duration), next_start - start)
+        else:
+            # Last card: hold until the voice finishes + a comfort buffer.
+            duration = max(float(min_duration), spoken_end - start + hold_after_end)
+
+        card["duration"] = round(duration, 3)
+        card["voice_start"] = round(start, 3)
+        card["voice_end"] = round(spoken_end, 3)
+        card["card_end"] = round(start + duration, 3)
+        retimed.append(card)
+    return retimed
+
+
+def adjust_voiceover_and_cards(
+    voiceover_path: str,
+    spans: list[dict] | None,
+    cards: list[dict],
+    beat_len: float,
+    output_path: str,
+    min_duration: float = 0.4,
+    hold_after_end: float = 0.35,
+    min_speed: float = 0.85,
+    max_speed: float = 1.25,
+) -> list[dict]:
+    """Adjusts both the voiceover audio speed and card durations to sync them.
+    Each card has a target duration from the beats/template. We compare it to the spoken span duration.
+    We apply a speed adjustment factor (atempo) to the audio segment, and adjust the card duration.
+    Writes the synchronized voiceover audio to `output_path` and returns the retimed cards list.
+    """
+    if not cards or not spans or not voiceover_path or not os.path.exists(voiceover_path):
+        # Fallback to copy the file and return cards with their normal durations
+        if voiceover_path and os.path.exists(voiceover_path) and voiceover_path != output_path:
+            shutil.copy2(voiceover_path, output_path)
+        return list(cards)
+
+    retimed: list[dict] = []
+    usable = min(len(cards), len(spans))
+    
+    parts = []
+    inputs = ["-i", voiceover_path, "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo"]
+    concat_inputs = []
+
+    for idx in range(usable):
+        card = dict(cards[idx])
+        cur = spans[idx]
+        start = max(0.0, float(cur.get("start", 0.0)))
+        spoken_end = max(start + 0.1, float(cur.get("end", start + 0.1)))
+        spoken_dur = spoken_end - start
+
+        # Resolve target duration
+        if card.get("beats_per_card"):
+            target_dur = max(0.18, beat_len * float(card["beats_per_card"]))
+        else:
+            target_dur = float(card.get("duration", 1.6))
+
+        # Target speech duration should leave room for hold_after_end
+        target_speech_dur = max(0.1, target_dur - hold_after_end)
+        
+        # Calculate speed factor
+        speed = spoken_dur / target_speech_dur
+        # Clamp speed factor
+        speed = max(min_speed, min(speed, max_speed))
+        
+        # Calculate actual speech duration and final card duration
+        actual_speech_dur = spoken_dur / speed
+        final_dur = max(min_duration, actual_speech_dur + hold_after_end)
+        actual_hold = final_dur - actual_speech_dur
+
+        # Retime card
+        card["duration"] = round(final_dur, 3)
+        # Clear beats_per_card so it won't overwrite card_dur during rendering
+        if "beats_per_card" in card:
+            del card["beats_per_card"]
+        retimed.append(card)
+
+        # ffmpeg audio filters for this segment:
+        # Trim original speech segment, apply atempo speed filter, format to stereo/44100
+        lbl_v = f"v{idx}"
+        parts.append(
+            f"[0:a]atrim=start={start:.3f}:end={spoken_end:.3f},asetpts=PTS-STARTPTS,"
+            f"atempo={speed:.3f},aformat=sample_rates=44100:channel_layouts=stereo[{lbl_v}]"
+        )
+        
+        # Trim silence segment to the actual_hold duration
+        lbl_s = f"s{idx}"
+        parts.append(
+            f"[1:a]atrim=end={actual_hold:.3f},asetpts=PTS-STARTPTS,"
+            f"aformat=sample_rates=44100:channel_layouts=stereo[{lbl_s}]"
+        )
+        
+        # Concat speech + silence
+        lbl_c = f"c{idx}"
+        parts.append(f"[{lbl_v}][{lbl_s}]concat=n=2:v=0:a=1[{lbl_c}]")
+        concat_inputs.append(f"[{lbl_c}]")
+
+    # Concatenate all card audio segments
+    if len(concat_inputs) == 1:
+        parts.append(f"{concat_inputs[0]}anull[aout]")
+    else:
+        parts.append(f"{''.join(concat_inputs)}concat=n={len(concat_inputs)}:v=0:a=1[aout]")
+
+    codec = "libmp3lame" if output_path.lower().endswith(".mp3") else "aac"
+    cmd = ["ffmpeg", "-y"] + inputs + ["-filter_complex", ";".join(parts), "-map", "[aout]", "-c:a", codec, output_path]
+    _run(cmd)
+    return retimed
+
+
+
+
+
+def _format_editorial_card_text(
+    text: str,
+    max_chars: int = 18,
+    max_words_per_line: int = 3,
+) -> str:
+    """White Arial Black body with a red Great Vibes accent on the final word."""
+    words = _split_card_words(text, strip_punctuation=False)
+    if not words:
+        return ""
+    if len(words) == 1:
+        return (
+            "{\\fnGreat Vibes\\i0\\b0\\fs138\\bord0\\shad1\\c&H1B06CC&}"
+            f"{words[0]}"
+            "{\\r}"
+        )
+    lines = _wrap_words(
+        words,
+        max_chars=max(8, int(max_chars)),
+        max_words_per_line=max(1, int(max_words_per_line)),
+    )
+    rendered_lines: list[str] = []
+    for line_idx, line in enumerate(lines):
+        rendered_words: list[str] = []
+        for word_idx, word in enumerate(line):
+            is_last = line_idx == len(lines) - 1 and word_idx == len(line) - 1
+            if is_last:
+                rendered_words.append(
+                    "{\\fnGreat Vibes\\i0\\b0\\fs138\\bord0\\shad1\\c&H1B06CC&}"
+                    f"{word}"
+                    "{\\r}"
+                )
+            else:
+                rendered_words.append(word)
+        rendered_lines.append(" ".join(rendered_words))
+    return "\\N".join(rendered_lines)
 # Articles / connectives / prepositions render as red serif accents; the rest are
 # white sans emphasis words.
 _KINETIC_ACCENT_WORDS = {
@@ -1569,6 +2160,10 @@ def _card_bg_command(bg: str, w: int, h: int, fps: int, dur: float, out_path: st
         # Heavier grain so the texture survives x264 (alls=14 was smoothed away).
         src = ["-f", "lavfi", "-i", f"color=c=0x969696:s={w}x{h}"]
         vf = f"format=gray,noise=alls=22:allf=t+u,vignette=PI/6,setsar=1,fps={fps},format=yuv420p"
+    elif bg == "black":
+        # Pure black hold card with no gradient/noise for a hard monochrome intro beat.
+        src = ["-f", "lavfi", "-i", f"color=c=black:s={w}x{h}"]
+        vf = f"setsar=1,fps={fps},format=yuv420p"
     else:
         # dark_gradient: a broad soft charcoal wash — mid-gray base darkened by an
         # off-center vignette so the bright lobe sits upper-center-left and fades to
@@ -1618,6 +2213,8 @@ def render_text_card(
     fontcycle=None,
     fontcycle_dur=None,
     caption_resolution: str | None = None,
+    wrap_words: int | None = None,
+    max_chars: int | None = None,
 ) -> str:
     """Render one 'text card' — a generated dark-gradient (or light-grain)
     background with a single centered phrase burned in — matching the "Locked in"
@@ -1641,11 +2238,22 @@ def render_text_card(
     _run(_card_bg_command(bg, w, h, fps, dur, bg_path))
 
     phrase = (text or "").strip()
+    if style == "card_editorial":
+        phrase = _format_editorial_card_text(
+            phrase,
+            max_chars=max(8, int(max_chars or 18)),
+            max_words_per_line=max(1, int(wrap_words or 3)),
+        )
     # Wrap long phrases to ≤2-3 short centered lines so user-supplied scene text
-    # can't run off-frame at the heavy card font size.
-    if phrase:
+    # can't run off-frame at the heavy card font size. Editorial cards keep their own
+    # inline styling, so only the plain card styles use the generic wrapper.
+    elif phrase:
         phrase = "\\N".join(
-            " ".join(line) for line in _wrap_words(phrase.split(), max_chars=16)
+            " ".join(line) for line in _wrap_words(
+                phrase.split(),
+                max_chars=max(8, int(max_chars or 16)),
+                max_words_per_line=max(1, int(wrap_words or 3)),
+            )
         )
     fade = ""
     if fade_ms:
@@ -1660,7 +2268,7 @@ def render_text_card(
         segments, ass_path, style, cap_res, preset=None,
         fontcycle=fontcycle, fontcycle_dur=fontcycle_dur,
     )
-    burn_subtitles_ass(bg_path, ass_path, out_path)
+    burn_subtitles_ass(bg_path, ass_path, out_path, use_bundled_fonts=True)
     return out_path
 
 

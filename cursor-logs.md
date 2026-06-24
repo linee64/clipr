@@ -12,4 +12,72 @@
 - Трек `Mist.mp3` привязан к шаблону как рекомендованный (`recommended_track: "mist"`).
 - Исправлена ошибка 404 (Object not found): ID трека в шаблоне приведен к нижнему регистру (`Mist` -> `mist`), что соответствует логике формирования путей в хранилище (slugify).
 - Проведен успешный тестовый рендер через `local_render.py` с использованием нового шаблона и трека `Mist.mp3`. Система стабильна.
+- Настроен Ч/Б стиль: `grade_filter` обновлен для полной десатурации и повышения контраста.
+- Реализована сложная логика аудио-интро: музыка играет 0.8с, затем пауза 2.0с (во время текстовой карточки), после чего музыка перезапускается с начала.
+- Внесены изменения в `editor.py` и `render.py` для поддержки пауз и перезапуска музыки через параметры шаблона.
 - BPM трека Mist.mp3 (129.2) идеально совпадает с ритмом референса.
+- Для интро-карточек добавлен настоящий фон `black` вместо fallback на `dark_gradient`.
+- Для второй интро-карточки включен стиль `card_playfair` на базе `Playfair Display Medium`; bunded fonts принудительно подключаются при рендере text-card.
+- Для karaoke-шаблона активное слово переведено в белый (`caption_active_color = "&H00FFFFFF"`), убран цветной акцент.
+- Повторный локальный рендер `temp/test_bw_intro_v2.mp4` завершился успешно; промежуточные `.ass` подтвердили Playfair на интро и белую активную подсветку.
+- Пользователь утвердил переход в ACT-режим для новой доработки этого же референса.
+- Новое направление: убрать стартовые `intro_cards`, ускорить монтаж под референс, перенести черный текстовый блок в конец через новый механизм `outro_cards`.
+- Подтверждено, что текущий шаблон референса все еще использует старую связку `intro_cards` + `music_pause_start=0.8` + `music_pause_dur=2.0`.
+- Подтверждено, что `render.py` и `local_render.py` пока умеют только `intro_cards`; для финального блока нужна симметричная поддержка `outro_cards` и корректный сдвиг таймингов субтитров.
+- Выбран рабочий дизайн: основной монтаж переводится на `Trebuchet MS`, а финальные карточки используют гибрид `Playfair Display` + `Great Vibes` с бело-красной палитрой.
+- В `editor.py` добавлены `resolve_text_cards()` для динамических карточек из `scene_phrases` и новый стиль `card_editorial` для финальных черных карточек.
+- `render.py` и `local_render.py` обновлены: теперь поддерживаются `outro_cards`, вычисляемая пауза музыки на старте outro (`music_pause_at = "outro_start"`) и отключение обычных монтажных субтитров через `captions_on_montage`.
+- Шаблон референса обновлен: удалены `intro_cards`, темп смещен к `target_cut_len = 0.55` и `min_cut = 0.38`, основной шрифт переключен на `Trebuchet MS`.
+- В шаблон добавлен динамический `outro_cards`-блок: по 2 слова на карточку, черный фон, стиль `card_editorial`, максимум 12 карточек.
+- Локальный прогон `python scripts/local_render.py ... --out temp/test_outro_cards.mp4` завершился успешно.
+- Проверка артефактов подтвердила новую структуру: `concat_list.txt` начинается сразу с `cut_000.mp4`, без стартовых карточек, и заканчивается `outro_card_00.mp4`..`outro_card_05.mp4`.
+- Проверка `captions.ass` подтвердила отсутствие обычных субтитров на монтаже: в ASS остался только header без `Dialogue`.
+- Проверка `outro_card_00.ass` подтвердила типографику конца: базовый `Playfair Display Medium` + красный `Great Vibes`.
+- Аудио-проверка через `ffmpeg silencedetect` подтвердила паузу на старте outro: `silence_start ≈ 11.860`, `silence_end ≈ 12.329`, что совпадает с длительностью первой outro-card (`0.460s`).
+- Пользователь запросил вторую итерацию: сдвинуть черный блок заметно раньше конца (около зоны чуть раньше середины), увеличить выдержку карточек до 2–3 битов и заменить белый шрифт по референсу `AQO7VKO2...`.
+- Дополнительное уточнение пользователя: сделать переходы между клипами быстрее, то есть уменьшить выдержку между монтажными склейками.
+- Проверка показала, что новый шрифтовой референс уже представлен шаблоном в `templates.json` и использует `Arial Black` как белый основной шрифт.
+- В `editor.py` добавлены helper-функции `beat_interval_seconds()` и `trim_montage_to_ratio()` для beat-aware длительности карточек и раннего среза монтажа по границе сцен.
+- Стиль `card_editorial` обновлен: белая часть теперь использует `Arial Black`, красный акцент по-прежнему остается на `Great Vibes`.
+- В `render.py` и `local_render.py` подключены: расчет длительности карточки по `beats_per_card`, ранний старт black-block через `outro_start_ratio`, и подрезка outro под заменяемый хвост монтажа.
+- Шаблон `SaveClip.App_...` обновлен повторно: `target_cut_len = 0.42`, `max_cuts_per_scene = 8`, `min_cut = 0.28`, `outro_start_ratio = 0.43`, `fit_outro_to_replaced_tail = true`, `beats_per_card = 2.5`.
+- Локальный прогон `temp/test_outro_cards_v2.mp4` завершился успешно.
+- Проверка `concat_list.txt` показала новую структуру: после `cut_013.mp4` сразу начинается `outro_card_00.mp4`..`outro_card_04.mp4`, то есть черный блок действительно входит заметно раньше прежнего.
+- Проверка `outro_card_00.ass` подтвердила новый шрифт и выдержку: базовый `Arial Black`, длительность первой карточки `1.16s`, красный акцент на `Great Vibes`.
+- Проверка `captions.ass` подтвердила, что монтажные субтитры по-прежнему отключены для этого шаблона.
+- Проверка `ffmpeg silencedetect` на `with_audio.mp4` показала `silence_start ≈ 5.934`, `silence_end ≈ 7.102`, что подтверждает перенос музыкальной паузы к более раннему black-block и увеличенную выдержку карточки.
+
+## 2026-06-24
+- Пользователь подтвердил ACT для новой итерации референса `SaveClip.App_AQM8X05...`.
+- Новое требование: black-block с текстом должен входить не позже 7-й секунды от старта песни, AI voice обязателен для этого шаблона, после текстового блока музыка должна возобновляться с 2-й секунды трека, а монтаж между загруженными клипами должен стать еще динамичнее.
+- В `editor.py` добавлены `trim_montage_to_time()` и `split_montage_at_time()` для fixed-time вставки карточек по границе сцен, а `add_background_audio_only()` теперь поддерживает `restart_offset`.
+- В `render.py` и `local_render.py` шаблонные `outro_cards` получили режим вставки в середину монтажа через `outro_position = "middle"` и `outro_start_at`, с корректным сдвигом таймингов сцен после карточек.
+- Шаблон референса в `templates.json` обновлен: pacing ускорен (`target_cut_len = 0.34`, `min_cut = 0.2`, `max_cuts_per_scene = 10`), black-block перенесен на фиксированные `7.0s`, музыка после паузы перезапускается с `music_restart_offset = 2.0`.
+- В API шаблонов и frontend добавлены `require_voiceover` и `voiceover_message`; в UI выбора стиля теперь есть явное требование включить AI voice, а запуск рендера без voiceover для этого референса блокируется.
+- Локальный прогон `python scripts/local_render.py --template ref-saveclip-app-aqm8x05... --out temp/test_ref_mid_cards.mp4 ...` завершился успешно; итоговый ролик собран без падений.
+- Проверка `temp/local_render/concat_list.txt` подтвердила middle-insert: после `cut_016.mp4` идут `outro_card_00.mp4`..`outro_card_05.mp4`, затем монтаж продолжается с `cut_017.mp4`..`cut_033.mp4`.
+- Аудио-проверка через `ffmpeg silencedetect` на `temp/local_render/with_audio.mp4` показала паузу `silence_start ≈ 5.665`, `silence_end ≈ 12.631`, что подтверждает ранний переход в black-block до 7-й секунды и возврат музыки после текстового блока.
+- Пользователь уточнил новое поведение звука: background music должна играть громче, на black-block с субтитрами музыка полностью выключается, включается только AI voice, а после блока трек должен стартовать со 2-й секунды.
+- В `render.py` voiceover для референса переведен с full-video narration на `voiceover_target = "outro_cards"`: теперь TTS собирается из текста black cards и миксуется одним клипом только на интервал `mute_start/mute_dur`.
+- В `editor.py` `mix_voiceover_per_scene()` расширен поддержкой `max_duration`, чтобы voiceover принудительно обрезался длиной black-block и не заходил на зону возврата музыки.
+- В шаблон референса добавлены `music_volume = 0.82` и уточненный `voiceover_message`; локальный harness тоже теперь учитывает template-level громкость музыки.
+- Начата новая ACT-итерация по этому же референсу: требуется подтвердить и усилить поведение `AI voice only on black block`, сделать фоновую песню громче, на black-block полностью выключать музыку, а после блока перезапускать трек с `2.0s`.
+- Проведена ревизия текущего состояния кода: шаблон `ref-saveclip-app-aqm8x05...` уже использует `voiceover_target = "outro_cards"`, `music_restart_offset = 2.0` и template-level `music_volume`, но во frontend еще остаются общие формулировки про voiceover, не привязанные явно к black-block.
+- Подтверждены точки правки: `backend/workers/render.py`, `backend/scripts/local_render.py`, `frontend/src/components/create/TemplatePickStep.tsx`, `frontend/src/components/create/CreateFlow.tsx`, `frontend/src/lib/types.ts`, а также текст сообщения в `backend/templates/templates.json`.
+- В `templates.json` для референса `SaveClip.App_AQM8X05...` поднята громкость фоновой музыки (`music_volume = 1.0`) и переписан `voiceover_message`: теперь UI явно объясняет, что AI voice нужен только для black subtitle block, где музыка полностью отключается, а после блока трек стартует с `2.0s`.
+- В `frontend/src/components/create/VoiceoverPicker.tsx`, `TemplatePickStep.tsx`, `CreateFlow.tsx` и `frontend/src/lib/types.ts` убраны формулировки, которые читались как full-video narration; теперь текст в интерфейсе привязан к black-block use-case.
+- В `backend/routers/video.py` добавлена серверная валидация: если шаблон помечен `require_voiceover`, рендер без `add_voiceover` отклоняется еще на входе с template-specific сообщением.
+- В `backend/workers/render.py` и `backend/scripts/local_render.py` усилена аудио-логика `voiceover_target = "outro_cards"`: при `music_pause_at = "outro_start"` музыка теперь мутится на ВЕСЬ `outro_cards`-блок, а не только на ограниченное число карточек.
+- Diagnostics по измененным backend/frontend-файлам вернулись без ошибок.
+- Локальная проверка: `python scripts/local_render.py --template ref-saveclip-app-aqm8x05... --out temp/test_saveclip_blackblock_check.mp4 ...` завершилась успешно.
+- Аудио-проверка локального результата через `detect_silence` показала одну сплошную тихую секцию `start ≈ 5.66`, `end ≈ 13.79`, `duration ≈ 8.13`, что подтверждает полное отключение музыки на весь black block.
+- Пользователь запустил следующую ACT-итерацию для того же референса: теперь black-block должен таймиться не от фиксированных карточек, а от фактической скорости `AI voice`, то есть субтитры/карточки должны подстраиваться под TTS-spans.
+- Дополнительное требование пользователя по black-block: увеличить размер текстовых блоков примерно до `4-5` слов вместо `2-3` и сделать верстку более гармоничной — частично в длинную строку, частично в компактный столбик за счет мягких переносов.
+- Ревизия кода подтвердила, что `generate_single_voiceover()` уже возвращает точные `spans`, но ветка `voiceover_target = "outro_cards"` пока использует их только для аудио, не для длительности самих black cards; следующая правка пойдет в `editor.py`, `render.py`, `local_render.py` и шаблон `templates.json`.
+- В `editor.py` реализованы: мягкое разбиение `outro_cards` на более длинные фразы через `chunk_words/chunk_words_max`, новый helper `retime_text_cards_to_voice()` для подгонки длительности карточек под TTS-spans и расширенная поддержка `wrap_words/max_chars` в `render_text_card()`.
+- Стиль `card_editorial` на black-block теперь умеет переносить текст в 1-2 строки более гармонично: последнему слову по-прежнему дается красный script-accent, но сама фраза может быть как вытянутой по ширине, так и более столбиковой.
+- В `render.py` production-ветка `voiceover_target = "outro_cards"` переведена на новый порядок: сначала генерируется один TTS-клип с `spans`, затем `outro_cards` ретаймятся по голосу и только после этого рендерятся карточки и собирается black-block.
+- Шаблон `SaveClip.App_AQM8X05...` обновлен под более цельный текстовый блок: `chunk_words = 4`, `chunk_words_max = 5`, `wrap_words = 3`, `max_chars = 18`.
+- Быстрый python-check подтвердил новое разбиение: карточки собираются как фразы вроде `stay locked build in silence` / `every single night then switch`, а helper возвращает длительности карточек по voice spans.
+- Локальный прогон `python scripts/local_render.py --template ref-saveclip-app-aqm8x05... --out temp/test_saveclip_outro_layout_v2.mp4 ...` завершился успешно; black block собрался в `5` карточек.
+- Проверка `temp/local_render/outro_card_00.ass`..`02.ass` подтвердила новую mixed-layout верстку: карточки рендерятся в 2 строки с более гармоничным балансом ширины и столбика (`stay locked build / in silence`, `every single night / then switch`, `fast and let / the black`).

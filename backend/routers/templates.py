@@ -83,6 +83,10 @@ def _public(t: dict) -> dict:
         # When true, the create flow does NOT auto-pick music for this style — the
         # user must choose a track (library or upload) before rendering.
         "music_manual": bool(t.get("music_manual")),
+        # Some reference styles depend on spoken phrases landing before/through their
+        # signature text-card section, so the frontend must require AI voiceover.
+        "require_voiceover": bool(t.get("require_voiceover")),
+        "voiceover_message": t.get("voiceover_message") or "",
         # Work-in-progress style: shown in the picker but not selectable yet.
         "wip": bool(t.get("wip")),
         "pacing": t.get("pacing"),

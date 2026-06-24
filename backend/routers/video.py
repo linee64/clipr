@@ -42,6 +42,7 @@ from services.storage import (
     use_local_storage,
 )
 from services.tracks import get_tracks_with_urls
+from services.templates import get_template
 from workers.render import render_jobs, run_broll_render, run_render_job
 
 router = APIRouter(prefix="/api/video", tags=["video"])
@@ -469,6 +470,7 @@ async def apply_subtitles(request: SubtitleStyleRequest, background_tasks: Backg
 @router.post("/broll-render")
 async def broll_render(request: BrollRenderRequest, background_tasks: BackgroundTasks):
     """Full aesthetic b-roll render: clips + phrases + music → graded video with text."""
+    template = get_template(request.template_id) or {}
     # Fail fast (and match /voiceover/preview's contract) rather than silently rendering
     # without voiceover when it was asked for but no voice was chosen.
     if request.add_voiceover and not (request.voice_id or "").strip():
@@ -476,6 +478,15 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
             status_code=400,
             detail="voice_id is required when add_voiceover is enabled.",
         )
+    # Reference styles can require AI voice ONLY for a dedicated black subtitle block.
+    # The render pipeline then limits TTS to that section via voiceover_target, but the
+    # request still needs a real voice configured up front.
+    if template.get("require_voiceover") and not request.add_voiceover:
+        detail = (
+            template.get("voiceover_message")
+            or "This style requires AI voice on the black subtitle block before rendering."
+        )
+        raise HTTPException(status_code=400, detail=detail)
 
     # Server-side enforcement: monthly video cap (Free + Pro), premium reference
     # style / AI voice (Pro-only, 403), and AI-voiceover renders (free-tier, 429).
