@@ -8,10 +8,8 @@ import {
   ChevronRight, 
   ChevronLeft, 
   Check, 
-  Smile,
   Briefcase,
   Users,
-  FileText,
   MessageSquare,
   User
 } from "lucide-react";
@@ -32,8 +30,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [name, setName] = useState("");
   const [product, setProduct] = useState("");
   const [audience, setAudience] = useState("");
-  const [tone, setTone] = useState<"formal" | "casual">("casual");
-  const [samplePost, setSamplePost] = useState("");
+  const tone = "casual";
+  const samplePost = "";
   const [platform, setPlatform] = useState<"TikTok" | "Instagram Reels" | "LinkedIn" | "YouTube Shorts" | "Twitter / X">("TikTok");
   
   // Loading state when generating DNA

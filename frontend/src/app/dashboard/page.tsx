@@ -855,8 +855,6 @@ export default function Dashboard() {
   const heroExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [modalIdea, setModalIdea] = useState<IdeaCard | null>(null);
   const [isPlatformOpen, setIsPlatformOpen] = useState(false);
-  const [isFormatOpen, setIsFormatOpen] = useState(false);
-  const [selectedPostType, setSelectedPostType] = useState<"Video" | "Text post">("Video");
 
   // Auto-expanding textarea ref
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1683,7 +1681,6 @@ export default function Dashboard() {
                                 <button
                                   onClick={() => {
                                     setIsPlatformOpen(!isPlatformOpen);
-                                    setIsFormatOpen(false);
                                   }}
                                   className="flex items-center space-x-2 px-3 py-1.5 rounded-full text-[11px] font-semibold border bg-[#070B0D] border-[#152226] hover:border-[#10B981]/30 text-[#EFEFEF] transition-all"
                                 >

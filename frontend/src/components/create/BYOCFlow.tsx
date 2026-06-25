@@ -59,7 +59,7 @@ export function BYOCFlow({
   const srtInputRef = useRef<HTMLInputElement>(null);
 
   // Step 3: Style Template
-  const [tracks, setTracks] = useState<TemplateTrack[]>([]);
+  const [, setTracks] = useState<TemplateTrack[]>([]);
   const [chosenTemplateId, setChosenTemplateId] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateOption | null>(null);
   const [platform, setPlatform] = useState<"TikTok" | "LinkedIn" | "Reels">("TikTok");
