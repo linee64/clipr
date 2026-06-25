@@ -3,12 +3,12 @@ import { clientIp, rateLimit } from "@/lib/apiRateLimit";
 
 export async function POST(req: Request) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "Gemini API key is not configured in .env.local" }, { status: 500 });
+      return NextResponse.json({ error: "DeepSeek API key is not configured in .env.local" }, { status: 500 });
     }
 
-    // This route spends the server's Gemini budget. Throttle per-IP (best-effort).
+    // This route spends the server's DeepSeek budget. Throttle per-IP (best-effort).
     if (!rateLimit(`script:${clientIp(req)}`, 30, 60_000)) {
       return NextResponse.json(
         { error: "Too many requests — please slow down and try again shortly." },
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     if (typeof ideaTitle !== "string" || !ideaTitle.trim()) {
       return NextResponse.json({ error: "An idea title is required." }, { status: 400 });
     }
-    // Bound every user-controlled field (all are forwarded into the Gemini prompt) so a
+    // Bound every user-controlled field (all are forwarded into the prompt) so a
     // huge body can't amplify cost — same 2000-char cap the generate-ideas route enforces.
     for (const v of [product, audience, tone, samplePost, platform, ideaTitle, ideaHook]) {
       if (typeof v === "string" && v.length > 2000) {
@@ -54,47 +54,34 @@ Language Constraint: Write the response script in Russian if the product, audien
 Make sure the script matches the Tone of Voice constraint: "${tone}" and reflects the voice style reference post: "${samplePost || 'none'}".
 Do not add markdown formatting or wrappers (like \`\`\`json) around the JSON output. Return only the raw JSON.`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `Generate a script for this video idea:
+    const userPrompt = `Generate a script for this video idea:
 Title: ${ideaTitle}
 Initial Hook Concept: ${ideaHook}
 Product/Context: ${product}
 Target Audience: ${audience}
-Platform: ${platform}`,
-                },
-              ],
-            },
-          ],
-          systemInstruction: {
-            parts: [
-              {
-                text: systemInstruction,
-              },
-            ],
-          },
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.7,
-          },
-        }),
-      }
-    );
+Platform: ${platform}`;
+
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.7,
+        response_format: { type: "json_object" },
+      }),
+    });
 
     if (!response.ok) {
-      // Log upstream detail server-side only; don't forward Google's verbatim error body.
+      // Log upstream detail server-side only; don't forward DeepSeek's verbatim error body.
       const errText = await response.text();
-      console.error("Gemini API error response:", errText);
+      console.error("DeepSeek API error response:", errText);
       return NextResponse.json(
         { error: "Script generation is temporarily unavailable." },
         { status: 502 }
@@ -102,9 +89,9 @@ Platform: ${platform}`,
     }
 
     const data = await response.json();
-    const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const textContent = data.choices?.[0]?.message?.content;
     if (!textContent) {
-      return NextResponse.json({ error: "No response text from Gemini" }, { status: 500 });
+      return NextResponse.json({ error: "No response text from DeepSeek" }, { status: 500 });
     }
 
     let cleanedText = textContent.trim();

@@ -13,6 +13,7 @@ from routers import (
     templates,
     twitter,
     video,
+    byoc,
 )
 
 app = FastAPI(title="Clipr API", version="1.0.0")
@@ -46,6 +47,7 @@ app.include_router(instagram.router)
 app.include_router(schedule.router)
 app.include_router(video.router)
 app.include_router(billing.router)
+app.include_router(byoc.router)
 
 
 @app.on_event("startup")

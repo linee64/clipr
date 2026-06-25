@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/ideas", tags=["ideas"])
 @router.post("/", response_model=IdeasResponse)
 async def get_ideas(request: IdeaRequest):
     try:
-        # Blocking Gemini call — run off the event loop so it can't freeze concurrent
+        # Blocking DeepSeek call — run off the event loop so it can't freeze concurrent
         # requests (e.g. render-status polls) on the single worker.
         ideas = await asyncio.to_thread(
             generate_ideas,

@@ -6,7 +6,7 @@ import statistics
 import subprocess
 from pathlib import Path
 
-import google.generativeai as genai
+from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -178,9 +178,8 @@ def transcode_to_mp3(input_path: str, output_path: str, bitrate: str = "192k") -
     _run(cmd)
     return output_path
 
-_gemini_key = (os.getenv("GEMINI_API_KEY") or "").strip().strip('"').strip("'")
-if _gemini_key and _gemini_key != "your_key_here":
-    genai.configure(api_key=_gemini_key)
+# DeepSeek API configuration
+_deepseek_key = (os.getenv("DEEPSEEK_API_KEY") or "").strip().strip('"').strip("'")
 
 
 def trim_clip(
@@ -3332,8 +3331,14 @@ def resize_for_platform(video_path: str, output_path: str, platform: str):
 
 
 def generate_description(script_summary: str, platform: str) -> str:
-    """Generate video description using Gemini."""
-    model = genai.GenerativeModel("gemini-2.5-flash-lite")
+    """Generate video description using DeepSeek."""
+    if not _deepseek_key or _deepseek_key == "your_key_here":
+        return f"Check out this video about: {script_summary} #{platform}"
+
+    client = OpenAI(
+        base_url="https://api.deepseek.com",
+        api_key=_deepseek_key
+    )
 
     platform_rules = {
         "TikTok": "150 chars max, 3-5 hashtags, casual tone",
@@ -3353,5 +3358,11 @@ Rules:
 
 Return only the description text, nothing else.
 """
-    response = model.generate_content(prompt)
-    return response.text.strip()
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        stream=False
+    )
+    return response.choices[0].message.content.strip()

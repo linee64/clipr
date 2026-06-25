@@ -1,7 +1,6 @@
 fastapi
 uvicorn
 python-dotenv
-google-generativeai
 pydantic
 python-multipart
 aiofiles
@@ -16,3 +15,4 @@ ass
 faster-whisper
 elevenlabs>=1.0.0
 standardwebhooks
+openai

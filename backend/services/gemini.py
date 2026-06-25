@@ -1,4 +1,4 @@
-import google.generativeai as genai
+from openai import OpenAI
 import json
 import os
 from pathlib import Path
@@ -6,16 +6,16 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-api_key = (os.getenv("GEMINI_API_KEY") or "").strip().strip('"').strip("'")
+api_key = (os.getenv("DEEPSEEK_API_KEY") or "").strip().strip('"').strip("'")
 # Don't crash the whole server at import when the key is missing (e.g. before the
-# deploy's env vars are set). Only the Gemini-backed endpoints should error.
-GEMINI_READY = bool(api_key) and api_key != "your_key_here"
+# deploy's env vars are set). Only the DeepSeek-backed endpoints should error.
+DEEPSEEK_READY = bool(api_key) and api_key != "your_key_here"
 
 
-def _require_gemini() -> None:
-    if not GEMINI_READY:
+def _require_deepseek() -> None:
+    if not DEEPSEEK_READY:
         raise RuntimeError(
-            "GEMINI_API_KEY is not configured on the server. Set it in the environment."
+            "DEEPSEEK_API_KEY is not configured on the server. Set it in the environment."
         )
 
 SYSTEM_PROMPT = """
@@ -46,11 +46,12 @@ OUTPUT RULES:
 - Always write as if the creator is speaking, not a brand
 """
 
-genai.configure(api_key=api_key or "")
-model = genai.GenerativeModel(
-    "gemini-2.5-flash-lite",
-    system_instruction=SYSTEM_PROMPT,
-)
+client = None
+if DEEPSEEK_READY:
+    client = OpenAI(
+        base_url="https://api.deepseek.com",
+        api_key=api_key
+    )
 
 
 def build_user_context(niche: str, tone: str, platform: str, topic: str) -> str:
@@ -156,19 +157,26 @@ Return ONLY valid JSON:
 
 
 def generate_ideas(topic, platform, format, niche, tone) -> list[dict]:
-    _require_gemini()
+    _require_deepseek()
     prompt = IDEA_PROMPT.format(
         niche=niche,
         tone=tone,
         platform=platform,
         topic=topic,
     )
-    response = model.generate_content(prompt)
-    return _parse_json_response(response.text)
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ],
+        stream=False
+    )
+    return _parse_json_response(response.choices[0].message.content)
 
 
 def generate_visual_script(idea_title, hook_phrase, platform, tone, niche, product="", template=None) -> dict:
-    _require_gemini()
+    _require_deepseek()
     import re
 
     from services.templates import (
@@ -281,8 +289,15 @@ Return ONLY valid JSON:
   "caption": "two short sentences that sell the video, then 4-6 hashtags on a new line"
 }}
 """
-    response = model.generate_content(prompt)
-    script = _parse_json_response(response.text)
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ],
+        stream=False
+    )
+    script = _parse_json_response(response.choices[0].message.content)
     # Guard against the model returning a JSON array or scalar instead of the requested
     # object — indexing it below would otherwise raise a confusing TypeError.
     if not isinstance(script, dict):

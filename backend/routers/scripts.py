@@ -28,7 +28,7 @@ async def get_visual_script(request: VisualScriptRequest):
     try:
         # Pick a style template so each storyboard (and its montage) varies.
         template = pick_template(request.platform)
-        # generate_visual_script makes a blocking (multi-second) Gemini HTTP call; run it
+        # generate_visual_script makes a blocking (multi-second) DeepSeek HTTP call; run it
         # off the event loop so it doesn't freeze every other request (e.g. render polls).
         script = await asyncio.to_thread(
             generate_visual_script,

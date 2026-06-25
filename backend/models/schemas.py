@@ -237,3 +237,16 @@ class BillingPortalRequest(BaseModel):
     # Open the Polar customer portal (manage / cancel) for an existing customer,
     # identified by the same email used at checkout.
     email: str = ""
+
+
+class BYOCCreateRequest(BaseModel):
+    job_id: str
+    email: str = ""
+    clip_ids: List[str]
+    script: str
+    subtitles_file: str | None = None
+    burn_subtitles: bool = True
+    template_id: str
+    platform: str = "TikTok"
+    audio_file_id: str | None = None
+

@@ -61,6 +61,23 @@ export async function uploadClip(
   return parseJson(res);
 }
 
+export async function uploadBYOCClip(
+  userId: string,
+  sessionId: string,
+  file: File
+): Promise<{ clip_id: string; url: string; storage?: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(
+    `${API_BASE}/api/byoc/upload?user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(sessionId)}`,
+    {
+      method: "POST",
+      body: form,
+    }
+  );
+  return parseJson(res);
+}
+
 export async function uploadAudio(
   file: File
 ): Promise<{ audio_file_id: string }> {
@@ -521,3 +538,27 @@ export async function cancelSchedule(id: string): Promise<void> {
   });
   await parseJson(res);
 }
+
+export interface BYOCCreateRequest {
+  job_id: string;
+  email?: string;
+  clip_ids: string[];
+  script: string;
+  subtitles_file?: string | null;
+  burn_subtitles: boolean;
+  template_id: string;
+  platform: string;
+  audio_file_id?: string | null;
+}
+
+export async function startBYOCCreate(
+  payload: BYOCCreateRequest
+): Promise<{ job_id: string; status: string }> {
+  const res = await fetch(`${API_BASE}/api/byoc/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: getBillingEmail(), ...payload }),
+  });
+  return parseJson(res);
+}
+

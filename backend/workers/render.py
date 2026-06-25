@@ -242,6 +242,14 @@ async def run_render_job(
         shutil.rmtree(os.path.join(TEMP_DIR, job_id), ignore_errors=True)
 
 
+def get_clip_remote_path(clip_id: str) -> str:
+    if clip_id.startswith("byoc/"):
+        if clip_id.endswith(".mp4") or clip_id.endswith(".mov") or clip_id.endswith(".webm"):
+            return clip_id
+        return f"{clip_id}.mp4"
+    return f"clips/{clip_id}.mp4"
+
+
 async def run_broll_render(
     job_id: str,
     scenes: list,
@@ -259,6 +267,8 @@ async def run_broll_render(
     vo_speed: float = 1.0,
     vo_volume: float = 1.0,
     bg_music_volume: float = 0.2,
+    add_subtitles: bool = True,
+    source: str = "ai",
 ):
     render_jobs[job_id] = {
         "status": "processing",
@@ -525,7 +535,7 @@ async def run_broll_render(
             clip_files: list[str] = []
             for cid in uniq_ids:
                 p = os.path.join(job_dir, f"raw_{cid}.mp4")
-                await download_file(f"clips/{cid}.mp4", p)
+                await download_file(get_clip_remote_path(cid), p)
                 clip_files.append(p)
             clip_durs = {
                 p: await asyncio.to_thread(get_duration, p) for p in clip_files
@@ -601,7 +611,7 @@ async def run_broll_render(
             if fast_after is not None:
                 for di, cid in enumerate(dict.fromkeys(clip_ids)):
                     p = os.path.join(job_dir, f"raw_{di}.mp4")
-                    await download_file(f"clips/{cid}.mp4", p)
+                    await download_file(get_clip_remote_path(cid), p)
                     d = await asyncio.to_thread(get_duration, p)
                     clip_files.append(p)
                     clip_durs.append(d)
@@ -657,7 +667,7 @@ async def run_broll_render(
                     src_dur = clip_dur_by_id[clip_id]
                 else:
                     raw_path = os.path.join(job_dir, f"raw_{i}.mp4")
-                    await download_file(f"clips/{clip_id}.mp4", raw_path)
+                    await download_file(get_clip_remote_path(clip_id), raw_path)
                     src_dur = await asyncio.to_thread(get_duration, raw_path)
 
                 if hold_first and i == 0:
@@ -1033,7 +1043,7 @@ async def run_broll_render(
         ass_path = os.path.join(job_dir, "broll_captions.ass")
         # Scene phrases from the user's script — never the template's closing_caption
         # string (that field only records what appeared on the reference clip).
-        if not template.get("captions_on_montage", True):
+        if not add_subtitles or not template.get("captions_on_montage", True):
             await asyncio.to_thread(
                 generate_ass_simple,
                 [],
@@ -1109,6 +1119,19 @@ async def run_broll_render(
         # Persist the terminal state immediately so an OOM-kill before the next
         # heartbeat tick can't make a finished render read back as interrupted.
         await jobstore.finish(job_id)
+
+        # Log to public.videos database table:
+        if not use_local_storage():
+            try:
+                from services.storage import _get_supabase
+                _get_supabase().table("videos").insert({
+                    "job_id": job_id,
+                    "email": email,
+                    "output_url": url,
+                    "source": source,
+                }).execute()
+            except Exception as db_err:
+                print(f"Error inserting video record: {db_err}", flush=True)
 
         # The render delivered. Keep the reserved voiceover credit only if a voiceover was
         # actually produced; if it fell back to music-only, release the reservation.

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { CreateFlow } from "@/components/create/CreateFlow";
+import { BYOCFlow } from "@/components/create/BYOCFlow";
 import type { FlowStep } from "@/components/create/StepIndicator";
 import {
   API_BASE,
@@ -308,7 +309,7 @@ interface SavedVideo {
 }
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"Create" | "Calendar" | "My Content" | "References" | "Settings">("Create");
+  const [activeTab, setActiveTab] = useState<"Create" | "My Clips" | "Calendar" | "My Content" | "References" | "Settings">("Create");
   const [savedContent, setSavedContent] = useState<SavedVideo[]>([]);
   const [dnaInfo, setDnaInfo] = useState<{ product?: string; audience?: string; tone?: string; platform?: string }>({});
   // The signed-in user's identity, derived from the email saved at registration
@@ -318,7 +319,7 @@ export default function Dashboard() {
     email: "",
     initial: "C",
   });
-  const [sidebarActive, setSidebarActive] = useState<"Home" | "My Content" | "Calendar" | "References" | "Settings">("Home");
+  const [sidebarActive, setSidebarActive] = useState<"Home" | "My Clips" | "My Content" | "Calendar" | "References" | "Settings">("Home");
   const [references, setReferences] = useState<TemplateOption[]>([]);
   const [refsLoading, setRefsLoading] = useState(false);
   const [refsError, setRefsError] = useState<string | null>(null);
@@ -1219,7 +1220,7 @@ export default function Dashboard() {
 
   // Shared nav handler — used by both the desktop sidebar and the mobile bottom bar.
   const handleNav = (
-    name: "Home" | "My Content" | "Calendar" | "References" | "Settings"
+    name: "Home" | "My Clips" | "My Content" | "Calendar" | "References" | "Settings"
   ) => {
     setSidebarActive(name);
     if (name === "Home") {
@@ -1281,6 +1282,7 @@ export default function Dashboard() {
           <nav className="space-y-1">
             {[
               { name: "Home", icon: <Home className="w-4 h-4" /> },
+              { name: "My Clips", icon: <Film className="w-4 h-4" /> },
               { name: "My Content", icon: <Film className="w-4 h-4" /> },
               { name: "Calendar", icon: <CalendarIcon className="w-4 h-4" /> },
               { name: "References", icon: <Bookmark className="w-4 h-4" /> },
@@ -1290,7 +1292,7 @@ export default function Dashboard() {
               return (
                 <button
                   key={link.name}
-                  onClick={() => handleNav(link.name as "Home" | "My Content" | "Calendar" | "References" | "Settings")}
+                  onClick={() => handleNav(link.name as "Home" | "My Clips" | "My Content" | "Calendar" | "References" | "Settings")}
                   className={`w-full flex items-center justify-between px-4 py-2.5 rounded-[10px] text-[14px] font-normal transition-all duration-200 border ${isActive
                     ? "glowing-active-nav text-[#EFEFEF] border-transparent"
                     : "border-transparent text-[#6B7C85] hover:text-[#EFEFEF] hover:bg-[#11191B]"
@@ -1827,6 +1829,50 @@ export default function Dashboard() {
                           />
                         </div>
                       )}
+                </motion.div>
+              )}
+
+              {/* ----------------------------------------------------
+                TAB 1.5: MY CLIPS
+               ---------------------------------------------------- */}
+              {activeTab === "My Clips" && (
+                <motion.div
+                  key="my-clips-tab"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex-1 min-h-0 overflow-hidden -mx-4 sm:-mx-6 -mb-4 flex flex-col h-full"
+                >
+                  {profile.email.toLowerCase() === "aidaraltynbek02@gmail.com" ? (
+                    <BYOCFlow
+                      onBack={() => handleNav("Home")}
+                      onSchedulePost={handleScheduleFromRender}
+                      isPro={isProPlan}
+                      onRequireUpgrade={() => setUpgradeOpen(true)}
+                      videosLeft={videosLeft}
+                      videosLimit={videosLimit}
+                      videosUnlimited={isUnlimitedPro}
+                      onUsageRefresh={refreshBilling}
+                    />
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4">
+                      <div className="w-16 h-16 rounded-2xl bg-[#0D1416] border border-[#152226] flex items-center justify-center shadow-[0_0_24px_rgba(16,185,129,0.05)]">
+                        <Film className="w-6 h-6 text-[#10B981] animate-pulse" />
+                      </div>
+                      <h2 className="text-xl font-bold text-white">My Clips is Coming Soon!</h2>
+                      <p className="text-sm text-[#6B7C85] max-w-md leading-relaxed">
+                        We are currently beta-testing the option to upload and edit your own recorded footage. 
+                        This feature is temporarily restricted to select testers and will be rolled out globally soon.
+                      </p>
+                      <button
+                        onClick={() => handleNav("Home")}
+                        className="bg-[#152226] border border-[#1e2d31] hover:bg-[#1e2d31] text-[#EFEFEF] text-xs font-semibold rounded-full px-5 py-2 transition-all"
+                      >
+                        Back to Home
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -2705,6 +2751,7 @@ export default function Dashboard() {
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t border-[#152226] bg-[#0B1012]/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
         {[
           { name: "Home", label: "Home", icon: <Home className="w-5 h-5" /> },
+          { name: "My Clips", label: "Clips", icon: <Film className="w-5 h-5" /> },
           { name: "My Content", label: "Content", icon: <Film className="w-5 h-5" /> },
           { name: "Calendar", label: "Calendar", icon: <CalendarIcon className="w-5 h-5" /> },
           { name: "References", label: "Refs", icon: <Bookmark className="w-5 h-5" /> },
@@ -2715,7 +2762,7 @@ export default function Dashboard() {
             <button
               key={link.name}
               onClick={() =>
-                handleNav(link.name as "Home" | "My Content" | "Calendar" | "References" | "Settings")
+                handleNav(link.name as "Home" | "My Clips" | "My Content" | "Calendar" | "References" | "Settings")
               }
               className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
                 isActive ? "text-[#10B981]" : "text-[#6B7C85] hover:text-[#EFEFEF]"

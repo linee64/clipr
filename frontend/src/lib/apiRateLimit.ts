@@ -1,5 +1,5 @@
 // Best-effort, in-memory throttle for the public AI-proxy API routes
-// (/api/generate-ideas, /api/generate-script). These routes spend the server's Gemini
+// (/api/generate-ideas, /api/generate-script). These routes spend the server's DeepSeek
 // budget on every call, so an unthrottled anonymous caller is a budget-drain primitive.
 //
 // This is a SPEED BUMP, not a hard guarantee: on Vercel each (possibly ephemeral)
