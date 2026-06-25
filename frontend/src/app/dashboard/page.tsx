@@ -890,7 +890,7 @@ export default function Dashboard() {
         else if (dna.platform === "Instagram Reels" || dna.platform === "YouTube Shorts" || dna.platform === "Twitter / X") plat = "Reels";
 
         setSelectedPlatform(plat);
-        setInputVal(`Напиши сценарий о преимуществах нашей темы: "${dna.product}" для целевой аудитории (${dna.audience}).`);
+        setInputVal("");
         setIdeas(generateDynamicIdeas(dna.product, dna.platform));
         setHasCompletedOnboarding(true);
       } catch (e) {
@@ -929,7 +929,7 @@ export default function Dashboard() {
     else if (data.platform === "Instagram Reels" || data.platform === "YouTube Shorts" || data.platform === "Twitter / X") plat = "Reels";
 
     setSelectedPlatform(plat);
-    setInputVal(`Напиши сценарий о преимуществах нашей темы: "${data.product}" для целевой аудитории (${data.audience}).`);
+    setInputVal("");
     setIdeas(generateDynamicIdeas(data.product, data.platform));
     setHasCompletedOnboarding(true);
   };
@@ -937,6 +937,24 @@ export default function Dashboard() {
   const handleResetDna = () => {
     localStorage.removeItem("clipr_dna");
     setHasCompletedOnboarding(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      localStorage.removeItem("clipr_email");
+      localStorage.removeItem("clipr_name");
+      localStorage.removeItem("clipr_dna");
+      localStorage.removeItem("clipr_registered");
+      if (typeof window !== "undefined") {
+        const { supabase } = await import("@/lib/supabase");
+        if (supabase) {
+          await supabase.auth.signOut();
+        }
+      }
+    } catch (e) {
+      console.error("Error signing out:", e);
+    }
+    window.location.href = "/login";
   };
 
   const handleSelectIdea = (idea: IdeaCard) => {
@@ -1373,13 +1391,7 @@ export default function Dashboard() {
               <Bell className="w-3.5 h-3.5" />
               <span className="absolute top-0 right-0 w-1 h-1 bg-[#10B981] rounded-full" />
             </button>
-            <button
-              onClick={handleResetDna}
-              className="hidden md:inline-block text-[10px] text-[#6B7C85] hover:text-white border border-dashed border-[#152226] hover:border-[#10B981]/40 px-2 py-1 rounded transition-all"
-              title="Restart onboarding (dev)"
-            >
-              ↻ Onboarding
-            </button>
+
             {(X_ENABLED || LINKEDIN_ENABLED) && (
             <div className="relative hidden md:block" ref={connectMenuRef}>
               <button
@@ -1638,7 +1650,7 @@ export default function Dashboard() {
                     >
                       <div className="flex flex-col items-center text-center space-y-1.5 pb-2 pt-2 sm:pt-10 md:pt-24 select-none">
                         <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[#EFEFEF]">
-                          What&apos;s your next viral hook<span className="text-[#10B981]">?</span>
+                          What&apos;s your next viral hook, {profile.name}<span className="text-[#10B981]">?</span>
                         </h1>
                         <p className="text-[10px] text-[#6B7C85] tracking-[0.5em] uppercase font-mono font-bold">
                           Clipr AI Content Engine
@@ -1699,50 +1711,7 @@ export default function Dashboard() {
                                 )}
                               </div>
 
-                              <div className="w-[1px] h-3 bg-[#152226]" />
 
-                              {/* Format Dropdown */}
-                              <div className="relative">
-                                <button
-                                  onClick={() => {
-                                    setIsFormatOpen(!isFormatOpen);
-                                    setIsPlatformOpen(false);
-                                  }}
-                                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full text-[11px] font-semibold border bg-[#070B0D] border-[#152226] hover:border-[#10B981]/30 text-[#EFEFEF] transition-all"
-                                >
-                                  <span>Format: {selectedPostType === "Video" ? "Video Post" : "Text Post"}</span>
-                                  <svg className={`w-3 h-3 text-[#6B7C85] transition-transform ${isFormatOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                                  </svg>
-                                </button>
-                                {isFormatOpen && (
-                                  <div className="absolute left-0 top-full mt-2 w-52 rounded-xl bg-[#0D1416] border border-[#152226] shadow-2xl z-30 p-1 space-y-0.5">
-                                    <button
-                                      onClick={() => {
-                                        setSelectedPostType("Video");
-                                        setIsFormatOpen(false);
-                                      }}
-                                      className={`w-full text-left px-3 py-2.5 rounded-lg text-xs hover:bg-[#11191B] hover:text-[#10B981] transition-all flex items-center justify-between ${selectedPostType === "Video" ? "text-[#10B981] bg-[#11191B]/50 font-bold" : "text-[#6B7C85]"
-                                        }`}
-                                    >
-                                      <span>Video post</span>
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setIsFormatOpen(false);
-                                        setUpgradeOpen(true);
-                                      }}
-                                      className="w-full text-left px-3 py-2.5 rounded-lg text-xs hover:bg-[#11191B] text-[#6B7C85] transition-all flex items-center justify-between opacity-80 cursor-not-allowed"
-                                    >
-                                      <span>Text post</span>
-                                      <svg className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z" />
-                                        <path d="M3 20h18a1 1 0 0 0 1-1v-1a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1z" />
-                                      </svg>
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
                             </div>
 
                             {/* Generate button */}
@@ -2583,10 +2552,10 @@ export default function Dashboard() {
                     <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#EF8B8B] font-semibold">Danger zone</h3>
                     <div className="flex items-center justify-between gap-4">
                       <div>
-                        <p className="text-xs text-[#EFEFEF]">Reset onboarding</p>
-                        <p className="text-[11px] text-[#6B7C85] mt-0.5">Clears your brand DNA and restarts the setup flow.</p>
+                        <p className="text-xs text-[#EFEFEF]">Log out</p>
+                        <p className="text-[11px] text-[#6B7C85] mt-0.5">Sign out of your account session.</p>
                       </div>
-                      <button onClick={handleResetDna} className="shrink-0 text-xs text-[#EF8B8B] border border-[#3A1A1A] hover:bg-[#EF8B8B]/10 rounded-lg px-3 py-2 transition-colors">Reset</button>
+                      <button onClick={handleLogout} className="shrink-0 text-xs text-[#EF8B8B] border border-[#3A1A1A] hover:bg-[#EF8B8B]/10 rounded-lg px-3 py-2 transition-colors">Log out</button>
                     </div>
                   </section>
                 </motion.div>
