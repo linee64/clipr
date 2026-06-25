@@ -372,13 +372,13 @@ export default function Home() {
                 <div className="text-center">
                   <span className="text-zinc-500 text-xs uppercase tracking-wider block font-bold">Full Workflow</span>
                   <div className="flex flex-col items-center mt-1.5 space-y-0.5">
-                    <span className="text-base text-zinc-500 line-through font-semibold">$25</span>
+                    <span className="text-base text-zinc-500 line-through font-semibold">$15</span>
                     <div className="flex items-baseline justify-center">
-                      <span className="text-4xl font-black text-white">$15</span>
+                      <span className="text-4xl font-black text-white">$7.99</span>
                       <span className="text-zinc-500 text-xs ml-1">/ month</span>
                     </div>
                     <span className="inline-block text-[9px] font-mono font-bold uppercase tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/20 px-2 py-0.5 rounded-full mt-1">
-                      Save $10 · Limited time
+                      Save $7.01 · Limited time
                     </span>
                   </div>
                 </div>
@@ -406,7 +406,7 @@ export default function Home() {
                   Start 5-day free trial
                 </Button>
                 <p className="text-[9px] text-zinc-500 text-center tracking-wide">
-                  Free 5-day trial · Then $15/mo · Cancel anytime
+                  Free 5-day trial · Then $7.99/mo · Cancel anytime
                 </p>
               </div>
             </motion.div>
