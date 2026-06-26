@@ -188,7 +188,13 @@ export async function generateIdeas(
   const res = await fetch(`/api/generate-ideas`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      prompt: payload.topic,
+      product: payload.topic,
+      audience: payload.niche ?? "",
+      tone: payload.tone ?? "",
+      platform: payload.platform ?? "",
+    }),
   });
   return parseJson(res);
 }
