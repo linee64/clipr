@@ -418,13 +418,13 @@ export function RenderStep({
                 </div>
 
                 {/* Actions */}
-                <div className="mt-3 flex flex-col sm:flex-row gap-2.5">
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <a
                     href={resolveBackendUrl(renderStatus.output_url)}
                     download
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="sm:flex-1 text-center bg-[#10B981] text-white rounded-lg py-3 text-sm font-medium hover:bg-[#12cf90] transition-colors"
+                    className="w-full text-center bg-[#10B981] text-white rounded-lg py-3 text-sm font-medium hover:bg-[#12cf90] transition-colors"
                   >
                     Download
                   </a>
@@ -434,7 +434,7 @@ export function RenderStep({
                       href={postResult.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#10B981]/40 text-[#10B981] rounded-lg py-3 text-sm font-medium hover:bg-[#10B981]/10 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 bg-[#0D1416] border border-[#10B981]/40 text-[#10B981] rounded-lg py-3 text-sm font-medium hover:bg-[#10B981]/10 transition-colors"
                     >
                       <Check className="w-4 h-4" />
                       Posted — view on X
@@ -448,7 +448,7 @@ export function RenderStep({
                         )
                       }
                       title="Connect your X account to post"
-                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors"
+                      className="w-full flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors"
                     >
                       <XLogo className="w-3.5 h-3.5" />
                       Connect X to post
@@ -458,7 +458,7 @@ export function RenderStep({
                       type="button"
                       onClick={handlePostToX}
                       disabled={posting || !xStatus}
-                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {posting ? (
                         <>
@@ -479,7 +479,7 @@ export function RenderStep({
                       href={liPostResult.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#10B981]/40 text-[#10B981] rounded-lg py-3 text-sm font-medium hover:bg-[#10B981]/10 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 bg-[#0D1416] border border-[#10B981]/40 text-[#10B981] rounded-lg py-3 text-sm font-medium hover:bg-[#10B981]/10 transition-colors"
                     >
                       <Check className="w-4 h-4" />
                       Posted — view on LinkedIn
@@ -493,7 +493,7 @@ export function RenderStep({
                         )
                       }
                       title="Connect your LinkedIn account to post"
-                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors"
+                      className="w-full flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors"
                     >
                       <LinkedInLogo className="w-3.5 h-3.5" />
                       Connect LinkedIn to post
@@ -503,7 +503,7 @@ export function RenderStep({
                       type="button"
                       onClick={handlePostToLinkedIn}
                       disabled={liPosting || !liStatus}
-                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {liPosting ? (
                         <>
@@ -524,7 +524,7 @@ export function RenderStep({
                       href={igPostResult.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#10B981]/40 text-[#10B981] rounded-lg py-3 text-sm font-medium hover:bg-[#10B981]/10 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 bg-[#0D1416] border border-[#10B981]/40 text-[#10B981] rounded-lg py-3 text-sm font-medium hover:bg-[#10B981]/10 transition-colors"
                     >
                       <Check className="w-4 h-4" />
                       Posted — view on Instagram
@@ -538,7 +538,7 @@ export function RenderStep({
                         )
                       }
                       title="Connect your Instagram account to post"
-                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors"
+                      className="w-full flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors"
                     >
                       <InstagramLogo className="w-3.5 h-3.5" />
                       Connect Instagram to post
@@ -548,7 +548,7 @@ export function RenderStep({
                       type="button"
                       onClick={handlePostToInstagram}
                       disabled={igPosting || !igStatus}
-                      className="sm:flex-1 flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full flex items-center justify-center gap-2 bg-[#0D1416] border border-[#152226] text-[#EFEFEF] rounded-lg py-3 text-sm font-medium hover:border-[#10B981]/40 hover:bg-[#10191B] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {igPosting ? (
                         <>
