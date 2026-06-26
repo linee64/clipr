@@ -12,11 +12,19 @@ import type {
   ScheduledPost,
 } from "./types";
 
-let rawApiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
-if (rawApiBase.startsWith("http://") && !rawApiBase.includes("localhost") && !rawApiBase.includes("127.0.0.1")) {
-  rawApiBase = rawApiBase.replace("http://", "https://");
+// Backend (FastAPI on Railway) base URL. Set NEXT_PUBLIC_API_BASE in the deploy
+// environment (Vercel) to the Railway domain; falls back to localhost for dev.
+// NOTE: Forces https:// for any non-localhost URL to prevent mixed-content blocking.
+function _resolveApiBase(): string {
+  const raw = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+  const trimmed = raw.replace(/\/+$/, "");
+  // Production domains must use HTTPS — auto-upgrade if someone configured http://
+  if (trimmed.startsWith("http://") && !trimmed.includes("localhost") && !trimmed.includes("127.0.0.1")) {
+    return trimmed.replace("http://", "https://");
+  }
+  return trimmed;
 }
-export const API_BASE = rawApiBase.replace(/\/+$/, "");
+export const API_BASE = _resolveApiBase();
 
 async function parseJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
