@@ -12,13 +12,13 @@ import type {
   ScheduledPost,
 } from "./types";
 
-// Backend (FastAPI on Railway) base URL. Set NEXT_PUBLIC_API_BASE in the deploy
-// environment (Vercel) to the Railway domain; falls back to localhost for dev.
-export const API_BASE = (
-  typeof window !== "undefined"
-    ? ""
-    : process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"
-).replace(/\/+$/, "");
+let rawApiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+if (typeof window !== "undefined") {
+  rawApiBase = "";
+} else if (rawApiBase.startsWith("http://") && !rawApiBase.includes("localhost") && !rawApiBase.includes("127.0.0.1")) {
+  rawApiBase = rawApiBase.replace("http://", "https://");
+}
+export const API_BASE = rawApiBase.replace(/\/+$/, "");
 
 async function parseJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
