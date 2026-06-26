@@ -185,7 +185,7 @@ export async function getRenderStatus(jobId: string): Promise<RenderStatus> {
 export async function generateIdeas(
   payload: IdeaRequest
 ): Promise<IdeasResponse> {
-  const res = await fetch(`${getApiBase()}/api/ideas`, {
+  const res = await fetch(`/api/generate-ideas`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
