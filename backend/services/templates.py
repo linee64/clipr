@@ -19,7 +19,7 @@ TEMPLATES_PATH = BACKEND_DIR / "templates" / "templates.json"
 # storyboard is generated (services/gemini.py) and as a render-time safety net
 # (workers/render.py + scripts/local_render.py), so every video — whatever the
 # template, scene count, or how the scenes were supplied — stays within the cap.
-MAX_VIDEO_SECONDS = 25.0
+MAX_VIDEO_SECONDS = 20.0
 
 # Caption presets: each template gets a DISTINCT subtitle treatment, not just a
 # font. We vary base font, an emphasis font for the active/highlighted word (so a

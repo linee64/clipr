@@ -23,7 +23,10 @@ app = FastAPI(title="Clipr API", version="1.0.0")
 # for development. "*" allows any origin (note: with credentials disabled below).
 _origins = [
     o.strip()
-    for o in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+    for o in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,https://clipr-ai.xyz,https://www.clipr-ai.xyz"
+    ).split(",")
     if o.strip()
 ]
 _allow_all = _origins == ["*"]

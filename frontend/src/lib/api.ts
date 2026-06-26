@@ -15,7 +15,9 @@ import type {
 // Backend (FastAPI on Railway) base URL. Set NEXT_PUBLIC_API_BASE in the deploy
 // environment (Vercel) to the Railway domain; falls back to localhost for dev.
 export const API_BASE = (
-  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"
+  typeof window !== "undefined"
+    ? ""
+    : process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"
 ).replace(/\/+$/, "");
 
 async function parseJson<T>(res: Response): Promise<T> {
