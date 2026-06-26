@@ -16,6 +16,14 @@ import type {
 // environment (Vercel) to the Railway domain; falls back to localhost for dev.
 // NOTE: Forces https:// for any non-localhost URL to prevent mixed-content blocking.
 function _resolveApiBase(): string {
+  // If running in the browser and NOT on localhost, use relative paths
+  // to let Next.js rewrites proxy the requests to the backend securely (avoiding mixed content).
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+      return "";
+    }
+  }
   const raw = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
   const trimmed = raw.replace(/\/+$/, "");
   // Production domains must use HTTPS — auto-upgrade if someone configured http://
