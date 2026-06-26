@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import {
   HeroDemoSlot,
 } from "@/components/VisualMockups";
+import { InfiniteVideoCarousel } from "@/components/InfiniteVideoCarousel";
 
 export default function Home() {
   const [scrolled, setScrolled] = useState(false);
@@ -150,7 +151,19 @@ export default function Home() {
 
           {/* Hero visual: startup demo slot */}
           <div className="pt-12 md:pt-16 w-full">
-            <HeroDemoSlot />
+            <HeroDemoSlot>
+              <div className="absolute inset-0 p-2 sm:p-4">
+                <video
+                  src="/clipr-demo-1782453224517.mp4"
+                  className="w-full h-full object-contain rounded-xl bg-zinc-950"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  controls
+                />
+              </div>
+            </HeroDemoSlot>
           </div>
         </div>
       </section>
@@ -290,6 +303,103 @@ export default function Home() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* 6. SEE IT IN ACTION (RESULT GALLERY) */}
+      <section id="results" className="relative py-24 md:py-32 bg-zinc-950/20 z-10">
+        <div className="max-w-6xl mx-auto px-4 md:px-8">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={fadeInVariants}
+            className="text-center space-y-4 mb-12 md:mb-16"
+          >
+            <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold">On-Chain Proof</span>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white">
+              See Clipr in action
+            </h2>
+            <p className="text-zinc-400 max-w-xl mx-auto text-sm md:text-base">
+              These actual TikToks and Reels were generated from single-sentence prompts in less than 20 minutes.
+            </p>
+          </motion.div>
+        </div>
+
+        {(() => {
+          const resultVideos = [
+            {
+              src: "/result/result_dev_loop.mp4",
+              tag: "SaaS Promotion",
+              title: "The Developer Loop",
+              desc: "Deep-focus dark-cinematic theme customized for engineering founders.",
+            },
+            {
+              src: "/result/result_growth_hook.mp4",
+              tag: "Growth Hook",
+              title: "Stop Wasting Time",
+              desc: "High-contrast pacing optimized for maximal initial viewer retention.",
+            },
+            {
+              src: "/result/result_blueprint.mp4",
+              tag: "AI Walkthrough",
+              title: "Product Blueprint",
+              desc: "Clean light-grain transitions with clear, dynamic call-to-actions.",
+            },
+            {
+              src: "/result/result_solo_build.mp4",
+              tag: "Personal Brand",
+              title: "The Solo Build",
+              desc: "Subtle moody warm grading for storytelling and sharing build updates.",
+            },
+          ];
+          return (
+            <>
+              {/* Mobile/Tablet: Infinite swipe carousel */}
+              <div className="lg:hidden">
+                <InfiniteVideoCarousel videos={resultVideos} />
+              </div>
+
+              {/* Desktop: 4-col grid */}
+              <div className="hidden lg:block max-w-6xl mx-auto px-8">
+                <div className="grid grid-cols-4 gap-8">
+                  {resultVideos.map((video, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, y: 40 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, margin: "-50px" }}
+                      transition={{ duration: 0.6, delay: idx * 0.1 }}
+                      className="group relative flex flex-col justify-between rounded-2xl bg-zinc-950 border border-zinc-900 overflow-hidden hover:border-zinc-800 transition-all duration-300 shadow-xl"
+                    >
+                      <div className="relative aspect-[9/16] w-full overflow-hidden bg-zinc-900/50">
+                        <video
+                          src={video.src}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-60 pointer-events-none" />
+                        <span className="absolute top-3 left-3 text-[10px] uppercase font-mono tracking-wider font-semibold text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-2.5 py-1 rounded-full backdrop-blur-md">
+                          {video.tag}
+                        </span>
+                      </div>
+                      <div className="p-5 space-y-1.5 bg-zinc-950 z-10 border-t border-zinc-900/80">
+                        <h3 className="font-bold text-base text-white group-hover:text-[#10B981] transition-colors">
+                          {video.title}
+                        </h3>
+                        <p className="text-xs text-zinc-400 leading-relaxed font-light">
+                          {video.desc}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </section>
 
       {/* 7. PRICING */}
