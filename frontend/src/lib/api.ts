@@ -15,21 +15,20 @@ import type {
 // Backend (FastAPI on Railway) base URL. Set NEXT_PUBLIC_API_BASE in the deploy
 // environment (Vercel) to the Railway domain; falls back to localhost for dev.
 // NOTE: Forces https:// for any non-localhost URL to prevent mixed-content blocking.
-function _resolveApiBase(): string {
-  // If running in the browser and NOT on localhost, use relative paths
-  // to let Next.js rewrites proxy the requests to the backend securely (avoiding mixed content).
+export function getApiBase(): string {
   if (typeof window !== "undefined") {
     return "";
   }
   const raw = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
   const trimmed = raw.replace(/\/+$/, "");
-  // Production domains must use HTTPS — auto-upgrade if someone configured http://
   if (trimmed.startsWith("http://") && !trimmed.includes("localhost") && !trimmed.includes("127.0.0.1")) {
     return trimmed.replace("http://", "https://");
   }
   return trimmed;
 }
-export const API_BASE = _resolveApiBase();
+
+// Export for compatibility with other components
+export const API_BASE = getApiBase();
 
 async function parseJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -59,7 +58,7 @@ export function isUpgradeError(e: unknown): boolean {
 export function resolveBackendUrl(url: string): string {
   if (!url) return url;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  return `${API_BASE}${url.startsWith("/") ? url : `/${url}`}`;
+  return `${getApiBase()}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
 export async function uploadClip(
@@ -67,7 +66,7 @@ export async function uploadClip(
 ): Promise<{ clip_id: string; url: string; storage?: string }> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${API_BASE}/api/video/upload/clip`, {
+  const res = await fetch(`${getApiBase()}/api/video/upload/clip`, {
     method: "POST",
     body: form,
   });
@@ -82,7 +81,7 @@ export async function uploadBYOCClip(
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(
-    `${API_BASE}/api/byoc/upload?user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(sessionId)}`,
+    `${getApiBase()}/api/byoc/upload?user_id=${encodeURIComponent(userId)}&session_id=${encodeURIComponent(sessionId)}`,
     {
       method: "POST",
       body: form,
@@ -96,7 +95,7 @@ export async function uploadAudio(
 ): Promise<{ audio_file_id: string }> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${API_BASE}/api/video/upload/audio`, {
+  const res = await fetch(`${getApiBase()}/api/video/upload/audio`, {
     method: "POST",
     body: form,
   });
@@ -108,7 +107,7 @@ export async function searchPexelsVideos(
   page = 1
 ): Promise<PexelsSearchResponse> {
   const params = new URLSearchParams({ query, page: String(page) });
-  const res = await fetch(`${API_BASE}/api/pexels/search?${params.toString()}`);
+  const res = await fetch(`${getApiBase()}/api/pexels/search?${params.toString()}`);
   return parseJson(res);
 }
 
@@ -116,7 +115,7 @@ export async function searchPexelsVideos(
 export async function importPexelsClip(
   videoId: number
 ): Promise<{ clip_id: string; url: string; storage?: string }> {
-  const res = await fetch(`${API_BASE}/api/video/pexels-import`, {
+  const res = await fetch(`${getApiBase()}/api/video/pexels-import`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ video_id: videoId }),
@@ -125,7 +124,7 @@ export async function importPexelsClip(
 }
 
 export async function fetchTracks(): Promise<TemplateTrack[]> {
-  const res = await fetch(`${API_BASE}/api/video/tracks`);
+  const res = await fetch(`${getApiBase()}/api/video/tracks`);
   const data = await parseJson<{ tracks: TemplateTrack[] }>(res);
   return data.tracks.map((t) => ({ ...t, url: resolveBackendUrl(t.url) }));
 }
@@ -133,7 +132,7 @@ export async function fetchTracks(): Promise<TemplateTrack[]> {
 export async function startBrollRender(
   payload: BrollRenderRequest
 ): Promise<{ job_id: string; status: string }> {
-  const res = await fetch(`${API_BASE}/api/video/broll-render`, {
+  const res = await fetch(`${getApiBase()}/api/video/broll-render`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     // Attach the billing email so the backend can gate premium voices/styles and
@@ -146,7 +145,7 @@ export async function startBrollRender(
 /** List the ElevenLabs voices available for AI voiceover. Throws (with the backend's
  *  message) if voiceover isn't configured on the server — callers surface that. */
 export async function getVoices(): Promise<{ voices: Voice[] }> {
-  const res = await fetch(`${API_BASE}/api/video/voices`);
+  const res = await fetch(`${getApiBase()}/api/video/voices`);
   return parseJson(res);
 }
 
@@ -157,7 +156,7 @@ export async function previewVoiceover(payload: {
   text?: string;
   speed?: number;
 }): Promise<{ audio_base64: string; content_type: string }> {
-  const res = await fetch(`${API_BASE}/api/video/voiceover/preview`, {
+  const res = await fetch(`${getApiBase()}/api/video/voiceover/preview`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -172,24 +171,24 @@ export async function sampleTemplates(
 ): Promise<TemplateSampleResponse> {
   const params = new URLSearchParams({ platform, count: String(count) });
   if (exclude.length) params.set("exclude", exclude.join(","));
-  const res = await fetch(`${API_BASE}/api/templates/sample?${params.toString()}`);
+  const res = await fetch(`${getApiBase()}/api/templates/sample?${params.toString()}`);
   return parseJson(res);
 }
 
 export async function listReferences(): Promise<TemplateSampleResponse> {
-  const res = await fetch(`${API_BASE}/api/templates/all`);
+  const res = await fetch(`${getApiBase()}/api/templates/all`);
   return parseJson(res);
 }
 
 export async function getRenderStatus(jobId: string): Promise<RenderStatus> {
-  const res = await fetch(`${API_BASE}/api/video/render/${jobId}`);
+  const res = await fetch(`${getApiBase()}/api/video/render/${jobId}`);
   return parseJson(res);
 }
 
 export async function generateIdeas(
   payload: IdeaRequest
 ): Promise<IdeasResponse> {
-  const res = await fetch(`${API_BASE}/api/ideas`, {
+  const res = await fetch(`${getApiBase()}/api/ideas`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -200,7 +199,7 @@ export async function generateIdeas(
 export async function generateVisualScript(
   payload: VisualScriptRequest
 ): Promise<VisualScriptResponse> {
-  const res = await fetch(`${API_BASE}/api/scripts/visual`, {
+  const res = await fetch(`${getApiBase()}/api/scripts/visual`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     // Attach the billing email so the backend can meter free-tier regenerations.
@@ -258,7 +257,7 @@ function getClientId(): string {
 /** Whether an X account is connected for this browser, and which handle. */
 export async function getTwitterStatus(): Promise<TwitterStatus> {
   const res = await fetch(
-    `${API_BASE}/api/twitter/status?cid=${encodeURIComponent(getClientId())}`,
+    `${getApiBase()}/api/twitter/status?cid=${encodeURIComponent(getClientId())}`,
     { cache: "no-store" }
   );
   return parseJson(res);
@@ -271,7 +270,7 @@ export async function getTwitterStatus(): Promise<TwitterStatus> {
  */
 export async function startTwitterConnect(): Promise<void> {
   const res = await fetch(
-    `${API_BASE}/api/twitter/login?cid=${encodeURIComponent(getClientId())}`,
+    `${getApiBase()}/api/twitter/login?cid=${encodeURIComponent(getClientId())}`,
     { cache: "no-store" }
   );
   const { authorize_url } = await parseJson<{ authorize_url: string }>(res);
@@ -283,7 +282,7 @@ export async function postToTwitter(payload: {
   output_url: string;
   caption: string;
 }): Promise<TwitterPostResult> {
-  const res = await fetch(`${API_BASE}/api/twitter/post`, {
+  const res = await fetch(`${getApiBase()}/api/twitter/post`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...payload, cid: getClientId() }),
@@ -294,7 +293,7 @@ export async function postToTwitter(payload: {
 /** Forget the connected X account for this browser. */
 export async function disconnectTwitter(): Promise<void> {
   const res = await fetch(
-    `${API_BASE}/api/twitter/disconnect?cid=${encodeURIComponent(getClientId())}`,
+    `${getApiBase()}/api/twitter/disconnect?cid=${encodeURIComponent(getClientId())}`,
     { method: "POST" }
   );
   await parseJson(res);
@@ -326,7 +325,7 @@ export const LINKEDIN_ENABLED = process.env.NEXT_PUBLIC_LINKEDIN_ENABLED !== "fa
 /** Whether a LinkedIn account is connected for this browser, and which member. */
 export async function getLinkedInStatus(): Promise<LinkedInStatus> {
   const res = await fetch(
-    `${API_BASE}/api/linkedin/status?cid=${encodeURIComponent(getClientId())}`,
+    `${getApiBase()}/api/linkedin/status?cid=${encodeURIComponent(getClientId())}`,
     { cache: "no-store" }
   );
   return parseJson(res);
@@ -335,7 +334,7 @@ export async function getLinkedInStatus(): Promise<LinkedInStatus> {
 /** Kick off the LinkedIn OAuth connect (same passthrough pattern as X). */
 export async function startLinkedInConnect(): Promise<void> {
   const res = await fetch(
-    `${API_BASE}/api/linkedin/login?cid=${encodeURIComponent(getClientId())}`,
+    `${getApiBase()}/api/linkedin/login?cid=${encodeURIComponent(getClientId())}`,
     { cache: "no-store" }
   );
   const { authorize_url } = await parseJson<{ authorize_url: string }>(res);
@@ -353,7 +352,7 @@ export async function postToLinkedIn(payload: {
   output_url: string;
   caption: string;
 }): Promise<LinkedInPostResult> {
-  const res = await fetch(`${API_BASE}/api/linkedin/post`, {
+  const res = await fetch(`${getApiBase()}/api/linkedin/post`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...payload, cid: getClientId() }),
@@ -364,7 +363,7 @@ export async function postToLinkedIn(payload: {
 /** Forget the connected LinkedIn account for this browser. */
 export async function disconnectLinkedIn(): Promise<void> {
   const res = await fetch(
-    `${API_BASE}/api/linkedin/disconnect?cid=${encodeURIComponent(getClientId())}`,
+    `${getApiBase()}/api/linkedin/disconnect?cid=${encodeURIComponent(getClientId())}`,
     { method: "POST" }
   );
   await parseJson(res);
@@ -390,7 +389,7 @@ export const INSTAGRAM_ENABLED = process.env.NEXT_PUBLIC_INSTAGRAM_ENABLED === "
 
 export async function getInstagramStatus(): Promise<InstagramStatus> {
   const res = await fetch(
-    `${API_BASE}/api/instagram/status?cid=${encodeURIComponent(getClientId())}`,
+    `${getApiBase()}/api/instagram/status?cid=${encodeURIComponent(getClientId())}`,
     { cache: "no-store" }
   );
   return parseJson(res);
@@ -398,7 +397,7 @@ export async function getInstagramStatus(): Promise<InstagramStatus> {
 
 export async function startInstagramConnect(): Promise<void> {
   const res = await fetch(
-    `${API_BASE}/api/instagram/login?cid=${encodeURIComponent(getClientId())}`,
+    `${getApiBase()}/api/instagram/login?cid=${encodeURIComponent(getClientId())}`,
     { cache: "no-store" }
   );
   const { authorize_url } = await parseJson<{ authorize_url: string }>(res);
@@ -414,7 +413,7 @@ export async function postToInstagram(payload: {
   output_url: string;
   caption: string;
 }): Promise<InstagramPostResult> {
-  const res = await fetch(`${API_BASE}/api/instagram/post`, {
+  const res = await fetch(`${getApiBase()}/api/instagram/post`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...payload, cid: getClientId() }),
@@ -424,7 +423,7 @@ export async function postToInstagram(payload: {
 
 export async function disconnectInstagram(): Promise<void> {
   const res = await fetch(
-    `${API_BASE}/api/instagram/disconnect?cid=${encodeURIComponent(getClientId())}`,
+    `${getApiBase()}/api/instagram/disconnect?cid=${encodeURIComponent(getClientId())}`,
     { method: "POST" }
   );
   await parseJson(res);
@@ -477,7 +476,7 @@ function getBillingEmail(): string {
 /** Whether this account currently has an active Pro subscription (per the backend). */
 export async function getBillingStatus(): Promise<BillingStatus> {
   const res = await fetch(
-    `${API_BASE}/api/billing/status?email=${encodeURIComponent(getBillingEmail())}`,
+    `${getApiBase()}/api/billing/status?email=${encodeURIComponent(getBillingEmail())}`,
     { cache: "no-store" }
   );
   return parseJson(res);
@@ -490,7 +489,7 @@ export async function getBillingStatus(): Promise<BillingStatus> {
 export async function startCheckout(): Promise<void> {
   const email = getBillingEmail();
   if (!email) throw new Error("Add your email first so we can link your subscription.");
-  const res = await fetch(`${API_BASE}/api/billing/checkout`, {
+  const res = await fetch(`${getApiBase()}/api/billing/checkout`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -503,7 +502,7 @@ export async function startCheckout(): Promise<void> {
 export async function openBillingPortal(): Promise<void> {
   const email = getBillingEmail();
   if (!email) throw new Error("No email on file for this account.");
-  const res = await fetch(`${API_BASE}/api/billing/portal`, {
+  const res = await fetch(`${getApiBase()}/api/billing/portal`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -525,7 +524,7 @@ export async function createSchedule(payload: {
   /** epoch seconds */
   scheduled_at: number;
 }): Promise<ScheduledPost> {
-  const res = await fetch(`${API_BASE}/api/schedule`, {
+  const res = await fetch(`${getApiBase()}/api/schedule`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...payload, cid: getClientId() }),
@@ -536,7 +535,7 @@ export async function createSchedule(payload: {
 /** This browser's scheduled posts (pending + history). */
 export async function listSchedules(): Promise<{ schedules: ScheduledPost[] }> {
   const res = await fetch(
-    `${API_BASE}/api/schedule?cid=${encodeURIComponent(getClientId())}`,
+    `${getApiBase()}/api/schedule?cid=${encodeURIComponent(getClientId())}`,
     { cache: "no-store" }
   );
   return parseJson(res);
@@ -544,7 +543,7 @@ export async function listSchedules(): Promise<{ schedules: ScheduledPost[] }> {
 
 /** Cancel a pending (or failed) scheduled post. */
 export async function cancelSchedule(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/schedule/cancel`, {
+  const res = await fetch(`${getApiBase()}/api/schedule/cancel`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id, cid: getClientId() }),
@@ -567,11 +566,10 @@ export interface BYOCCreateRequest {
 export async function startBYOCCreate(
   payload: BYOCCreateRequest
 ): Promise<{ job_id: string; status: string }> {
-  const res = await fetch(`${API_BASE}/api/byoc/create`, {
+  const res = await fetch(`${getApiBase()}/api/byoc/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: getBillingEmail(), ...payload }),
   });
   return parseJson(res);
 }
-
