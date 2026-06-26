@@ -19,10 +19,7 @@ function _resolveApiBase(): string {
   // If running in the browser and NOT on localhost, use relative paths
   // to let Next.js rewrites proxy the requests to the backend securely (avoiding mixed content).
   if (typeof window !== "undefined") {
-    const hostname = window.location.hostname;
-    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-      return "";
-    }
+    return "";
   }
   const raw = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
   const trimmed = raw.replace(/\/+$/, "");
