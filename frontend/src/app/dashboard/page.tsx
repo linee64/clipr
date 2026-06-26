@@ -26,7 +26,7 @@ import { CreateFlow } from "@/components/create/CreateFlow";
 import { BYOCFlow } from "@/components/create/BYOCFlow";
 import type { FlowStep } from "@/components/create/StepIndicator";
 import {
-  API_BASE,
+  getApiBase,
   listReferences,
   resolveBackendUrl,
   getTwitterStatus,
@@ -720,7 +720,7 @@ export default function Dashboard() {
       .then((d) => setReferences(d.templates))
       .catch(() =>
         setRefsError(
-          `Couldn't reach the backend at ${API_BASE}. Start it with: uvicorn main:app --port 8000`
+          `Couldn't reach the backend at ${getApiBase()}. Start it with: uvicorn main:app --port 8000`
         )
       )
       .finally(() => setRefsLoading(false));

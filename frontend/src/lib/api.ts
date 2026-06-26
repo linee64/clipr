@@ -27,9 +27,6 @@ export function getApiBase(): string {
   return trimmed;
 }
 
-// Export for compatibility with other components
-export const API_BASE = getApiBase();
-
 async function parseJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const text = await res.text();
