@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async rewrites() {
-    let backendUrl = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
+    let backendUrl = process.env.API_BASE_URL || 'http://localhost:8000';
     if (backendUrl.startsWith("http://") && !backendUrl.includes("localhost") && !backendUrl.includes("127.0.0.1")) {
       backendUrl = backendUrl.replace("http://", "https://");
     }

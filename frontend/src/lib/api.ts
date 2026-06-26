@@ -19,7 +19,7 @@ export function getApiBase(): string {
   if (typeof window !== "undefined") {
     return "";
   }
-  const raw = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+  const raw = process.env.API_BASE_URL || "http://localhost:8000";
   const trimmed = raw.replace(/\/+$/, "");
   if (trimmed.startsWith("http://") && !trimmed.includes("localhost") && !trimmed.includes("127.0.0.1")) {
     return trimmed.replace("http://", "https://");

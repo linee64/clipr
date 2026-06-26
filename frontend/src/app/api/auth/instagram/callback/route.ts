@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 // Instagram (Meta) OAuth callback passthrough — forwards to the FastAPI backend.
 export const dynamic = "force-dynamic";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000").replace(
+const API_BASE = (process.env.API_BASE_URL || "http://localhost:8000").replace(
   /\/+$/,
   ""
 );

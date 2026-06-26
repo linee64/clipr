@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 // has to change, while the backend stays the single owner of the integration.
 export const dynamic = "force-dynamic";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000").replace(
+const API_BASE = (process.env.API_BASE_URL || "http://localhost:8000").replace(
   /\/+$/,
   ""
 );
