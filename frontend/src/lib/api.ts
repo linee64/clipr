@@ -13,9 +13,7 @@ import type {
 } from "./types";
 
 let rawApiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
-if (typeof window !== "undefined") {
-  rawApiBase = "";
-} else if (rawApiBase.startsWith("http://") && !rawApiBase.includes("localhost") && !rawApiBase.includes("127.0.0.1")) {
+if (rawApiBase.startsWith("http://") && !rawApiBase.includes("localhost") && !rawApiBase.includes("127.0.0.1")) {
   rawApiBase = rawApiBase.replace("http://", "https://");
 }
 export const API_BASE = rawApiBase.replace(/\/+$/, "");
