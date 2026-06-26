@@ -1,5 +1,6 @@
 import type {
   BrollRenderRequest,
+  Idea,
   IdeaRequest,
   IdeasResponse,
   PexelsSearchResponse,
@@ -196,7 +197,11 @@ export async function generateIdeas(
       platform: payload.platform ?? "",
     }),
   });
-  return parseJson(res);
+  const data = await parseJson<Idea[] | IdeasResponse>(res);
+  if (Array.isArray(data)) {
+    return { ideas: data };
+  }
+  return data as IdeasResponse;
 }
 
 export async function generateVisualScript(
