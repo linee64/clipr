@@ -25,6 +25,9 @@ from services.editor import (
     measure_brightness,
     mix_voiceover_per_scene,
     montage_scene_windows,
+    montage_footage_budget,
+    fit_scene_windows_to_budget,
+    scale_scenes_to_footage_budget,
     plan_accel_cut_montage,
     plan_beat_cut_montage,
     plan_scene_cuts,
@@ -503,6 +506,17 @@ async def run_broll_render(
 
         render_jobs[job_id]["progress"] = 15
 
+        cards_position = str(template.get("outro_position") or "end").strip().lower()
+        footage_budget = montage_footage_budget(template, scenes, bool(outro_card_paths))
+        # End-position outros cap footage before the text cards. Middle outros split
+        # the montage at a timestamp but keep the tail — only scale for end placement.
+        if (
+            footage_budget is not None
+            and scenes
+            and cards_position != "middle"
+        ):
+            scale_scenes_to_footage_budget(scenes, footage_budget)
+
         # Slice the uploaded clips into beat-synced montage cuts.
         # Each cut is planned + spec'd serially below (cheap), then all the heavy
         # encodes run in parallel via _extract_cuts_parallel. Output paths carry the
@@ -544,6 +558,8 @@ async def run_broll_render(
                 lambda: sum(get_duration(p) for p in intro_card_paths)
             )
             montage_total = sum(s["duration_seconds"] for s in scenes)
+            if footage_budget is not None and cards_position != "middle":
+                montage_total = min(montage_total, footage_budget)
             plan = plan_beat_cut_montage(
                 [clip_durs[p] for p in clip_files],
                 beat_times, intro_total, montage_total, zooms,
@@ -572,8 +588,21 @@ async def run_broll_render(
                 [s["duration_seconds"] for s in scenes],
                 beat_times,
                 target_cut_len,
-                template.get("scene_snap_tol"),
+                (
+                    min(0.15, target_cut_len * 0.4)
+                    if footage_budget is not None
+                    else template.get("scene_snap_tol")
+                ),
             )
+            if footage_budget is not None and cards_position != "middle":
+                windows = await asyncio.to_thread(
+                    fit_scene_windows_to_budget,
+                    windows,
+                    footage_budget,
+                    min(min_cut or 0.45, target_cut_len),
+                )
+                for i, s in enumerate(scenes):
+                    s["duration_seconds"] = windows[i][1]
             # Tempo shift: from `fast_after` seconds on, fill each scene's window with a
             # fast beat-cut montage that swaps the source CLIP every `fast_clip_beats`
             # beats (an energetic back half) instead of sub-cutting one clip per scene;
@@ -631,15 +660,19 @@ async def run_broll_render(
                 )
                 if is_fast and hold_start is not None:
                     # Gradual ramp into a steady fast tempo (held for the last seconds).
+                    clip_off = cut_idx % max(1, len(clip_durs))
                     plan = await asyncio.to_thread(
                         plan_accel_cut_montage, clip_durs, beat_times,
                         window_start, window_len, zooms,
                         float(fast_after), float(hold_start), slow_seg, fast_seg, fast_min_cut,
+                        clip_off,
                     )
                 elif is_fast:
+                    clip_off = cut_idx % max(1, len(clip_durs))
                     plan = await asyncio.to_thread(
                         plan_beat_cut_montage, clip_durs, beat_times,
                         window_start, window_len, zooms, fast_clip_beats, fast_min_cut,
+                        clip_off,
                     )
                 else:
                     plan = None
@@ -735,7 +768,6 @@ async def run_broll_render(
         after_footage_total = 0.0
         footage_total = full_footage_total
         dropped_footage_total = 0.0
-        cards_position = str(template.get("outro_position") or "end").strip().lower()
         if (
             outro_card_paths
             and cards_position == "middle"
@@ -775,6 +807,14 @@ async def run_broll_render(
                 scenes,
                 float(template.get("outro_start_at")),
             )
+            if len(output_scenes) < len(scenes):
+                print(
+                    f"[render {job_id}] WARNING: trim_montage_to_time dropped "
+                    f"{len(scenes) - len(output_scenes)} scenes "
+                    f"({len(scenes)} -> {len(output_scenes)}) at outro_start_at="
+                    f"{template.get('outro_start_at')}s",
+                    flush=True,
+                )
         elif outro_card_paths and template.get("outro_start_ratio") is not None:
             (
                 output_cut_paths,
@@ -789,6 +829,14 @@ async def run_broll_render(
                 scenes,
                 float(template.get("outro_start_ratio")),
             )
+            if len(output_scenes) < len(scenes):
+                print(
+                    f"[render {job_id}] WARNING: trim_montage_to_ratio dropped "
+                    f"{len(scenes) - len(output_scenes)} scenes "
+                    f"({len(scenes)} -> {len(output_scenes)}) at ratio="
+                    f"{template.get('outro_start_ratio')}",
+                    flush=True,
+                )
         if (
             outro_card_paths
             and cards_position != "middle"

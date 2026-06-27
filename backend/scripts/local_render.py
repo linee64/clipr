@@ -45,6 +45,9 @@ from services.editor import (  # noqa: E402
     get_duration,
     measure_brightness,
     montage_scene_windows,
+    montage_footage_budget,
+    fit_scene_windows_to_budget,
+    scale_scenes_to_footage_budget,
     plan_accel_cut_montage,
     plan_beat_cut_montage,
     plan_scene_cuts,
@@ -281,11 +284,13 @@ def local_broll_render(
                 plan = plan_accel_cut_montage(
                     clip_durs_all, beat_times, window_start, window_len, zooms,
                     float(fast_after), float(hold_start), slow_seg, fast_seg, fast_min_cut,
+                    cut_idx % max(1, len(clip_durs_all)),
                 )
             elif is_fast:
                 plan = plan_beat_cut_montage(
                     clip_durs_all, beat_times, window_start, window_len,
                     zooms, fast_clip_beats, fast_min_cut,
+                    cut_idx % max(1, len(clip_durs_all)),
                 )
             else:
                 plan = None

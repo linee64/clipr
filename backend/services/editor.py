@@ -2671,6 +2671,80 @@ def plan_scene_cuts(
     return cuts
 
 
+def montage_footage_budget(
+    template: dict,
+    scenes: list,
+    has_outro_cards: bool,
+) -> float | None:
+    """Seconds of user footage allowed before outro cards, or None if unlimited."""
+    if not has_outro_cards or not scenes:
+        return None
+    if template.get("outro_start_at") is not None:
+        return max(1.0, float(template["outro_start_at"]))
+    if template.get("outro_start_ratio") is not None:
+        total = sum(max(0.1, float(s.get("duration_seconds", 3))) for s in scenes)
+        return max(1.0, total * float(template["outro_start_ratio"]))
+    return None
+
+
+def scale_scenes_to_footage_budget(scenes: list, budget: float) -> None:
+    """In-place: shrink scene durations so every scene fits inside ``budget``."""
+    n = len(scenes)
+    if n == 0 or budget <= 0:
+        return
+    total = sum(max(0.1, float(s.get("duration_seconds", 3))) for s in scenes)
+    if total <= budget + 0.1:
+        return
+    eff_min = max(0.12, (budget * 0.98) / n)
+    scale = budget / total
+    for s in scenes:
+        old = max(0.1, float(s.get("duration_seconds", 3)))
+        s["duration_seconds"] = round(max(eff_min, old * scale), 3)
+    # Re-normalize if the per-scene floor pushed us over budget.
+    for _ in range(6):
+        total = sum(float(s["duration_seconds"]) for s in scenes)
+        if total <= budget + 0.05:
+            break
+        scale = budget / total
+        for s in scenes:
+            s["duration_seconds"] = round(max(eff_min, float(s["duration_seconds"]) * scale), 3)
+
+
+def fit_scene_windows_to_budget(
+    windows: list[tuple],
+    budget: float,
+    min_scene: float = MONTAGE_MIN_CUT,
+) -> list[tuple]:
+    """Shrink scene windows proportionally so their sum <= budget.
+
+    Never drops a window — every uploaded clip keeps screen time. Beat-snapping
+    in ``montage_scene_windows`` can push the planned total past the footage cap;
+    this brings it back under before cuts are encoded.
+    """
+    if not windows or budget <= 0:
+        return list(windows)
+    n = len(windows)
+    eff_min = min(min_scene, max(0.12, (budget * 0.98) / n))
+    lengths = [max(eff_min, float(wl)) for _, wl in windows]
+    total = sum(lengths)
+    if total <= budget + 1e-3:
+        return list(windows)
+    scale = budget / total
+    lengths = [max(eff_min, wl * scale) for wl in lengths]
+    for _ in range(6):
+        total = sum(lengths)
+        if total <= budget + 1e-3:
+            break
+        scale = budget / total
+        lengths = [max(eff_min, l * scale) for l in lengths]
+    cursor = 0.0
+    out: list[tuple] = []
+    for wl in lengths:
+        out.append((round(cursor, 4), round(wl, 4)))
+        cursor += wl
+    return out
+
+
 def montage_scene_windows(
     scene_durations: list[float],
     beat_times: list[float],
@@ -2725,6 +2799,7 @@ def plan_beat_cut_montage(
     zooms: list | tuple | None = None,
     every: int = 1,
     min_seg: float = 0.18,
+    clip_offset: int = 0,
 ) -> list[dict]:
     """Tile the montage span on the *heard* beats, giving each beat-slot the NEXT
     clip (cycling through the provided clips in sets) so the source CLIP swaps every
@@ -2741,6 +2816,7 @@ def plan_beat_cut_montage(
     n = len(clip_durations)
     if n == 0 or montage_total <= 0.05:
         return []
+    clip_offset = int(clip_offset or 0) % n
     every = max(1, int(every or 1))
     end = card_total + montage_total
     beats = sorted(b for b in (beat_times or []) if card_total + 1e-3 < b < end - 1e-3)
@@ -2766,7 +2842,7 @@ def plan_beat_cut_montage(
         slot = cleaned[k + 1] - cleaned[k]
         if slot <= 0.01:
             continue
-        ci = k % n
+        ci = (clip_offset + k) % n
         sdur = max(0.2, float(clip_durations[ci]))
         length = round(min(slot, sdur), 3)
         off = offsets.get(ci, 0.0)
@@ -2795,6 +2871,7 @@ def plan_accel_cut_montage(
     slow_seg: float = 1.5,
     fast_seg: float = 0.5,
     min_seg: float = 0.18,
+    clip_offset: int = 0,
 ) -> list[dict]:
     """Beat-cut montage whose cut length RAMPS over time, then HOLDS constant.
 
@@ -2813,6 +2890,7 @@ def plan_accel_cut_montage(
     n = len(clip_durations)
     if n == 0 or window_len <= 0.05:
         return []
+    clip_offset = int(clip_offset or 0) % n
     w_end = window_start + window_len
     span = max(1e-6, float(hold_start) - float(ramp_start))
     beats = sorted(b for b in (beat_times or []) if b is not None)
@@ -2836,7 +2914,7 @@ def plan_accel_cut_montage(
         end_t = min(cands, key=lambda b: abs(b - target_end)) if cands else min(target_end, w_end)
         if end_t - t < min_seg:  # nearest beat too close -> use the target length
             end_t = min(t + max(min_seg, seg_len_at(t)), w_end)
-        ci = k % n
+        ci = (clip_offset + k) % n
         sdur = max(0.2, float(clip_durations[ci]))
         length = round(min(end_t - t, sdur), 3)
         if length < min_seg:
