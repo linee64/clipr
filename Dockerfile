@@ -32,17 +32,11 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Backend code (assets/fonts, templates, routers, services, workers, …).
 COPY backend/ .
 
-# Cap ffmpeg threads so a render's encodes don't spike memory across every core and
-# get the container OOM-killed mid-render (which would wipe the job -> "Job not found").
-# 1 = lowest peak memory (each thread holds its own frame buffers); raise on a box with
-# more RAM. Combined with serial cut encoding (RENDER_LONG_EDGE < 1920), only one
-# single-threaded ffmpeg runs at a time, which is what fits the small instance.
-ENV FFMPEG_THREADS=1
+# FFmpeg thread count for encode parallelism (each thread holds frame buffers).
+ENV FFMPEG_THREADS=4
 
-# Render the video frame smaller than 1080x1920 to cut encode memory on a small
-# instance (960 -> 540x960). Captions are still authored at full res and scaled down
-# by libass, so they look identical. Raise to 1280/1920 (or remove) on a roomier box.
-ENV RENDER_LONG_EDGE=960
+# Long edge of the render frame (1920 = full 1080x1920 vertical).
+ENV RENDER_LONG_EDGE=1920
 
 ENV PORT=8000
 EXPOSE 8000
