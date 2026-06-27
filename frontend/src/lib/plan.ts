@@ -6,7 +6,7 @@
 
 export const TRIAL_DAYS = 5;
 export const PRO_PRICE = "$7.99";
-export const FREE_VIDEO_LIMIT = 10;
+export const FREE_VIDEO_LIMIT = 5;
 export const PRO_VIDEO_LIMIT = 20;
 
 export type PlanKind = "trial" | "pro";

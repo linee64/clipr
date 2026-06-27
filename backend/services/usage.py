@@ -6,7 +6,7 @@ grant more free usage, because the counts and the trial start live in the Supaba
 
 Pro (an active Polar subscription) bypasses regen/voiceover limits and unlocks
 premium features. All accounts are metered on monthly video renders:
-  - Free: 10 videos/month
+  - Free: 5 videos/month
   - Pro: 20 videos/month
 Free accounts also get:
   - a 5-day trial (countdown, surfaced in /api/billing/status),
@@ -28,7 +28,7 @@ logger = logging.getLogger("clipr.usage")
 ACCOUNTS_TABLE = "accounts"
 TRIAL_DAYS = 5
 FREE_LIMITS = {"regen": 3, "voiceover": 2}
-VIDEO_LIMITS = {"free": 10, "pro": 20}
+VIDEO_LIMITS = {"free": 5, "pro": 20}
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
