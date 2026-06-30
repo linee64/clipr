@@ -596,14 +596,23 @@ def transcribe_audio(audio_path: str) -> list[dict]:
 
     segments_iter, _ = _whisper_model.transcribe(
         audio_path,
-        vad_filter=True,
-        word_timestamps=False,
+        vad_filter=False,
+        word_timestamps=True,
     )
-    segments = [
-        {"start": seg.start, "end": seg.end, "text": seg.text.strip()}
-        for seg in segments_iter
-        if seg.text.strip()
-    ]
+    segments = []
+    for seg in segments_iter:
+        if not seg.text.strip():
+            continue
+        words = []
+        if getattr(seg, "words", None):
+            for w in seg.words:
+                words.append({"start": w.start, "end": w.end, "word": w.word.strip()})
+        segments.append({
+            "start": seg.start,
+            "end": seg.end,
+            "text": seg.text.strip(),
+            "words": words
+        })
     if not segments:
         raise RuntimeError("No speech detected in audio.")
     return segments
@@ -623,6 +632,45 @@ def segments_from_text(text: str, duration: float) -> list[dict]:
             break
         segments.append({"start": start, "end": end, "text": line})
     return segments
+
+
+def replace_phrases_with_lyrics(
+    scenes: list[dict],
+    lyrics_segments: list[dict],
+) -> list[dict]:
+    """Replace each scene's ``phrase`` with lyrics extracted from the music track.
+
+    *scenes* is ``scenes_with_timing`` — each dict has at least ``start_time``
+    and ``duration_seconds``.  *lyrics_segments* comes from ``transcribe_audio``
+    on the music file: ``[{start, end, text}, ...]``.
+
+    For every scene we collect the lyrics segments whose time window overlaps the
+    scene's window and join their text.  Scenes with no overlapping lyrics keep
+    their original phrase (so intro/outro cards stay intact).
+
+    Returns the same list, mutated in place for convenience.
+    """
+    if not lyrics_segments:
+        return scenes
+
+    for scene in scenes:
+        scene_start = float(scene.get("start_time", 0.0))
+        scene_end = scene_start + max(0.1, float(scene.get("duration_seconds", 0.0)))
+
+        parts: list[str] = []
+        for seg in lyrics_segments:
+            seg_start = float(seg["start"])
+            seg_end = float(seg["end"])
+            # Overlap check: segment overlaps the scene window
+            if seg_end > scene_start and seg_start < scene_end:
+                txt = seg.get("text", "").strip()
+                if txt:
+                    parts.append(txt)
+
+        if parts:
+            scene["phrase"] = " ".join(parts)
+
+    return scenes
 
 
 # All burned-in subtitle styles live here. Arial is used deliberately: it is the

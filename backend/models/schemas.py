@@ -86,6 +86,10 @@ class BrollRenderRequest(BaseModel):
     vo_speed: float = Field(default=1.0, ge=0.5, le=2.0)  # ElevenLabs honours ~0.7–1.2
     vo_volume: float = Field(default=1.0, ge=0.0, le=3.0)  # voiceover level in the mix
     bg_music_volume: float = Field(default=0.2, ge=0.0, le=2.0)  # music bed under voice
+    # --- Subtitle source ---
+    # "script" = scene phrases from the AI storyboard (default); "lyrics" = auto-transcribe
+    # the music track via Whisper and use the extracted song text as subtitles.
+    subtitle_source: str = "script"
 
 
 class VoiceoverPreviewRequest(BaseModel):

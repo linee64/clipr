@@ -32,6 +32,7 @@ from services.editor import (
     plan_accel_cut_montage,
     plan_beat_cut_montage,
     plan_scene_cuts,
+    replace_phrases_with_lyrics,
     resolve_text_cards,
     render_text_card,
     retime_text_cards_to_voice,
@@ -274,6 +275,7 @@ async def run_broll_render(
     bg_music_volume: float = 0.2,
     add_subtitles: bool = True,
     source: str = "ai",
+    subtitle_source: str = "script",
 ):
     render_jobs[job_id] = {
         "status": "processing",
@@ -1096,6 +1098,80 @@ async def run_broll_render(
                 caption_video_path = with_audio_path
         render_jobs[job_id]["progress"] = 80
 
+        # --- Lyrics mode: replace scene phrases with text extracted from the song ---
+        lyrics_as_scenes = None
+        if subtitle_source == "lyrics" and add_subtitles:
+            try:
+                lyrics_segments = await asyncio.to_thread(transcribe_audio, with_audio_path)
+                lyrics_as_scenes = []
+                for seg in lyrics_segments:
+                    words = seg.get("words")
+                    if not words:
+                        text = seg.get("text", "").strip()
+                        if not text:
+                            continue
+                        words_list = text.split()
+                        n = 3
+                        if len(words_list) <= n:
+                            lyrics_as_scenes.append({
+                                "start_time": float(seg["start"]),
+                                "duration_seconds": max(0.1, float(seg["end"]) - float(seg["start"])),
+                                "phrase": text
+                            })
+                        else:
+                            groups = [words_list[i:i + n] for i in range(0, len(words_list), n)]
+                            start, end = float(seg["start"]), float(seg["end"])
+                            step = max(0.1, (end - start) / len(groups))
+                            for i, g in enumerate(groups):
+                                lyrics_as_scenes.append({
+                                    "start_time": start + i * step,
+                                    "duration_seconds": step,
+                                    "phrase": " ".join(g)
+                                })
+                    else:
+                        # Precise word timings with progressive build-up
+                        n = 3
+                        groups = [words[i:i + n] for i in range(0, len(words), n)]
+                        for g_idx, g in enumerate(groups):
+                            if not g:
+                                continue
+                            
+                            group_end = float(g[-1]["end"]) + 0.3
+                            group_end = max(group_end, float(g[-1]["start"]) + 0.4)
+                            
+                            # Don't overlap with the next group
+                            if g_idx + 1 < len(groups) and groups[g_idx + 1]:
+                                next_start = float(groups[g_idx + 1][0]["start"])
+                                if group_end > next_start:
+                                    group_end = next_start
+
+                            accumulated = []
+                            for i, w in enumerate(g):
+                                accumulated.append(w["word"])
+                                w_start = float(w["start"])
+                                if i == len(g) - 1:
+                                    w_end = group_end
+                                else:
+                                    w_end = float(g[i+1]["start"])
+                                
+                                dur = max(0.01, w_end - w_start)
+                                lyrics_as_scenes.append({
+                                    "start_time": w_start,
+                                    "duration_seconds": dur,
+                                    "phrase": " ".join(accumulated)
+                                })
+                print(
+                    f"[broll_render {job_id}] lyrics mode: using "
+                    f"{len(lyrics_segments)} transcribed segments directly",
+                    flush=True,
+                )
+            except Exception:
+                print(
+                    f"[broll_render {job_id}] lyrics transcription failed, "
+                    f"falling back to script phrases:\n{traceback.format_exc()}",
+                    flush=True,
+                )
+
         ass_path = os.path.join(job_dir, "broll_captions.ass")
         # Scene phrases from the user's script — never the template's closing_caption
         # string (that field only records what appeared on the reference clip).
@@ -1126,6 +1202,8 @@ async def run_broll_render(
                 except (ValueError, TypeError, KeyError):
                     pass
 
+        subs_source = lyrics_as_scenes if lyrics_as_scenes is not None else scenes_with_timing
+
         if not add_subtitles or not template.get("captions_on_montage", True):
             await asyncio.to_thread(
                 generate_ass_simple,
@@ -1143,7 +1221,7 @@ async def run_broll_render(
                     "end": s["start_time"] + max(0.1, s["duration_seconds"] - 0.04),
                     "text": s.get("phrase", ""),
                 }
-                for s in scenes_with_timing
+                for s in subs_source
                 if s.get("phrase")
             ]
             static_pos = sub_pattern.get("static_position", "bottom")
@@ -1161,7 +1239,7 @@ async def run_broll_render(
         elif caption_style == "kinetic":
             await asyncio.to_thread(
                 generate_ass_kinetic,
-                scenes_with_timing,
+                subs_source,
                 beat_times,
                 ass_path,
                 caption_resolution,
@@ -1170,7 +1248,7 @@ async def run_broll_render(
         elif caption_style == "karaoke":
             await asyncio.to_thread(
                 generate_ass_karaoke,
-                scenes_with_timing,
+                subs_source,
                 beat_times,
                 ass_path,
                 "karaoke",
@@ -1185,7 +1263,7 @@ async def run_broll_render(
                     "end": s["start_time"] + max(0.1, s["duration_seconds"] - 0.04),
                     "text": s.get("phrase", ""),
                 }
-                for s in scenes_with_timing
+                for s in subs_source
                 if s.get("phrase")
             ]
             await asyncio.to_thread(

@@ -557,6 +557,7 @@ async def broll_render(request: BrollRenderRequest, background_tasks: Background
         vo_speed=request.vo_speed,
         vo_volume=request.vo_volume,
         bg_music_volume=request.bg_music_volume,
+        subtitle_source=request.subtitle_source,
     )
 
     return {"job_id": request.job_id, "status": "pending"}

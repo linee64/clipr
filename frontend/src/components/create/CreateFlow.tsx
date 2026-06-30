@@ -242,6 +242,9 @@ export function CreateFlow({
     voiceId: "",
     speed: 1.0,
   });
+  // Subtitle text source: "script" = AI-generated scene phrases (default),
+  // "lyrics" = auto-transcribe the music track and use song words.
+  const [subtitleSource, setSubtitleSource] = useState<"script" | "lyrics">("script");
 
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [renderStatus, setRenderStatus] = useState<RenderStatus | null>(null);
@@ -552,6 +555,9 @@ export function CreateFlow({
               vo_speed: voiceover.speed,
             }
           : {}),
+        // Subtitle source: "lyrics" tells the backend to transcribe the music
+        // track and use song text instead of the AI-generated scene phrases.
+        subtitle_source: subtitleSource,
       });
 
       // The server counted this render — refresh remaining allowances.
@@ -638,6 +644,8 @@ export function CreateFlow({
           regenLeft={regenLeft}
           onContinue={() => setCurrentStep(3)}
           onBack={onBack}
+          subtitleSource={subtitleSource}
+          onSubtitleSourceChange={setSubtitleSource}
         />
       )}
 

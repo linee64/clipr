@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowDown, Camera, ChevronLeft, Clock, Loader2, Music, Palette } from "lucide-react";
+import { ArrowDown, Camera, ChevronLeft, Clock, FileText, Loader2, Mic, Music, Palette } from "lucide-react";
 import type { Scene, VisualScriptResponse } from "@/lib/types";
 
 interface StoryboardStepProps {
@@ -14,6 +14,9 @@ interface StoryboardStepProps {
   regenLeft?: number;
   onContinue: () => void;
   onBack: () => void;
+  /** Source of subtitle text: "script" (AI storyboard) or "lyrics" (from song). */
+  subtitleSource?: "script" | "lyrics";
+  onSubtitleSourceChange?: (source: "script" | "lyrics") => void;
 }
 
 // Backend returns option lists like "dark ambient|lo-fi beats|...". Show the first, cleaned.
@@ -33,6 +36,8 @@ export function StoryboardStep({
   regenLeft,
   onContinue,
   onBack,
+  subtitleSource = "script",
+  onSubtitleSourceChange,
 }: StoryboardStepProps) {
   const [editingOrder, setEditingOrder] = useState<number | null>(null);
   // Show the remaining free regenerations (Infinity = Pro, so no counter).
@@ -87,6 +92,43 @@ export function StoryboardStep({
       <div className="max-w-3xl mx-auto">
         <h2 className="text-xl font-semibold text-[#EFEFEF]">Your storyboard</h2>
         <p className="text-sm text-[#6B7C85] mt-1">Film these scenes in order</p>
+
+        {/* ── Subtitle source toggle ── */}
+        {onSubtitleSourceChange && (
+          <div className="mt-5 rounded-xl bg-[#0D1416] border border-[#152226] p-1.5 flex gap-1.5">
+            <button
+              type="button"
+              id="subtitle-source-script"
+              onClick={() => onSubtitleSourceChange("script")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                subtitleSource === "script"
+                  ? "bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30 shadow-[0_0_12px_rgba(16,185,129,0.1)]"
+                  : "text-[#6B7C85] hover:text-[#EFEFEF] border border-transparent"
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              By context
+            </button>
+            <button
+              type="button"
+              id="subtitle-source-lyrics"
+              onClick={() => onSubtitleSourceChange("lyrics")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                subtitleSource === "lyrics"
+                  ? "bg-[#8B5CF6]/15 text-[#A78BFA] border border-[#8B5CF6]/30 shadow-[0_0_12px_rgba(139,92,246,0.1)]"
+                  : "text-[#6B7C85] hover:text-[#EFEFEF] border border-transparent"
+              }`}
+            >
+              <Mic className="w-4 h-4" />
+              From song
+            </button>
+          </div>
+        )}
+        {subtitleSource === "lyrics" && (
+          <p className="mt-2 text-xs text-[#A78BFA]/70 px-1">
+            Subtitles will be automatically transcribed from the song lyrics
+          </p>
+        )}
 
         <div className="mt-6 space-y-0">
           {scenes.map((scene: Scene, idx: number) => {

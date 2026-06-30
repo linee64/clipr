@@ -12,7 +12,7 @@ import {
   Loader2,
   Film,
   Link2,
-  RefreshCw,
+
   X,
   Type,
 } from "lucide-react";
@@ -189,11 +189,6 @@ function BYOCStepIndicator({ currentStep }: { currentStep: BYOCStep }) {
 export function BYOCFlow({
   onBack,
   onSchedulePost,
-  isPro,
-  onRequireUpgrade,
-  videosLeft,
-  videosLimit,
-  videosUnlimited = false,
   onUsageRefresh,
 }: BYOCFlowProps) {
   const [currentStep, setCurrentStep] = useState<BYOCStep>(1);
@@ -369,12 +364,17 @@ export function BYOCFlow({
     setIsGeneratingScript(true);
     setScriptGenError(null);
     try {
-      const payload: any = {
+      const payload: Parameters<typeof generateBYOCScript>[0] = {
         context: scriptContext,
         scene_count: analyzedRefTemplate.scene_count,
         ref_subtitles: analyzedRefTemplate.ref_subtitles,
         avg_words_per_line: analyzedRefTemplate.avg_words_per_line,
-        subtitle_pattern: analyzedRefTemplate.subtitle_pattern,
+        subtitle_pattern: analyzedRefTemplate.subtitle_pattern ? {
+          type: analyzedRefTemplate.subtitle_pattern.type,
+          static_line: analyzedRefTemplate.subtitle_pattern.static_line,
+          static_position: analyzedRefTemplate.subtitle_pattern.static_position,
+          dynamic_samples: analyzedRefTemplate.subtitle_pattern.dynamic_samples,
+        } : undefined,
       };
 
       // If user edited the static line, override it for the generator
@@ -401,7 +401,7 @@ export function BYOCFlow({
             setScript(res.script);
             return;
           }
-        } catch (e) {
+        } catch {
           // fallback
         }
       }
@@ -867,7 +867,7 @@ export function BYOCFlow({
                     if (parsed.pattern_type === "two_field" && parsed.lines) {
                       return (
                         <div className="space-y-2">
-                          {parsed.lines.map((line: any, idx: number) => (
+                          {parsed.lines.map((line: Record<string, string>, idx: number) => (
                             <div key={idx} className="flex gap-2 items-center bg-[#0D1416]/50 border border-[#152226] p-2 rounded-lg">
                               <span className="w-5 text-[10px] text-[#53656F] font-mono text-center">{idx + 1}</span>
                               <input
@@ -888,7 +888,7 @@ export function BYOCFlow({
                         </div>
                       );
                     }
-                  } catch (e) {}
+                  } catch {}
                 }
 
                 // Fallback to plain text area

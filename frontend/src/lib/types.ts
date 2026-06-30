@@ -68,6 +68,8 @@ export interface BrollRenderRequest {
   vo_speed?: number;
   vo_volume?: number;
   bg_music_volume?: number;
+  /** "script" = AI-generated scene phrases (default), "lyrics" = extract text from song via Whisper */
+  subtitle_source?: "script" | "lyrics";
 }
 
 /** An ElevenLabs voice available for AI voiceover (from GET /api/video/voices). */
