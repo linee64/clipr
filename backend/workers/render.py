@@ -20,6 +20,7 @@ from services.editor import (
     generate_ass_karaoke,
     generate_ass_kinetic,
     generate_ass_simple,
+    generate_ass_two_field,
     generate_description,
     get_duration,
     measure_brightness,
@@ -214,8 +215,9 @@ async def run_render_job(
             description = await asyncio.to_thread(
                 generate_description, script_summary, platform
             )
-        except Exception:
-            description = script_summary
+        except Exception as e:
+            print(f"generate_description failed: {e}", flush=True)
+            description = f"Check out this new {platform} video! #shorts #viral"
         render_jobs[job_id]["description"] = description
         render_jobs[job_id]["progress"] = 90
 
@@ -291,15 +293,9 @@ async def run_broll_render(
     try:
         if not scenes or not clip_ids:
             raise ValueError("No scenes or clips provided for render.")
-        if len(scenes) != len(clip_ids):
-            raise ValueError(
-                f"scene/clip count mismatch: {len(scenes)} scenes vs "
-                f"{len(clip_ids)} clips"
-            )
 
         # Global rule: cap the video at MAX_VIDEO_SECONDS. Scale scene durations only
-        # (never drop scenes — they're paired 1:1 with clip_ids), so the montage and
-        # captions all stay within the cap regardless of where the scenes came from.
+        # (clips cycle via modulo when fewer clips than scenes are provided).
         scenes = cap_total_duration(scenes, as_int=False, allow_trim=False)
 
         job_dir = os.path.join(TEMP_DIR, job_id)
@@ -583,26 +579,37 @@ async def run_broll_render(
             # Lay scenes on the video timeline with each scene change snapped to an
             # audible beat (same clock the captions use); each scene = one clip with
             # in-scene zoom sub-cuts.
-            windows = await asyncio.to_thread(
-                montage_scene_windows,
-                [s["duration_seconds"] for s in scenes],
-                beat_times,
-                target_cut_len,
-                (
-                    min(0.15, target_cut_len * 0.4)
-                    if footage_budget is not None
-                    else template.get("scene_snap_tol")
-                ),
-            )
-            if footage_budget is not None and cards_position != "middle":
-                windows = await asyncio.to_thread(
-                    fit_scene_windows_to_budget,
-                    windows,
-                    footage_budget,
-                    min(min_cut or 0.45, target_cut_len),
-                )
+            exact_timings = template.get("pacing", {}).get("exact_timings")
+            if exact_timings and len(exact_timings) > 0:
+                windows = []
+                curr = 0.0
+                for s_idx in range(len(scenes)):
+                    dur = exact_timings[s_idx % len(exact_timings)]
+                    windows.append((curr, dur))
+                    curr += dur
                 for i, s in enumerate(scenes):
                     s["duration_seconds"] = windows[i][1]
+            else:
+                windows = await asyncio.to_thread(
+                    montage_scene_windows,
+                    [s["duration_seconds"] for s in scenes],
+                    beat_times,
+                    target_cut_len,
+                    (
+                        min(0.15, target_cut_len * 0.4)
+                        if footage_budget is not None
+                        else template.get("scene_snap_tol")
+                    ),
+                )
+                if footage_budget is not None and cards_position != "middle":
+                    windows = await asyncio.to_thread(
+                        fit_scene_windows_to_budget,
+                        windows,
+                        footage_budget,
+                        min(min_cut or 0.45, target_cut_len),
+                    )
+                    for i, s in enumerate(scenes):
+                        s["duration_seconds"] = windows[i][1]
             # Tempo shift: from `fast_after` seconds on, fill each scene's window with a
             # fast beat-cut montage that swaps the source CLIP every `fast_clip_beats`
             # beats (an energetic back half) instead of sub-cutting one clip per scene;
@@ -647,7 +654,8 @@ async def run_broll_render(
                     clip_path_by_id[cid] = p
                     clip_dur_by_id[cid] = d
 
-            for i, (scene, clip_id) in enumerate(zip(scenes, clip_ids)):
+            for i, scene in enumerate(scenes):
+                clip_id = clip_ids[i % max(1, len(clip_ids))]
                 window_start, window_len = windows[i]
                 # A scene counts as "fast" if it reaches into the accel zone (overlap,
                 # not just start) so the ramp begins right at fast_after instead of the
@@ -1091,6 +1099,33 @@ async def run_broll_render(
         ass_path = os.path.join(job_dir, "broll_captions.ass")
         # Scene phrases from the user's script — never the template's closing_caption
         # string (that field only records what appeared on the reference clip).
+        #
+        # Check for two-field subtitle pattern from reference analysis.
+        sub_pattern = template.get("subtitle_pattern") or {}
+        sub_pattern_type = sub_pattern.get("type", "single")
+        two_field_static = sub_pattern.get("static_line") if sub_pattern_type == "two_field" else None
+
+        # If the scene phrases themselves carry two-field JSON (generated by the
+        # enhanced generate_byoc_script), parse them to extract the dynamic parts
+        # and the static line.
+        if scenes_with_timing:
+            first_phrase = str((scenes_with_timing[0] or {}).get("phrase", "")).strip()
+            if first_phrase.startswith("{") and '"pattern_type"' in first_phrase:
+                try:
+                    import json as _json
+                    parsed = _json.loads(first_phrase)
+                    if parsed.get("pattern_type") == "two_field":
+                        two_field_static = parsed.get("static_line", "")
+                        sub_pattern = parsed
+                        sub_pattern_type = "two_field"
+                        # Rewrite scene phrases to just the dynamic parts
+                        lines = parsed.get("lines", [])
+                        for si, scene in enumerate(scenes_with_timing):
+                            if si < len(lines):
+                                scene["phrase"] = lines[si].get("dynamic", "")
+                except (ValueError, TypeError, KeyError):
+                    pass
+
         if not add_subtitles or not template.get("captions_on_montage", True):
             await asyncio.to_thread(
                 generate_ass_simple,
@@ -1099,6 +1134,29 @@ async def run_broll_render(
                 caption_style,
                 caption_resolution,
                 caption_preset,
+            )
+        elif two_field_static:
+            # Two-field pattern: dynamic line changes per scene, static line constant
+            segments = [
+                {
+                    "start": s["start_time"],
+                    "end": s["start_time"] + max(0.1, s["duration_seconds"] - 0.04),
+                    "text": s.get("phrase", ""),
+                }
+                for s in scenes_with_timing
+                if s.get("phrase")
+            ]
+            static_pos = sub_pattern.get("static_position", "bottom")
+            await asyncio.to_thread(
+                generate_ass_two_field,
+                segments,
+                ass_path,
+                two_field_static,
+                static_pos,
+                caption_style,
+                caption_resolution,
+                caption_preset,
+                template.get("caption_uppercase", True),
             )
         elif caption_style == "kinetic":
             await asyncio.to_thread(

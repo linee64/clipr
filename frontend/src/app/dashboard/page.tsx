@@ -1285,7 +1285,9 @@ export default function Dashboard() {
               { name: "Calendar", icon: <CalendarIcon className="w-4 h-4" /> },
               { name: "References", icon: <Bookmark className="w-4 h-4" /> },
               { name: "Settings", icon: <Settings className="w-4 h-4" /> },
-            ].map((link) => {
+            ]
+              .filter((link) => link.name !== "My Clips" || profile.email === "aidaraltynbek02@gmail.com")
+              .map((link) => {
               const isActive = sidebarActive === link.name;
               return (
                 <button
@@ -1841,35 +1843,16 @@ export default function Dashboard() {
                   transition={{ duration: 0.15 }}
                   className="flex-1 min-h-0 overflow-hidden -mx-4 sm:-mx-6 -mb-4 flex flex-col h-full"
                 >
-                  {profile.email.toLowerCase() === "aidaraltynbek02@gmail.com" ? (
-                    <BYOCFlow
-                      onBack={() => handleNav("Home")}
-                      onSchedulePost={handleScheduleFromRender}
-                      isPro={isProPlan}
-                      onRequireUpgrade={() => setUpgradeOpen(true)}
-                      videosLeft={videosLeft}
-                      videosLimit={videosLimit}
-                      videosUnlimited={isUnlimitedPro}
-                      onUsageRefresh={refreshBilling}
-                    />
-                  ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4">
-                      <div className="w-16 h-16 rounded-2xl bg-[#0D1416] border border-[#152226] flex items-center justify-center shadow-[0_0_24px_rgba(16,185,129,0.05)]">
-                        <Film className="w-6 h-6 text-[#10B981] animate-pulse" />
-                      </div>
-                      <h2 className="text-xl font-bold text-white">My Clips is Coming Soon!</h2>
-                      <p className="text-sm text-[#6B7C85] max-w-md leading-relaxed">
-                        We are currently beta-testing the option to upload and edit your own recorded footage. 
-                        This feature is temporarily restricted to select testers and will be rolled out globally soon.
-                      </p>
-                      <button
-                        onClick={() => handleNav("Home")}
-                        className="bg-[#152226] border border-[#1e2d31] hover:bg-[#1e2d31] text-[#EFEFEF] text-xs font-semibold rounded-full px-5 py-2 transition-all"
-                      >
-                        Back to Home
-                      </button>
-                    </div>
-                  )}
+                  <BYOCFlow
+                    onBack={() => handleNav("Home")}
+                    onSchedulePost={handleScheduleFromRender}
+                    isPro={isProPlan}
+                    onRequireUpgrade={() => setUpgradeOpen(true)}
+                    videosLeft={videosLeft}
+                    videosLimit={videosLimit}
+                    videosUnlimited={isUnlimitedPro}
+                    onUsageRefresh={refreshBilling}
+                  />
                 </motion.div>
               )}
 
@@ -2753,7 +2736,9 @@ export default function Dashboard() {
           { name: "Calendar", label: "Calendar", icon: <CalendarIcon className="w-5 h-5" /> },
           { name: "References", label: "Refs", icon: <Bookmark className="w-5 h-5" /> },
           { name: "Settings", label: "Settings", icon: <Settings className="w-5 h-5" /> },
-        ].map((link) => {
+        ]
+          .filter((link) => link.name !== "My Clips" || profile.email === "aidaraltynbek02@gmail.com")
+          .map((link) => {
           const isActive = sidebarActive === link.name;
           return (
             <button

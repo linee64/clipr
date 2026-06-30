@@ -16,3 +16,4 @@ faster-whisper
 elevenlabs>=1.0.0
 standardwebhooks
 openai
+pillow

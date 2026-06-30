@@ -11,8 +11,8 @@ const nextConfig = {
         destination: `${backendUrl}/api/ideas`,
       },
       {
-        source: '/api/scripts/visual',
-        destination: `${backendUrl}/api/scripts/visual`,
+        source: '/api/scripts/:path*',
+        destination: `${backendUrl}/api/scripts/:path*`,
       },
       {
         source: '/api/video/:path*',

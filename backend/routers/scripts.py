@@ -3,10 +3,36 @@ import asyncio
 from fastapi import APIRouter, HTTPException
 from models.schemas import VisualScriptRequest, VisualScriptResponse
 from services import usage
-from services.gemini import generate_visual_script
+from pydantic import BaseModel
+from services.gemini import generate_visual_script, generate_byoc_script
 from services.templates import pick_template
 
 router = APIRouter(prefix="/api/scripts", tags=["scripts"])
+
+
+class BYOCScriptRequest(BaseModel):
+    context: str
+    scene_count: int
+    email: str = None
+    ref_subtitles: list[str] | None = None
+    avg_words_per_line: int = 4
+    subtitle_pattern: dict | None = None
+
+
+@router.post("/byoc")
+async def get_byoc_script(request: BYOCScriptRequest):
+    try:
+        script = await asyncio.to_thread(
+            generate_byoc_script,
+            context=request.context,
+            scene_count=request.scene_count,
+            ref_subtitles=request.ref_subtitles,
+            avg_words_per_line=request.avg_words_per_line,
+            subtitle_pattern=request.subtitle_pattern,
+        )
+        return {"script": script}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/visual", response_model=VisualScriptResponse)

@@ -1301,5 +1301,566 @@
     "music_pause_cards": 12,
     "music_restart": true,
     "music_restart_offset": 2.0
+  },
+  {
+    "id": "ref-custom-db576543",
+    "label": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      23,
+      23
+    ],
+    "pacing": {
+      "target_cut_len": 0.28,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.433,
+        0.4,
+        0.467,
+        0.4,
+        0.433,
+        0.4,
+        0.789
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Arial Black",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=0.046:saturation=0.94,colorbalance=rm=0.035:bm=-0.035",
+    "recommended_track": "95238656-aa05-4eea-8228-e082e0261dff",
+    "is_custom": true,
+    "ref": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4"
+  },
+  {
+    "id": "ref-custom-1f3a73a2",
+    "label": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      23,
+      23
+    ],
+    "pacing": {
+      "target_cut_len": 0.28,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.433,
+        0.4,
+        0.467,
+        0.4,
+        0.433,
+        0.4,
+        0.789
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Arial Black",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=0.046:saturation=0.94,colorbalance=rm=0.035:bm=-0.035",
+    "recommended_track": "1772638a-16e7-41b9-8a29-d9818a6940bc",
+    "is_custom": true,
+    "ref": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4"
+  },
+  {
+    "id": "ref-custom-aa105798",
+    "label": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      23,
+      23
+    ],
+    "pacing": {
+      "target_cut_len": 0.28,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.433,
+        0.4,
+        0.467,
+        0.4,
+        0.433,
+        0.4,
+        0.789
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Arial Black",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=0.046:saturation=0.94,colorbalance=rm=0.035:bm=-0.035",
+    "recommended_track": "1adba121-cd77-4be5-a365-bcce5a1dfb57",
+    "is_custom": true,
+    "ref": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4"
+  },
+  {
+    "id": "ref-custom-b6886051",
+    "label": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      23,
+      23
+    ],
+    "pacing": {
+      "target_cut_len": 0.28,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.433,
+        0.4,
+        0.467,
+        0.4,
+        0.433,
+        0.4,
+        0.789
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Arial Black",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=0.046:saturation=0.94,colorbalance=rm=0.035:bm=-0.035",
+    "recommended_track": "efcf638b-6769-4747-a653-946b7f3567aa",
+    "is_custom": true,
+    "ref": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4"
+  },
+  {
+    "id": "ref-custom-6ae98957",
+    "label": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      23,
+      23
+    ],
+    "pacing": {
+      "target_cut_len": 0.28,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.433,
+        0.4,
+        0.467,
+        0.4,
+        0.433,
+        0.4,
+        0.789
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Arial Black",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=0.046:saturation=0.94,colorbalance=rm=0.035:bm=-0.035",
+    "recommended_track": "14c61ea1-262b-4b94-8395-290a23b1f397",
+    "is_custom": true,
+    "ref": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4"
+  },
+  {
+    "id": "ref-custom-e221ec07",
+    "label": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      23,
+      23
+    ],
+    "pacing": {
+      "target_cut_len": 0.28,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.433,
+        0.4,
+        0.467,
+        0.4,
+        0.433,
+        0.4,
+        0.789
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Arial Black",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=0.046:saturation=0.94,colorbalance=rm=0.035:bm=-0.035",
+    "recommended_track": "b1e1110c-c77d-4235-9f7c-b51e19390fb9",
+    "is_custom": true,
+    "ref": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4"
+  },
+  {
+    "id": "ref-custom-56d45edd",
+    "label": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      23,
+      23
+    ],
+    "pacing": {
+      "target_cut_len": 0.28,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.433,
+        0.4,
+        0.467,
+        0.4,
+        0.433,
+        0.4,
+        0.789
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Arial Black",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=0.046:saturation=0.94,colorbalance=rm=0.035:bm=-0.035",
+    "recommended_track": "0889d521-3953-4aac-952a-60de09d58925",
+    "is_custom": true,
+    "ref": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4"
+  },
+  {
+    "id": "ref-custom-8e23a69f",
+    "label": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      23,
+      23
+    ],
+    "pacing": {
+      "target_cut_len": 0.28,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.433,
+        0.4,
+        0.467,
+        0.4,
+        0.433,
+        0.4,
+        0.789
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Arial Black",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=0.046:saturation=0.94,colorbalance=rm=0.035:bm=-0.035",
+    "recommended_track": "ab162225-aeb5-4841-8d06-85009163a855",
+    "is_custom": true,
+    "ref": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "ref_subtitles": [],
+    "avg_words_per_line": 4
+  },
+  {
+    "id": "ref-custom-5198d4e9",
+    "label": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      23,
+      23
+    ],
+    "pacing": {
+      "target_cut_len": 0.28,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.433,
+        0.4,
+        0.467,
+        0.4,
+        0.433,
+        0.4,
+        0.789
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Arial Black",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=0.046:saturation=0.94,colorbalance=rm=0.035:bm=-0.035",
+    "recommended_track": "ccf40c31-a8b1-46c5-9dbb-f29f1ebef96d",
+    "is_custom": true,
+    "ref": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "ref_subtitles": [],
+    "avg_words_per_line": 4,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": []
+    }
+  },
+  {
+    "id": "ref-custom-3e836ae0",
+    "label": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      23,
+      23
+    ],
+    "pacing": {
+      "target_cut_len": 0.28,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.433,
+        0.4,
+        0.467,
+        0.4,
+        0.433,
+        0.4,
+        0.789
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=0.046:saturation=0.94,colorbalance=rm=0.035:bm=-0.035",
+    "recommended_track": "5aaf3812-5ec0-43c4-8e72-fedead72102c",
+    "is_custom": true,
+    "ref": "Ref: SaveClip.App_AQMzFGD5hS7EuWLfexE282Dk-F-z1iM5WXw03W2afS0mk3qFO6Uxff1CHYmJbXFkXXyw7sU8S93_vesVwKYa9ynbW3IfUH3uArorWnM.mp4",
+    "ref_subtitles": [
+      "prioritize YOURSELF",
+      "YOtORCCLF",
+      "CHOOSE RSELF",
+      "CHOOSE OURSE",
+      "CHOOSE YOURSELF"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "two_field",
+      "static_line": "CHOOSE",
+      "static_position": "top",
+      "dynamic_samples": [
+        "prioritize",
+        "YOURSELF",
+        "YOtORCCLF",
+        "RSELF",
+        "OURSE",
+        "YOURSELF"
+      ]
+    }
   }
 ]

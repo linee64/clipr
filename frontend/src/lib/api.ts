@@ -88,6 +88,47 @@ export async function uploadBYOCClip(
   return parseJson(res);
 }
 
+export async function analyzeReferenceVideo(
+  email: string,
+  file?: File,
+  url?: string
+): Promise<{
+  status: string;
+  template: {
+    id: string;
+    label: string;
+    recommended_track: string;
+    audio_url: string;
+    scene_count: number;
+    ref_subtitles?: string[];
+    avg_words_per_line?: number;
+    caption_style?: string;
+    caption_alignment?: number;
+    caption_font?: string;
+    caption_uppercase?: boolean;
+    subtitle_pattern?: {
+      type: "single" | "two_field";
+      static_line: string | null;
+      static_position: "top" | "bottom" | null;
+      dynamic_samples: string[];
+    };
+  };
+}> {
+  const form = new FormData();
+  form.append("email", email);
+  if (file) {
+    form.append("file", file);
+  }
+  if (url) {
+    form.append("url", url);
+  }
+  const res = await fetch(`${getApiBase()}/api/byoc/analyze-reference`, {
+    method: "POST",
+    body: form,
+  });
+  return parseJson(res);
+}
+
 export async function uploadAudio(
   file: File
 ): Promise<{ audio_file_id: string }> {
@@ -211,6 +252,26 @@ export async function generateVisualScript(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     // Attach the billing email so the backend can meter free-tier regenerations.
+    body: JSON.stringify({ email: getBillingEmail(), ...payload }),
+  });
+  return parseJson(res);
+}
+
+export async function generateBYOCScript(payload: {
+  context: string;
+  scene_count: number;
+  ref_subtitles?: string[];
+  avg_words_per_line?: number;
+  subtitle_pattern?: {
+    type: string;
+    static_line: string | null;
+    static_position: string | null;
+    dynamic_samples: string[];
+  };
+}): Promise<{ script: string }> {
+  const res = await fetch(`${getApiBase()}/api/scripts/byoc`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: getBillingEmail(), ...payload }),
   });
   return parseJson(res);

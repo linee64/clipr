@@ -2,20 +2,36 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { ChevronLeft, Upload, FileText, Check, AlertCircle } from "lucide-react";
 import {
-  fetchTracks,
+  ChevronLeft,
+  Upload,
+  FileText,
+  Check,
+  AlertCircle,
+  Sparkles,
+  Loader2,
+  Film,
+  Link2,
+  RefreshCw,
+  X,
+  Type,
+} from "lucide-react";
+import {
   uploadBYOCClip,
   startBYOCCreate,
   getRenderStatus,
+  analyzeReferenceVideo,
+  importPexelsClip,
+  generateBYOCScript,
 } from "@/lib/api";
-import type {
-  RenderStatus,
-  TemplateOption,
-  TemplateTrack,
-} from "@/lib/types";
-import { TemplatePickStep } from "./TemplatePickStep";
+import type { RenderStatus, PexelsVideo } from "@/lib/types";
 import { RenderStep } from "./RenderStep";
+import { PexelsSearchModal } from "./PexelsSearchModal";
+import { motion } from "framer-motion";
+
+/* ------------------------------------------------------------------ */
+/*  Props & Types                                                      */
+/* ------------------------------------------------------------------ */
 
 interface BYOCFlowProps {
   onBack: () => void;
@@ -33,6 +49,143 @@ interface BYOCFlowProps {
   onUsageRefresh: () => void;
 }
 
+interface ClipSlot {
+  clipId?: string;
+  previewUrl?: string;
+  name?: string;
+  progress?: number;
+  error?: string;
+  source?: "upload" | "pexels";
+}
+
+const DEFAULT_SHOTS = [
+  "aesthetic desk workspace",
+  "close-up hands typing keyboard",
+  "phone screen dim light",
+  "person coding focus mode",
+  "coffee cup steam cinematic",
+  "wide shot evening office",
+  "writing notes in journal",
+  "reaction face smile nod",
+  "screen recording code editor",
+  "cinematic blurred background",
+];
+
+const MAX_SLOTS = 6;
+
+/* ------------------------------------------------------------------ */
+/*  Step Indicator (BYOC-specific, 4 steps)                            */
+/* ------------------------------------------------------------------ */
+
+type BYOCStep = 1 | 2 | 3 | 4;
+const BYOC_STEPS = [
+  { num: 1, label: "Референс" },
+  { num: 2, label: "Клипы" },
+  { num: 3, label: "Сценарий" },
+  { num: 4, label: "Рендер" },
+] as const;
+
+const MONO =
+  'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace';
+
+function BYOCStepIndicator({ currentStep }: { currentStep: BYOCStep }) {
+  const progress = (currentStep - 1) / (BYOC_STEPS.length - 1);
+
+  return (
+    <div className="shrink-0 border-b border-[#152226]/80 bg-zinc-950/45 backdrop-blur-md px-3 sm:px-8 py-4 sm:py-5 shadow-[0_4px_30px_rgba(0,0,0,0.2)]">
+      <div className="relative mx-auto max-w-xl">
+        {/* Rail */}
+        <div
+          className="pointer-events-none absolute inset-x-[12.5%] top-0 flex h-7 items-center"
+          aria-hidden
+        >
+          <div className="relative h-[2px] w-full bg-[#152226]">
+            <motion.div
+              className="absolute inset-y-0 left-0 bg-[#10B981]"
+              style={{ boxShadow: "0 0 14px rgba(16,185,129,0.65)" }}
+              initial={false}
+              animate={{ width: `${progress * 100}%` }}
+              transition={{ type: "spring", stiffness: 180, damping: 28 }}
+            />
+          </div>
+        </div>
+
+        {/* Dots */}
+        <div className="relative grid grid-cols-4">
+          {BYOC_STEPS.map((step) => {
+            const state =
+              step.num === currentStep
+                ? "active"
+                : step.num < currentStep
+                  ? "completed"
+                  : "inactive";
+            return (
+              <div key={step.num} className="flex min-w-0 flex-col items-center group">
+                <div className="flex h-7 items-center justify-center">
+                  {state === "completed" ? (
+                    <div
+                      className="relative z-10 flex items-center justify-center rounded-full bg-[#10B981] text-[#070B0D] shadow-[0_0_10px_rgba(16,185,129,0.4)]"
+                      style={{ width: 22, height: 22 }}
+                    >
+                      <Check className="h-3 w-3" strokeWidth={3.5} />
+                    </div>
+                  ) : state === "active" ? (
+                    <div className="relative z-10 flex h-8 w-8 items-center justify-center">
+                      <motion.span
+                        aria-hidden
+                        className="absolute inset-0 rounded-full"
+                        style={{
+                          border: "2.5px solid #10B981",
+                          boxShadow: "0 0 16px rgba(16,185,129,0.35)",
+                        }}
+                        initial={false}
+                        animate={{ scale: [0.85, 1.1, 0.85], opacity: [0.7, 1, 0.7] }}
+                        transition={{ duration: 2.0, repeat: Infinity, ease: "easeInOut" }}
+                      />
+                      <span
+                        className="relative h-3 w-3 rounded-full bg-[#10B981]"
+                        style={{ boxShadow: "0 0 14px rgba(0,229,160,0.7)" }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative z-10 flex h-[20px] w-[20px] items-center justify-center rounded-full bg-[#070B0D] border-2 border-[#152226] group-hover:border-[#53656F]/50 transition-colors duration-200">
+                      <span
+                        className="text-[9px] font-bold leading-none"
+                        style={{ fontFamily: MONO, color: "#53656F" }}
+                      >
+                        {step.num}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <span
+                  className="mt-2 sm:mt-3 block max-w-full truncate px-0.5 sm:px-1 text-[9px] sm:text-[10px] uppercase font-bold tracking-[0.04em] sm:tracking-[0.15em] transition-all duration-300"
+                  style={{
+                    fontFamily: MONO,
+                    color:
+                      state === "active"
+                        ? "#10B981"
+                        : state === "completed"
+                          ? "#A3B3BC"
+                          : "#53656F",
+                    textShadow: state === "active" ? "0 0 8px rgba(16,185,129,0.25)" : "none",
+                  }}
+                >
+                  {step.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main Component                                                     */
+/* ------------------------------------------------------------------ */
+
 export function BYOCFlow({
   onBack,
   onSchedulePost,
@@ -43,38 +196,58 @@ export function BYOCFlow({
   videosUnlimited = false,
   onUsageRefresh,
 }: BYOCFlowProps) {
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [currentStep, setCurrentStep] = useState<BYOCStep>(1);
   const [userId] = useState(() => localStorage.getItem("clipr_email") || "anonymous");
   const [sessionId] = useState(() => uuidv4());
 
-  // Step 1: Upload Clips
-  const [clips, setClips] = useState<{ file: File; previewUrl: string; clipId?: string; progress?: number; error?: string }[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  /* -- Step 1: Reference Video -- */
+  const [refUrl, setRefUrl] = useState("");
+  const [, setRefFile] = useState<File | null>(null);
+  const [isAnalyzingRef, setIsAnalyzingRef] = useState(false);
+  const [analyzedRefTemplate, setAnalyzedRefTemplate] = useState<{
+    id: string;
+    label: string;
+    recommended_track: string;
+    audio_url: string;
+    scene_count: number;
+    ref_subtitles?: string[];
+    avg_words_per_line?: number;
+    subtitle_pattern?: {
+      type: "single" | "two_field";
+      static_line: string | null;
+      static_position: "top" | "bottom" | null;
+      dynamic_samples: string[];
+    };
+  } | null>(null);
+  const [refAnalysisError, setRefAnalysisError] = useState<string | null>(null);
+  const refFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Step 2: Script & Subtitles
+  /* -- Step 2: Upload Clips -- */
+  const [uploadedClips, setUploadedClips] = useState<Record<number, ClipSlot>>({});
+  const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const [pexelsScene, setPexelsScene] = useState<number | null>(null);
+  const [isUploadingSlot, setIsUploadingSlot] = useState<Record<number, boolean>>({});
+
+  /* -- Step 3: Script & Subtitles -- */
+  const [scriptContext, setScriptContext] = useState("");
+  const [editedStaticLine, setEditedStaticLine] = useState<string | undefined>(undefined);
+  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [script, setScript] = useState("");
   const [srtFile, setSrtFile] = useState<File | null>(null);
   const [srtContent, setSrtContent] = useState<string | null>(null);
   const [burnSubtitles, setBurnSubtitles] = useState(true);
   const srtInputRef = useRef<HTMLInputElement>(null);
-
-  // Step 3: Style Template
-  const [, setTracks] = useState<TemplateTrack[]>([]);
-  const [chosenTemplateId, setChosenTemplateId] = useState<string | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateOption | null>(null);
   const [platform, setPlatform] = useState<"TikTok" | "LinkedIn" | "Reels">("TikTok");
+  const [scriptGenError, setScriptGenError] = useState<string | null>(null);
 
-  // Step 4: Render
+  /* -- Step 4: Render -- */
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [renderStatus, setRenderStatus] = useState<RenderStatus | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [isStartingRender, setIsStartingRender] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    fetchTracks().then(setTracks).catch(() => {});
-  }, []);
-
+  /* -- Render polling -- */
   useEffect(() => {
     if (!renderJobId) return;
 
@@ -86,25 +259,16 @@ export function BYOCFlow({
         setRenderStatus(status);
         if (status.status === "done") {
           onUsageRefresh();
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = null;
-          }
+          if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
         }
         if (status.status === "error") {
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = null;
-          }
+          if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
         }
-      } catch (err) {
+      } catch {
         failures += 1;
         if (failures >= 5) {
-          setRenderError(err instanceof Error ? err.message : "Poll failed");
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = null;
-          }
+          setRenderError("Polling failed");
+          if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
         }
       }
     };
@@ -113,85 +277,140 @@ export function BYOCFlow({
     pollingRef.current = setInterval(poll, 3000);
 
     return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
+      if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
     };
   }, [renderJobId, onUsageRefresh]);
 
-  // Handle Drag & Drop
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
+  /* ---------------------------------------------------------------- */
+  /*  Handlers                                                         */
+  /* ---------------------------------------------------------------- */
 
-  const handleDropClips = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (e.dataTransfer.files) {
-      addFiles(Array.from(e.dataTransfer.files));
+  const handleAnalyzeReference = async (file?: File) => {
+    setIsAnalyzingRef(true);
+    setRefAnalysisError(null);
+    setAnalyzedRefTemplate(null);
+    try {
+      const email = localStorage.getItem("clipr_email") || "anonymous";
+      const result = await analyzeReferenceVideo(email, file, refUrl || undefined);
+      setAnalyzedRefTemplate(result.template);
+      setUploadedClips({});
+    } catch (err) {
+      setRefAnalysisError(err instanceof Error ? err.message : "Не удалось проанализировать референс");
+    } finally {
+      setIsAnalyzingRef(false);
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      addFiles(Array.from(e.target.files));
-    }
-  };
-
-  const addFiles = (filesList: File[]) => {
-    const videoFiles = filesList.filter((f) =>
-      /\.(mp4|mov|webm)$/i.test(f.name)
-    );
-    if (!videoFiles.length) return;
-
-    const newClips = videoFiles.map((file) => ({
-      file,
-      previewUrl: URL.createObjectURL(file),
-      progress: 0,
+  const handleSlotFile = async (slotIdx: number, file: File) => {
+    setIsUploadingSlot((prev) => ({ ...prev, [slotIdx]: true }));
+    setUploadedClips((prev) => ({
+      ...prev,
+      [slotIdx]: { progress: 10, name: file.name },
     }));
-
-    setClips((prev) => [...prev, ...newClips]);
+    try {
+      const result = await uploadBYOCClip(userId, sessionId, file);
+      setUploadedClips((prev) => ({
+        ...prev,
+        [slotIdx]: { clipId: result.clip_id, previewUrl: result.url, name: file.name, progress: 100, source: "upload" },
+      }));
+    } catch (err) {
+      setUploadedClips((prev) => ({
+        ...prev,
+        [slotIdx]: { progress: undefined, error: err instanceof Error ? err.message : "Upload failed", name: file.name },
+      }));
+    } finally {
+      setIsUploadingSlot((prev) => ({ ...prev, [slotIdx]: false }));
+    }
   };
 
-  const removeClip = (index: number) => {
-    URL.revokeObjectURL(clips[index].previewUrl);
-    setClips((prev) => prev.filter((_, i) => i !== index));
+  const handlePexelsImport = async (slotIdx: number, video: PexelsVideo) => {
+    setIsUploadingSlot((prev) => ({ ...prev, [slotIdx]: true }));
+    setUploadedClips((prev) => ({
+      ...prev,
+      [slotIdx]: { progress: 20, name: "Импорт из Pexels..." },
+    }));
+    try {
+      const result = await importPexelsClip(video.id);
+      setUploadedClips((prev) => ({
+        ...prev,
+        [slotIdx]: { clipId: result.clip_id, previewUrl: result.url, name: `Pexels #${video.id}`, progress: 100, source: "pexels" },
+      }));
+    } catch (err) {
+      setUploadedClips((prev) => ({
+        ...prev,
+        [slotIdx]: { progress: undefined, error: err instanceof Error ? err.message : "Import failed", name: "Ошибка" },
+      }));
+    } finally {
+      setIsUploadingSlot((prev) => ({ ...prev, [slotIdx]: false }));
+      setPexelsScene(null);
+    }
   };
 
-  const uploadAllClips = async () => {
-    const updatedClips = [...clips];
-    for (let i = 0; i < updatedClips.length; i++) {
-      if (updatedClips[i].clipId) continue; // Already uploaded
-      
-      try {
-        updatedClips[i] = { ...updatedClips[i], progress: 10 };
-        setClips([...updatedClips]);
+  const removeSlotClip = (slotIdx: number) => {
+    setUploadedClips((prev) => {
+      const copy = { ...prev };
+      delete copy[slotIdx];
+      return copy;
+    });
+  };
 
-        const result = await uploadBYOCClip(userId, sessionId, updatedClips[i].file);
-        updatedClips[i] = {
-          ...updatedClips[i],
-          clipId: result.clip_id,
-          progress: 100,
-        };
-        setClips([...updatedClips]);
-      } catch (err) {
-        updatedClips[i] = {
-          ...updatedClips[i],
-          progress: undefined,
-          error: err instanceof Error ? err.message : "Upload failed",
-        };
-        setClips([...updatedClips]);
-        return false;
-      }
+  const slotCount = Math.min(analyzedRefTemplate?.scene_count || 5, MAX_SLOTS);
+
+  const checkAllSlotsUploaded = () => {
+    if (!analyzedRefTemplate) return false;
+    for (let i = 1; i <= slotCount; i++) {
+      if (!uploadedClips[i]?.clipId) return false;
     }
     return true;
   };
 
-  const handleContinueToScript = async () => {
-    if (!clips.length) return;
-    const success = await uploadAllClips();
-    if (success) {
-      setCurrentStep(2);
+  const handleGenerateScript = async () => {
+    if (!scriptContext || !analyzedRefTemplate) return;
+    setIsGeneratingScript(true);
+    setScriptGenError(null);
+    try {
+      const payload: any = {
+        context: scriptContext,
+        scene_count: analyzedRefTemplate.scene_count,
+        ref_subtitles: analyzedRefTemplate.ref_subtitles,
+        avg_words_per_line: analyzedRefTemplate.avg_words_per_line,
+        subtitle_pattern: analyzedRefTemplate.subtitle_pattern,
+      };
+
+      // If user edited the static line, override it for the generator
+      if (
+        analyzedRefTemplate.subtitle_pattern?.type === "two_field" &&
+        editedStaticLine !== undefined
+      ) {
+        payload.subtitle_pattern = {
+          ...analyzedRefTemplate.subtitle_pattern,
+          static_line: editedStaticLine,
+        };
+      }
+
+      const res = await generateBYOCScript(payload);
+      
+      // If two_field, format the JSON to display nicely in the textarea
+      if (res.script.startsWith("{") && res.script.includes('"pattern_type"')) {
+        try {
+          const parsed = JSON.parse(res.script);
+          if (parsed.pattern_type === "two_field" && parsed.lines) {
+            // Keep the raw JSON in state so it passes to the renderer,
+            // but for UI we might want to just show it raw for now since the renderer
+            // parses it from the scene phrase.
+            setScript(res.script);
+            return;
+          }
+        } catch (e) {
+          // fallback
+        }
+      }
+      setScript(res.script);
+      setScript(res.script);
+    } catch (err) {
+      setScriptGenError(err instanceof Error ? err.message : "Ошибка генерации");
+    } finally {
+      setIsGeneratingScript(false);
     }
   };
 
@@ -201,23 +420,26 @@ export function BYOCFlow({
       setSrtFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
-        if (event.target?.result) {
-          setSrtContent(event.target.result as string);
-        }
+        if (event.target?.result) setSrtContent(event.target.result as string);
       };
       reader.readAsText(file);
     }
   };
 
   const triggerRender = async () => {
-    if (!chosenTemplateId) return;
+    if (!analyzedRefTemplate) return;
     setIsStartingRender(true);
     setRenderError(null);
     setRenderStatus(null);
     setCurrentStep(4);
 
     try {
-      const clipIds = clips.map((c) => c.clipId).filter((id): id is string => !!id);
+      // Collect only the unique clip_ids we actually uploaded (max 6)
+      const clipIds: string[] = [];
+      for (let i = 1; i <= slotCount; i++) {
+        const cid = uploadedClips[i]?.clipId;
+        if (cid) clipIds.push(cid);
+      }
       const jobId = uuidv4();
 
       await startBYOCCreate({
@@ -226,7 +448,7 @@ export function BYOCFlow({
         script: script,
         subtitles_file: srtContent,
         burn_subtitles: burnSubtitles,
-        template_id: chosenTemplateId,
+        template_id: analyzedRefTemplate.id,
         platform: platform,
       });
 
@@ -246,10 +468,25 @@ export function BYOCFlow({
     }
   };
 
+  /* ---------------------------------------------------------------- */
+  /*  Render                                                           */
+  /* ---------------------------------------------------------------- */
+
+  const filledCount = Object.values(uploadedClips).filter((c) => c.clipId).length;
+
   return (
-    <div className="flex flex-col h-full bg-[#070B0D] text-[#EFEFEF]">
-      {/* Top navigation header */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-[#152226] shrink-0">
+    <div className="flex flex-col h-full overflow-y-auto scrollbar-thin bg-[#070B0D] text-[#EFEFEF]">
+      {/* Pexels Modal */}
+      {pexelsScene !== null && (
+        <PexelsSearchModal
+          initialQuery={DEFAULT_SHOTS[(pexelsScene - 1) % DEFAULT_SHOTS.length]}
+          onImport={(video) => handlePexelsImport(pexelsScene, video)}
+          onClose={() => setPexelsScene(null)}
+        />
+      )}
+
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[#152226] shrink-0">
         <button
           onClick={onBack}
           className="flex items-center gap-1 text-xs text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
@@ -257,191 +494,271 @@ export function BYOCFlow({
           <ChevronLeft className="w-4 h-4" />
           Назад в Dashboard
         </button>
-        <span className="text-xs text-[#6B7C85]">
-          Шаг {currentStep} из 4
+        <span className="text-[10px] uppercase font-mono tracking-widest text-[#53656F]">
+          My Clips
         </span>
       </div>
 
-      {/* Step Indicators */}
-      <div className="px-8 py-4 border-b border-[#152226]/50 bg-zinc-950/20 flex justify-center">
-        <div className="flex items-center space-x-4 text-xs font-semibold uppercase tracking-wider text-[#6B7C85]">
-          <span className={currentStep === 1 ? "text-[#10B981]" : clips.length ? "text-[#A3B3BC]" : ""}>1. Загрузка клипов</span>
-          <span className="text-[#152226]">/</span>
-          <span className={currentStep === 2 ? "text-[#10B981]" : script || srtContent ? "text-[#A3B3BC]" : ""}>2. Сценарий</span>
-          <span className="text-[#152226]">/</span>
-          <span className={currentStep === 3 ? "text-[#10B981]" : chosenTemplateId ? "text-[#A3B3BC]" : ""}>3. Стиль</span>
-          <span className="text-[#152226]">/</span>
-          <span className={currentStep === 4 ? "text-[#10B981]" : ""}>4. Рендеринг</span>
-        </div>
-      </div>
+      {/* Step Indicator */}
+      <BYOCStepIndicator currentStep={currentStep} />
 
-      {/* Main Form content */}
-      <div className="flex-1 overflow-y-auto p-6 md:p-8 max-w-4xl mx-auto w-full">
-        {currentStep === 1 && (
+      {/* ============================================================= */}
+      {/*  STEP 1 — Reference                                            */}
+      {/* ============================================================= */}
+      {currentStep === 1 && (
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 max-w-3xl mx-auto w-full">
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-bold text-white">Загрузите ваши видеоматериалы</h2>
-              <p className="text-xs text-[#6B7C85] mt-1">Загрузите несколько клипов, которые будут смонтированы в одно видео.</p>
+              <h2 className="text-lg font-bold text-white tracking-tight">Загрузите ваш референс</h2>
+              <p className="text-xs text-[#6B7C85] mt-1">
+                Вставьте ссылку на Reels / TikTok или загрузите видеофайл. Clipr извлечёт музыку, темп и переходы.
+              </p>
             </div>
 
-            <div
-              onDragOver={handleDragOver}
-              onDrop={handleDropClips}
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-[#152226] hover:border-[#10B981]/50 rounded-2xl p-10 text-center cursor-pointer bg-[#0D1416]/50 transition-all flex flex-col items-center justify-center gap-3"
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileSelect}
-                multiple
-                accept="video/mp4,video/quicktime,video/webm"
-                className="hidden"
-              />
-              <Upload className="w-10 h-10 text-[#6B7C85] group-hover:text-[#10B981]" />
-              <span className="text-sm font-semibold">Перетащите файлы сюда или кликните для выбора</span>
-              <span className="text-xs text-[#6B7C85]">Поддерживаются форматы .mp4, .mov, .webm</span>
-            </div>
+            <div className="bg-[#0D1416]/60 p-5 border border-[#152226] rounded-2xl space-y-4">
+              {/* URL input + buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#53656F]" />
+                  <input
+                    type="text"
+                    placeholder="https://www.instagram.com/reel/..."
+                    value={refUrl}
+                    onChange={(e) => setRefUrl(e.target.value)}
+                    className="w-full bg-[#070B0D] text-[#EFEFEF] border border-[#152226] focus:border-[#10B981]/50 rounded-xl pl-9 pr-4 py-2.5 text-xs outline-none placeholder:text-[#3A4A50] transition-colors"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    disabled={isAnalyzingRef || !refUrl.trim()}
+                    onClick={() => handleAnalyzeReference()}
+                    className="bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] font-bold text-xs px-5 py-2.5 rounded-xl disabled:opacity-50 transition-all flex items-center gap-1.5 whitespace-nowrap"
+                  >
+                    {isAnalyzingRef && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    Анализировать
+                  </button>
 
-            {clips.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold text-[#EFEFEF]">Загруженные файлы ({clips.length})</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {clips.map((clip, idx) => (
-                    <div key={idx} className="relative aspect-[9/16] rounded-xl bg-[#070B0D] overflow-hidden border border-[#152226]">
-                      <video
-                        src={clip.previewUrl}
-                        className="w-full h-full object-cover"
-                        muted
-                        playsInline
-                      />
-                      <button
-                        onClick={() => removeClip(idx)}
-                        className="absolute top-2 right-2 bg-black/60 hover:bg-black/90 p-1.5 rounded-full text-[#6B7C85] hover:text-[#EF8B8B] transition-colors"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                      
-                      {clip.progress !== undefined && clip.progress < 100 && (
-                        <div className="absolute inset-0 bg-black/65 flex flex-col items-center justify-center p-3 text-center">
-                          <div className="w-full bg-[#152226] h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-[#10B981] h-full" style={{ width: `${clip.progress}%` }} />
-                          </div>
-                          <span className="text-[10px] text-[#6B7C85] mt-1.5">Загрузка...</span>
-                        </div>
-                      )}
-                      {clip.clipId && (
-                        <div className="absolute bottom-2 left-2 bg-[#10B981]/90 text-[#070B0D] text-[9px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                          <Check className="w-3 h-3 stroke-[3]" /> Готово
-                        </div>
-                      )}
-                      {clip.error && (
-                        <div className="absolute inset-0 bg-[#3A1E1E]/90 flex flex-col items-center justify-center p-3 text-center">
-                          <AlertCircle className="w-5 h-5 text-[#EF8B8B] mb-1" />
-                          <span className="text-[9px] text-[#EF8B8B]">{clip.error}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  <input
+                    type="file"
+                    ref={refFileInputRef}
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) { setRefFile(file); handleAnalyzeReference(file); }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={isAnalyzingRef}
+                    onClick={() => refFileInputRef.current?.click()}
+                    className="bg-[#152226] hover:bg-[#1f3137] text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    Файл
+                  </button>
                 </div>
               </div>
-            )}
 
-            <div className="flex justify-end pt-4 border-t border-[#152226]">
+              {/* Loading */}
+              {isAnalyzingRef && (
+                <div className="text-xs text-[#10B981] flex items-center gap-2 animate-pulse pt-1">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Анализируем референс… Извлечение музыки, нарезка кадров, распознавание стилей.
+                </div>
+              )}
+
+              {/* Error */}
+              {refAnalysisError && (
+                <div className="text-xs text-[#EF8B8B] flex items-center gap-1.5 bg-[#EF8B8B]/5 border border-[#EF8B8B]/10 p-3 rounded-lg">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{refAnalysisError}</span>
+                </div>
+              )}
+
+              {/* Success */}
+              {analyzedRefTemplate && (
+                <div className="bg-[#10B981]/5 border border-[#10B981]/20 p-4 rounded-xl space-y-3">
+                  <div className="flex items-center gap-2 text-xs">
+                    <Check className="w-4 h-4 text-[#10B981] stroke-[3]" />
+                    <span className="font-bold text-white">Референс импортирован!</span>
+                  </div>
+                  <p className="text-[11px] text-[#6B7C85] ml-6">
+                    Обнаружено <strong className="text-[#A3B3BC]">{analyzedRefTemplate.scene_count}</strong> переходов • Музыка извлечена • Стиль определён
+                  </p>
+                  
+                  {/* Pattern Display */}
+                  {analyzedRefTemplate.subtitle_pattern?.type === "two_field" && (
+                    <div className="ml-6 bg-[#070B0D]/50 border border-[#152226] p-3 rounded-lg mt-2">
+                      <div className="text-[10px] uppercase font-bold text-[#53656F] mb-1.5 flex items-center gap-1.5">
+                        <Type className="w-3 h-3" />
+                        Паттерн субтитров
+                      </div>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex items-start gap-2">
+                          <span className="text-[#6B7C85] w-20 shrink-0">Динамика:</span>
+                          <span className="text-[#10B981] font-medium break-words">
+                            {analyzedRefTemplate.subtitle_pattern.dynamic_samples.slice(0, 5).join(", ")}
+                            {analyzedRefTemplate.subtitle_pattern.dynamic_samples.length > 5 && "..."}
+                          </span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-[#6B7C85] w-20 shrink-0">Статика:</span>
+                          <span className="text-white font-medium bg-[#152226] px-1.5 py-0.5 rounded">
+                            {analyzedRefTemplate.subtitle_pattern.static_line}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Continue */}
+            <div className="flex justify-end pt-2">
               <button
-                disabled={clips.length === 0}
-                onClick={handleContinueToScript}
+                disabled={!analyzedRefTemplate}
+                onClick={() => setCurrentStep(2)}
                 className="bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] font-bold text-sm px-6 py-2.5 rounded-full disabled:opacity-50 transition-all"
               >
                 Продолжить →
               </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {currentStep === 2 && (
-          <div className="space-y-6">
+      {/* ============================================================= */}
+      {/*  STEP 2 — Upload Clips                                         */}
+      {/* ============================================================= */}
+      {currentStep === 2 && (
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 max-w-3xl mx-auto w-full">
+          <div className="space-y-5">
             <div>
-              <h2 className="text-xl font-bold text-white">Добавьте сценарий и субтитры</h2>
-              <p className="text-xs text-[#6B7C85] mt-1">Введите текст сценария или загрузите готовые субтитры для наложения на видео.</p>
+              <h2 className="text-lg font-bold text-white tracking-tight">Загрузите ваши клипы</h2>
+              <p className="text-xs text-[#6B7C85] mt-1">
+                Референс содержит <strong className="text-[#A3B3BC]">{analyzedRefTemplate?.scene_count ?? 0}</strong> переходов.
+                Загрузите <strong className="text-white">{slotCount}</strong> основных клипов — они зациклятся автоматически.
+              </p>
             </div>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs uppercase font-mono tracking-wider text-[#6B7C85] font-bold block">
-                  Текст сценария
-                </label>
-                <textarea
-                  value={script}
-                  onChange={(e) => setScript(e.target.value)}
-                  rows={6}
-                  placeholder="Вставьте сюда ваш сценарий. Каждая строчка сценария будет наложена на соответствующий видео-фрагмент..."
-                  className="w-full bg-[#0D1416]/50 text-[#EFEFEF] border border-[#152226] focus:border-[#10B981]/50 rounded-xl p-4 text-sm outline-none placeholder:text-[#3A4A50] focus:ring-0"
+            {/* Progress bar */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-1.5 bg-[#152226] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#10B981] transition-all duration-500 rounded-full"
+                  style={{ width: `${(filledCount / slotCount) * 100}%` }}
                 />
               </div>
-
-              <div className="border-t border-[#152226] pt-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-sm font-semibold block">Выжигать субтитры на видео</span>
-                    <span className="text-xs text-[#6B7C85]">Наложит текст стильно поверх видео-фрагментов.</span>
-                  </div>
-                  <button
-                    onClick={() => setBurnSubtitles((v) => !v)}
-                    className={`relative w-10 h-6 rounded-full transition-colors ${burnSubtitles ? "bg-[#10B981]" : "bg-[#152226]"}`}
-                  >
-                    <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${burnSubtitles ? "translate-x-4" : ""}`} />
-                  </button>
-                </div>
-
-                <div className="bg-[#0D1416]/30 border border-[#152226] rounded-xl p-4 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <span className="text-sm font-semibold block flex items-center gap-1.5">
-                      <FileText className="w-4 h-4 text-[#6B7C85]" />
-                      Использовать файл субтитров (.srt)
-                    </span>
-                    <span className="text-xs text-[#6B7C85]">Заменит обычный текст точным таймингом из .srt файла.</span>
-                  </div>
-                  <input
-                    type="file"
-                    ref={srtInputRef}
-                    onChange={handleSrtSelect}
-                    accept=".srt"
-                    className="hidden"
-                  />
-                  {srtFile ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#10B981] font-mono">{srtFile.name}</span>
-                      <button
-                        onClick={() => { setSrtFile(null); setSrtContent(null); }}
-                        className="text-[#6B7C85] hover:text-[#EF8B8B]"
-                      >
-                        Удалить
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => srtInputRef.current?.click()}
-                      className="text-xs font-semibold text-[#070B0D] bg-[#EFEFEF] hover:bg-white px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      Выбрать .srt
-                    </button>
-                  )}
-                </div>
-              </div>
+              <span className="text-[10px] font-mono text-[#6B7C85]">{filledCount}/{slotCount}</span>
             </div>
 
-            <div className="flex justify-between pt-4 border-t border-[#152226]">
+            {/* Slot list */}
+            <div className="space-y-3">
+              {Array.from({ length: slotCount }).map((_, idx) => {
+                const slotIdx = idx + 1;
+                const uploaded = uploadedClips[slotIdx];
+                const inputId = `slot-input-${slotIdx}`;
+                const suggestedQuery = DEFAULT_SHOTS[idx % DEFAULT_SHOTS.length];
+
+                return (
+                  <div
+                    key={slotIdx}
+                    className={`bg-[#0D1416]/60 border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
+                      uploaded?.clipId
+                        ? "border-[#10B981]/20"
+                        : "border-[#152226]"
+                    }`}
+                  >
+                    {/* Left side: number + suggestion */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center shrink-0 ${
+                          uploaded?.clipId
+                            ? "bg-[#10B981] text-[#070B0D]"
+                            : "bg-[#152226] text-[#6B7C85]"
+                        }`}
+                      >
+                        {uploaded?.clipId ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : slotIdx}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">{suggestedQuery}</p>
+                        {uploaded?.clipId && (
+                          <p className="text-[10px] text-[#6B7C85] truncate mt-0.5">{uploaded.name}</p>
+                        )}
+                        {uploaded?.error && (
+                          <p className="text-[10px] text-[#EF8B8B] truncate mt-0.5">{uploaded.error}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right side: actions */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <input
+                        ref={(el) => { fileInputRefs.current[slotIdx] = el; }}
+                        id={inputId}
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleSlotFile(slotIdx, f);
+                          e.target.value = "";
+                        }}
+                      />
+
+                      {uploaded?.clipId ? (
+                        <button
+                          type="button"
+                          onClick={() => removeSlotClip(slotIdx)}
+                          className="text-[10px] text-[#6B7C85] hover:text-[#EF8B8B] transition-colors flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" />
+                          Удалить
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            disabled={isUploadingSlot[slotIdx]}
+                            onClick={() => fileInputRefs.current[slotIdx]?.click()}
+                            className="bg-[#152226] hover:bg-[#1e2f33] text-white font-bold text-[11px] px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                          >
+                            {isUploadingSlot[slotIdx] ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Upload className="w-3 h-3" />
+                            )}
+                            Файл
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isUploadingSlot[slotIdx]}
+                            onClick={() => setPexelsScene(slotIdx)}
+                            className="bg-[#10B981]/10 border border-[#10B981]/20 hover:bg-[#10B981]/20 text-[#10B981] font-bold text-[11px] px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                          >
+                            <Film className="w-3 h-3" />
+                            Pexels
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between pt-3 border-t border-[#152226]">
               <button
                 onClick={() => setCurrentStep(1)}
                 className="text-xs text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
               >
-                ← Назад к клипам
+                ← Назад
               </button>
               <button
-                disabled={!script.trim() && !srtContent}
+                disabled={!checkAllSlotsUploaded()}
                 onClick={() => setCurrentStep(3)}
                 className="bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] font-bold text-sm px-6 py-2.5 rounded-full disabled:opacity-50 transition-all"
               >
@@ -449,23 +766,35 @@ export function BYOCFlow({
               </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {currentStep === 3 && (
-          <div className="space-y-6">
+      {/* ============================================================= */}
+      {/*  STEP 3 — Script & Subtitles                                    */}
+      {/* ============================================================= */}
+      {currentStep === 3 && (
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 max-w-3xl mx-auto w-full">
+          <div className="space-y-5">
             <div>
-              <h2 className="text-xl font-bold text-white">Выберите эталонный стиль</h2>
-              <p className="text-xs text-[#6B7C85] mt-1">Определите параметры анимации, переходов и цветокоррекции на основе стилей.</p>
+              <h2 className="text-lg font-bold text-white tracking-tight">Субтитры и сценарий</h2>
+              <p className="text-xs text-[#6B7C85] mt-1">
+                Опишите контекст — ИИ сгенерирует субтитры. Или вставьте свой текст вручную.
+              </p>
             </div>
 
-            <div className="flex items-center gap-4 bg-[#0D1416]/40 p-4 border border-[#152226] rounded-xl">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#6B7C85]">Платформа:</span>
-              <div className="flex gap-2">
+            {/* Platform selector */}
+            <div className="flex items-center gap-3 bg-[#0D1416]/40 p-3 border border-[#152226] rounded-xl">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#53656F]">Платформа</span>
+              <div className="flex gap-1.5">
                 {(["TikTok", "LinkedIn", "Reels"] as const).map((plat) => (
                   <button
                     key={plat}
                     onClick={() => setPlatform(plat)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold border ${platform === plat ? "border-[#10B981] text-[#10B981] bg-[#10B981]/5" : "border-[#152226] text-[#6B7C85] hover:text-[#EFEFEF]"}`}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                      platform === plat
+                        ? "border-[#10B981] text-[#10B981] bg-[#10B981]/5"
+                        : "border-[#152226] text-[#6B7C85] hover:text-[#EFEFEF] hover:border-[#53656F]/50"
+                    }`}
                   >
                     {plat}
                   </button>
@@ -473,61 +802,218 @@ export function BYOCFlow({
               </div>
             </div>
 
-            <TemplatePickStep
-              platform={platform}
-              selectedTemplateId={chosenTemplateId}
-              isPro={isPro}
-              onRequireUpgrade={onRequireUpgrade}
-              hasVoiceover={false}
-              onConfigureVoiceover={() => {}}
-              onSelect={(id, template) => {
-                setChosenTemplateId(id || null);
-                setSelectedTemplate(template || null);
-              }}
-              onRender={triggerRender}
-              onBack={() => setCurrentStep(2)}
-              isStartingRender={isStartingRender}
-              videosLeft={videosLeft}
-              videosLimit={videosLimit}
-              videosUnlimited={videosUnlimited}
-              hasMusic={true}
-              musicLabel={selectedTemplate?.recommended_track || "Шаблонная аудиодорожка"}
-              musicIsCustom={false}
-              onChangeMusic={() => {}}
-            />
-          </div>
-        )}
+            {/* AI Generator */}
+            <div className="bg-[#10B981]/[0.03] border border-[#10B981]/15 p-4 rounded-xl space-y-4">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#10B981]" />
+                <span className="text-xs font-bold uppercase tracking-wider text-[#10B981]">Авто-генерация (ИИ)</span>
+              </div>
+              
+              {analyzedRefTemplate?.subtitle_pattern?.type === "two_field" && (
+                <div className="space-y-2 pb-3 border-b border-[#10B981]/10">
+                  <label className="text-[10px] uppercase font-mono tracking-wider text-[#53656F] font-bold block">
+                    Статичная строка (одинаковая во всех кадрах)
+                  </label>
+                  <input
+                    type="text"
+                    value={editedStaticLine !== undefined ? editedStaticLine : (analyzedRefTemplate.subtitle_pattern.static_line || "")}
+                    onChange={(e) => setEditedStaticLine(e.target.value)}
+                    className="w-full bg-[#152226]/50 text-white border border-[#152226] focus:border-[#10B981]/50 rounded-lg px-3 py-2 text-xs outline-none transition-colors"
+                  />
+                </div>
+              )}
 
-        {currentStep === 4 && (
-          <RenderStep
-            renderStatus={renderStatus}
-            renderError={renderError}
-            isRendering={!!renderJobId && renderStatus?.status !== "done" && renderStatus?.status !== "error"}
-            videoTitle="Ваш BYOC видеоролик"
-            platform={platform}
-            caption={script}
-            onRetry={() => {
-              setRenderJobId(null);
-              setRenderStatus(null);
-              setRenderError(null);
-              setCurrentStep(3);
-            }}
-            onJumpTo={(step) => {
-              if (step === 2) setCurrentStep(2);
-              if (step === 3) setCurrentStep(3);
-            }}
-            onSchedulePost={() => {
-              if (!renderStatus?.output_url) return;
-              onSchedulePost({
-                title: "BYOC Video",
-                description: script,
-                outputUrl: renderStatus.output_url,
-                platform: platform,
-              });
-            }}
-          />
-        )}
-      </div>
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase font-mono tracking-wider text-[#53656F] font-bold block">
+                  {analyzedRefTemplate?.subtitle_pattern?.type === "two_field" ? "О чем должны быть динамичные слова?" : "О чем видео?"}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={scriptContext}
+                    onChange={(e) => setScriptContext(e.target.value)}
+                    placeholder="Например: мотивация для разработчиков, вставай и кодь"
+                    className="flex-1 bg-[#070B0D]/80 text-[#EFEFEF] border border-[#152226] focus:border-[#10B981]/50 rounded-lg px-3 py-2 text-xs outline-none placeholder:text-[#3A4A50] transition-colors"
+                    onKeyDown={(e) => { if (e.key === "Enter") handleGenerateScript(); }}
+                  />
+                  <button
+                    type="button"
+                    disabled={isGeneratingScript || !scriptContext}
+                    onClick={handleGenerateScript}
+                    className="bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] font-bold text-xs px-4 py-2 rounded-lg disabled:opacity-50 transition-all flex items-center gap-1.5 shrink-0"
+                  >
+                    {isGeneratingScript ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                    Сгенерировать
+                  </button>
+                </div>
+              </div>
+              {scriptGenError && (
+                <p className="text-[11px] text-[#EF8B8B]">{scriptGenError}</p>
+              )}
+            </div>
+
+            {/* Manual script textarea / Two-field visualizer */}
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase font-mono tracking-wider text-[#53656F] font-bold block">
+                Текст субтитров
+              </label>
+              
+              {(() => {
+                const isTwoFieldJSON = script.startsWith("{") && script.includes('"pattern_type"');
+                
+                if (isTwoFieldJSON) {
+                  try {
+                    const parsed = JSON.parse(script);
+                    if (parsed.pattern_type === "two_field" && parsed.lines) {
+                      return (
+                        <div className="space-y-2">
+                          {parsed.lines.map((line: any, idx: number) => (
+                            <div key={idx} className="flex gap-2 items-center bg-[#0D1416]/50 border border-[#152226] p-2 rounded-lg">
+                              <span className="w-5 text-[10px] text-[#53656F] font-mono text-center">{idx + 1}</span>
+                              <input
+                                type="text"
+                                value={line.dynamic}
+                                onChange={(e) => {
+                                  const newLines = [...parsed.lines];
+                                  newLines[idx].dynamic = e.target.value;
+                                  setScript(JSON.stringify({ ...parsed, lines: newLines }));
+                                }}
+                                className="flex-1 bg-transparent border-none text-sm text-[#10B981] font-semibold outline-none focus:ring-0 p-0"
+                              />
+                              <span className="text-sm text-[#EFEFEF] bg-[#152226] px-2 py-0.5 rounded">
+                                {line.static}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                  } catch (e) {}
+                }
+
+                // Fallback to plain text area
+                return (
+                  <textarea
+                    value={script}
+                    onChange={(e) => setScript(e.target.value)}
+                    rows={6}
+                    placeholder="Каждая строчка = один кадр в видео..."
+                    className="w-full bg-[#0D1416]/50 text-[#EFEFEF] border border-[#152226] focus:border-[#10B981]/50 rounded-xl p-4 text-sm outline-none placeholder:text-[#3A4A50] focus:ring-0 transition-colors resize-none"
+                  />
+                );
+              })()}
+
+              {script && !script.startsWith("{") && (
+                <p className="text-[10px] text-[#53656F] text-right">
+                  {script.split("\n").filter((l) => l.trim()).length} строк
+                </p>
+              )}
+            </div>
+
+            {/* Subtitles toggle + SRT */}
+            <div className="border-t border-[#152226] pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-semibold block text-white">Вшить субтитры в видео</span>
+                  <span className="text-[11px] text-[#6B7C85]">Стильно наложит текст поверх видео.</span>
+                </div>
+                <button
+                  onClick={() => setBurnSubtitles((v) => !v)}
+                  className={`relative w-10 h-6 rounded-full transition-colors ${burnSubtitles ? "bg-[#10B981]" : "bg-[#152226]"}`}
+                >
+                  <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${burnSubtitles ? "translate-x-4" : ""}`} />
+                </button>
+              </div>
+
+              <div className="bg-[#0D1416]/40 border border-[#152226] rounded-xl p-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#53656F]" />
+                  <div>
+                    <span className="text-xs font-semibold text-white block">SRT файл</span>
+                    <span className="text-[10px] text-[#6B7C85]">Заменит текст точным таймингом.</span>
+                  </div>
+                </div>
+                <input
+                  type="file"
+                  ref={srtInputRef}
+                  onChange={handleSrtSelect}
+                  accept=".srt"
+                  className="hidden"
+                />
+                {srtFile ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-[#10B981] font-mono">{srtFile.name}</span>
+                    <button
+                      onClick={() => { setSrtFile(null); setSrtContent(null); }}
+                      className="text-[#6B7C85] hover:text-[#EF8B8B]"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => srtInputRef.current?.click()}
+                    className="text-[11px] font-semibold text-[#070B0D] bg-[#A3B3BC] hover:bg-white px-3 py-1 rounded-lg transition-colors"
+                  >
+                    Выбрать
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between pt-3 border-t border-[#152226]">
+              <button
+                onClick={() => setCurrentStep(2)}
+                className="text-xs text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
+              >
+                ← Назад
+              </button>
+              <button
+                disabled={(!script.trim() && !srtContent) || isStartingRender}
+                onClick={triggerRender}
+                className="bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] font-bold text-sm px-6 py-2.5 rounded-full disabled:opacity-50 transition-all flex items-center gap-1.5"
+              >
+                {isStartingRender && <Loader2 className="w-4 h-4 animate-spin" />}
+                Запустить рендер 🎬
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/*  STEP 4 — Render                                               */}
+      {/* ============================================================= */}
+      {currentStep === 4 && (
+        <RenderStep
+          renderStatus={renderStatus}
+          renderError={renderError}
+          isRendering={!!renderJobId && renderStatus?.status !== "done" && renderStatus?.status !== "error"}
+          videoTitle="Кастомный ролик по референсу"
+          platform={platform}
+          onRetry={() => {
+            setRenderJobId(null);
+            setRenderStatus(null);
+            setRenderError(null);
+            setCurrentStep(3);
+          }}
+          onJumpTo={(step) => {
+            if (step === 1) setCurrentStep(1);
+            if (step === 2) setCurrentStep(2);
+            if (step === 3) setCurrentStep(3);
+          }}
+          onSchedulePost={() => {
+            if (!renderStatus?.output_url) return;
+            onSchedulePost({
+              title: "Custom Reference Video",
+              description: script,
+              outputUrl: renderStatus.output_url,
+              platform: platform,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

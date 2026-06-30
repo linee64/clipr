@@ -311,3 +311,120 @@ Return ONLY valid JSON:
     if isinstance(script.get("scenes"), list):
         script["scenes"] = cap_total_duration(script["scenes"], as_int=True)
     return script
+
+
+def generate_byoc_script(
+    context: str,
+    scene_count: int,
+    ref_subtitles: list[str] | None = None,
+    avg_words_per_line: int = 4,
+    subtitle_pattern: dict | None = None,
+) -> str:
+    _require_deepseek()
+    import re
+    lang = "Russian" if re.search(r"[Ѐ-ӿ]", context) else "English"
+
+    pattern = subtitle_pattern or {}
+    pattern_type = pattern.get("type", "single")
+
+    # --- Two-field pattern: static + dynamic ---
+    if pattern_type == "two_field" and pattern.get("static_line"):
+        static_line = pattern["static_line"]
+        static_pos = pattern.get("static_position", "bottom")
+        dynamic_samples = pattern.get("dynamic_samples", [])
+        samples_str = ", ".join(dynamic_samples[:8]) if dynamic_samples else "various words"
+
+        prompt = f"""
+You are creating subtitles for a short-form TikTok/Reels video.
+The video has exactly {scene_count} scene cuts.
+User's context/topic: {context}
+
+CRITICAL PATTERN — this video has TWO subtitle fields:
+- A STATIC line that stays the same every scene: "{static_line}" (positioned at {static_pos})
+- A DYNAMIC word/phrase that CHANGES every scene (positioned at {"top" if static_pos == "bottom" else "bottom"})
+
+Examples of the dynamic part from the reference: {samples_str}
+
+YOUR TASK: Generate ONLY the {scene_count} DYNAMIC words/phrases.
+The static line "{static_line}" will be added automatically — DO NOT include it.
+
+Rules for dynamic words:
+- Write exactly {scene_count} words/phrases (one per scene cut)
+- Each should be 1-3 words max (short, impactful, like the reference samples)
+- They should thematically fit with "{static_line}" when read together
+- Language: {lang}
+- No numbering, no timestamps, no quotes — just the dynamic text, one per line
+- Each should create a powerful pair with "{static_line}"
+
+Return ONLY the {scene_count} dynamic words, one per line, nothing else.
+"""
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": "You are an expert short-form video scriptwriter. You create punchy, impactful subtitle pairs."},
+                {"role": "user", "content": prompt}
+            ],
+            stream=False
+        )
+        raw = response.choices[0].message.content.strip()
+
+        # Build structured output: each line is the dynamic part
+        dynamic_lines = [l.strip() for l in raw.split("\n") if l.strip()]
+        # Pad or trim to match scene_count
+        while len(dynamic_lines) < scene_count:
+            dynamic_lines.append(dynamic_lines[-1] if dynamic_lines else "")
+        dynamic_lines = dynamic_lines[:scene_count]
+
+        # Return as JSON-encoded structured data so the caller can reconstruct
+        import json
+        result = json.dumps({
+            "pattern_type": "two_field",
+            "static_line": static_line,
+            "static_position": static_pos,
+            "lines": [
+                {"dynamic": d, "static": static_line}
+                for d in dynamic_lines
+            ]
+        }, ensure_ascii=False)
+        return result
+
+    # --- Single-field (original behavior, enhanced with ref_subtitles) ---
+    ref_block = ""
+    if ref_subtitles:
+        lines = "\n".join(f"- {t}" for t in ref_subtitles)
+        ref_block = f"""
+ORIGINAL SUBTITLES FROM THE REFERENCE VIDEO (use these as the base):
+{lines}
+
+You MUST keep the same vibe, rhythm, and approximate meaning as the original subtitles above.
+Rephrase each line slightly — keep 2-4 key words from each original line, change the rest.
+The new lines should feel like the same video but with fresh wording.
+Do NOT invent completely different lines — stay close to the originals.
+If there are fewer original lines than {scene_count}, repeat/extend the pattern.
+If there are more, condense them down to {scene_count} lines.
+"""
+
+    prompt = f"""
+You are creating subtitles for a short-form TikTok/Reels video.
+The video has exactly {scene_count} scene cuts.
+User's context/topic: {context}
+{ref_block}
+Rules:
+- Write exactly {scene_count} lines (one per scene cut)
+- Each line must be {avg_words_per_line - 1} to {avg_words_per_line + 1} words (short, punchy)
+- Lowercase (no periods except the last line)
+- Language: {lang}
+- No numbering, no timestamps, no quotes — just the subtitle text
+- Each line should flow naturally into the next
+
+Return ONLY the {scene_count} lines, nothing else.
+"""
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": "You are an expert short-form video scriptwriter. You rephrase and adapt subtitle scripts."},
+            {"role": "user", "content": prompt}
+        ],
+        stream=False
+    )
+    return response.choices[0].message.content.strip()

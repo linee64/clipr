@@ -1410,7 +1410,8 @@ def _ass_style_line(style: str, overrides: dict | None = None) -> str:
 
 
 def _write_ass_header(
-    f, style: str, play_w: int = 1080, play_h: int = 1920, overrides: dict | None = None
+    f, style: str, play_w: int = 1080, play_h: int = 1920, overrides: dict | None = None,
+    extra_styles: list[dict] | None = None,
 ) -> None:
     f.write("[Script Info]\n")
     f.write("ScriptType: v4.00+\n")
@@ -1425,11 +1426,50 @@ def _write_ass_header(
         "ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
         "Alignment, MarginL, MarginR, MarginV, Encoding\n"
     )
-    f.write(_ass_style_line(style, overrides) + "\n\n")
+    f.write(_ass_style_line(style, overrides) + "\n")
+    # Extra named styles (e.g. "Static" line for two-field subtitles)
+    if extra_styles:
+        for es in extra_styles:
+            es_style = es.get("base_style", style)
+            es_overrides = es.get("overrides") or {}
+            es_name = es.get("name", "Extra")
+            chosen = dict(ASS_STYLES.get(es_style, ASS_STYLES["tiktok_bold"]))
+            chosen["Name"] = es_name
+            if overrides:
+                for k, v in overrides.items():
+                    if v is not None and v != "":
+                        chosen[k] = str(v)
+            for k, v in es_overrides.items():
+                if v is not None and v != "":
+                    chosen[k] = str(v)
+            line = (
+                f"Style: {chosen['Name']},"
+                f"{chosen['Fontname']},"
+                f"{chosen['Fontsize']},"
+                f"{chosen['PrimaryColour']},"
+                f"{chosen['SecondaryColour']},"
+                f"{chosen['OutlineColour']},"
+                f"{chosen['BackColour']},"
+                f"{chosen.get('Bold', '0')},"
+                f"{chosen.get('Italic', '0')},"
+                f"0,0,"
+                f"100,100,"
+                f"0,0,"
+                f"{chosen.get('BorderStyle', '1')},"
+                f"{chosen.get('Outline', '2')},"
+                f"{chosen.get('Shadow', '1')},"
+                f"{chosen.get('Alignment', '2')},"
+                f"10,10,"
+                f"{chosen.get('MarginV', '60')},"
+                f"1"
+            )
+            f.write(line + "\n")
+    f.write("\n")
     f.write("[Events]\n")
     f.write(
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
+
 
 
 def _italicize_words(text: str, italic_words: set) -> str:
@@ -1586,6 +1626,93 @@ def generate_ass_simple(
                 f.write(
                     f"Dialogue: 0,{_ass_time(part['start'])},{_ass_time(part['end'])},"
                     f"Default,,0,0,0,,{fade}{sx}{sp}{text}\n"
+                )
+
+
+def generate_ass_two_field(
+    segments: list,
+    output_path: str,
+    static_line: str,
+    static_position: str = "bottom",
+    style: str = "tiktok_bold",
+    resolution: str = "1080:1920",
+    preset: dict | None = None,
+    uppercase: bool = True,
+):
+    """Generate .ass with two subtitle fields: a dynamic line that changes per
+    segment and a static line that stays constant, at separate Y positions.
+
+    segments: list of {"start", "end", "text"} where text is the DYNAMIC part.
+    static_line: the unchanging text (e.g. "yourself").
+    static_position: "top" or "bottom" — where the static line sits.
+    """
+    try:
+        play_w, play_h = (int(float(x)) for x in resolution.split(":"))
+    except (ValueError, TypeError):
+        play_w, play_h = 1080, 1920
+
+    overrides = _overrides_from_preset(preset)
+    upper = uppercase or bool(preset and preset.get("uppercase")) or style == "center_caps"
+
+    # Compute Y margins for 1920-high portrait.
+    # Static line is at a fixed Y; dynamic line is offset ~200px away.
+    if static_position == "bottom":
+        # Static at bottom, dynamic above it
+        static_margin_v = 250   # from bottom
+        dynamic_margin_v = 500  # higher up
+        static_alignment = 2    # bottom-center
+        dynamic_alignment = 2   # bottom-center (but with bigger margin = higher)
+    else:
+        # Static at top, dynamic below it
+        static_margin_v = 250   # from top
+        dynamic_margin_v = 500  # lower
+        static_alignment = 8    # top-center
+        dynamic_alignment = 8   # top-center (but with bigger margin = lower)
+
+    # Extra style for the static line (slightly smaller, different feel)
+    static_font = (overrides or {}).get("Fontname", "GreatVibes-Regular")
+    extra_styles = [
+        {
+            "name": "Static",
+            "base_style": style,
+            "overrides": {
+                **(overrides or {}),
+                "Fontname": static_font,
+                "Alignment": str(static_alignment),
+                "MarginV": str(static_margin_v),
+                "Fontsize": str(int(float((overrides or {}).get("Fontsize", "66"))) - 6),
+            },
+        }
+    ]
+
+    # Dynamic style uses the Default style with its own position
+    dynamic_overrides = dict(overrides or {})
+    dynamic_overrides["Alignment"] = str(dynamic_alignment)
+    dynamic_overrides["MarginV"] = str(dynamic_margin_v)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        _write_ass_header(f, style, play_w, play_h, dynamic_overrides, extra_styles)
+
+        for seg in segments:
+            start = float(seg["start"])
+            end = float(seg["end"])
+            # Dynamic line (changes per segment)
+            dyn_text = str(seg.get("text", "")).strip()
+            if upper:
+                dyn_text = dyn_text.upper()
+            if dyn_text:
+                f.write(
+                    f"Dialogue: 0,{_ass_time(start)},{_ass_time(end)},"
+                    f"Default,,0,0,0,,{dyn_text}\n"
+                )
+            # Static line (same every segment)
+            st_text = static_line.strip()
+            if upper:
+                st_text = st_text.upper()
+            if st_text:
+                f.write(
+                    f"Dialogue: 0,{_ass_time(start)},{_ass_time(end)},"
+                    f"Static,,0,0,0,,{st_text}\n"
                 )
 
 
