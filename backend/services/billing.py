@@ -72,7 +72,7 @@ def _access_token() -> str:
 
 def _product_id(plan_type: str = "1_month") -> str:
     # 1_month -> POLAR_PRODUCT_ID_1M
-    suffix = plan_type.upper().replace("MONTHS", "M").replace("MONTH", "M")
+    suffix = plan_type.upper().replace("MONTHS", "M").replace("MONTH", "M").replace("_", "")
     env_name = f"POLAR_PRODUCT_ID_{suffix}"
     # Fallback to the generic POLAR_PRODUCT_ID for legacy configs
     return _env(env_name) or _env("POLAR_PRODUCT_ID")
