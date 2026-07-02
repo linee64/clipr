@@ -65,9 +65,9 @@ export function UpgradeModal({
             style={{
               background: "rgba(13, 20, 22, 0.97)",
               backdropFilter: "blur(18px)",
-              border: "1px solid rgba(16,185,129,0.4)",
+              border: "1px solid rgba(81,224,207,0.4)",
               boxShadow:
-                "0 0 40px rgba(16,185,129,0.14), inset 0 1px 0 rgba(255,255,255,0.04)",
+                "0 0 40px rgba(81,224,207,0.14), inset 0 1px 0 rgba(255,255,255,0.04)",
             }}
           >
             {/* soft mint atmosphere */}
@@ -75,7 +75,7 @@ export function UpgradeModal({
               className="pointer-events-none absolute -top-24 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full blur-3xl"
               style={{
                 background:
-                  "radial-gradient(circle, rgba(16,185,129,0.18) 0%, rgba(16,185,129,0) 70%)",
+                  "radial-gradient(circle, rgba(81,224,207,0.18) 0%, rgba(81,224,207,0) 70%)",
               }}
             />
 
@@ -88,7 +88,7 @@ export function UpgradeModal({
             </button>
 
             <div className="relative">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-[#10B981]/30 bg-[#10B981]/10 px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.2em] text-[#10B981]">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-[#51E0CF]/30 bg-[#51E0CF]/10 px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.2em] text-[#51E0CF]">
                 <Spark className="h-3 w-3" /> Clipr Pro
               </div>
 
@@ -119,7 +119,7 @@ export function UpgradeModal({
                 <div className="mt-5 space-y-2">
                   <button
                     onClick={() => setSelectedPlan("1_month")}
-                    className={`w-full flex items-center justify-between rounded-xl border p-3 ${selectedPlan === "1_month" ? "border-[#10B981] bg-[#10B981]/10" : "border-zinc-800 bg-zinc-900/50"}`}
+                    className={`w-full flex items-center justify-between rounded-xl border p-3 ${selectedPlan === "1_month" ? "border-[#51E0CF] bg-[#51E0CF]/10" : "border-zinc-800 bg-zinc-900/50"}`}
                   >
                     <div className="text-left">
                       <div className="text-sm font-bold text-white">1-Month Pro</div>
@@ -132,18 +132,18 @@ export function UpgradeModal({
                   </button>
                   <button
                     onClick={() => setSelectedPlan("3_months")}
-                    className={`w-full flex items-center justify-between rounded-xl border p-3 ${selectedPlan === "3_months" ? "border-[#10B981] bg-[#10B981]/10" : "border-zinc-800 bg-zinc-900/50"}`}
+                    className={`w-full flex items-center justify-between rounded-xl border p-3 ${selectedPlan === "3_months" ? "border-[#51E0CF] bg-[#51E0CF]/10" : "border-zinc-800 bg-zinc-900/50"}`}
                   >
                     <div className="text-left flex flex-col items-start">
                       <div className="flex items-center gap-2">
                         <div className="text-sm font-bold text-white">3-Month Pro</div>
-                        <span className="bg-[#10B981] text-zinc-950 text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase">Save 50%</span>
+                        <span className="bg-[#51E0CF] text-zinc-950 text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase">Save 38%</span>
                       </div>
                       <div className="text-xs text-zinc-500 mt-0.5">20 videos, unlimited regens</div>
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-bold text-white">{PRO_PRICE_3M}</div>
-                      <div className="text-xs text-zinc-500 line-through">$30</div>
+                      <div className="text-xs text-zinc-500 line-through">$20.97</div>
                     </div>
                   </button>
                   <button
@@ -167,7 +167,7 @@ export function UpgradeModal({
                 <div className="mt-7 space-y-1.5">
                   <button
                     onClick={onClose}
-                    className="w-full rounded-xl bg-[#10B981] py-3 text-sm font-bold text-[#070B0D] hover:bg-[#12cf90] transition-colors shadow-[0_0_18px_rgba(16,185,129,0.3)]"
+                    className="w-full rounded-xl bg-[#51E0CF] py-3 text-sm font-bold text-[#070B0D] hover:bg-[#43cdbd] transition-colors shadow-[0_0_18px_rgba(81,224,207,0.3)]"
                   >
                     Back to studio
                   </button>
@@ -184,7 +184,7 @@ export function UpgradeModal({
                   <button
                     onClick={() => onSubscribe(selectedPlan)}
                     disabled={busy}
-                    className={`w-full rounded-xl py-3.5 text-sm font-bold text-white transition-colors shadow-lg disabled:opacity-60 ${selectedPlan === "6_months" ? "bg-indigo-500 hover:bg-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.35)]" : "bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] shadow-[0_0_20px_rgba(16,185,129,0.35)]"}`}
+                    className={`w-full rounded-xl py-3.5 text-sm font-bold text-white transition-colors shadow-lg disabled:opacity-60 ${selectedPlan === "6_months" ? "bg-indigo-500 hover:bg-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.35)]" : "bg-[#51E0CF] hover:bg-[#43cdbd] text-[#070B0D] shadow-[0_0_20px_rgba(81,224,207,0.35)]"}`}
                   >
                     {busy
                       ? "Redirecting to checkout…"

@@ -1258,7 +1258,7 @@ export default function Dashboard() {
   if (isLoadingOnboarding) {
     return (
       <div className="h-screen bg-[#070B0D] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-[#51E0CF] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -1286,10 +1286,10 @@ export default function Dashboard() {
               alt="Clipr"
               width={24}
               height={24}
-              className="w-6 h-6 rounded-[6px] shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+              className="w-6 h-6 rounded-[6px] shadow-[0_0_12px_rgba(81,224,207,0.3)]"
             />
             <span className="text-lg font-bold tracking-tight text-[#EFEFEF] flex items-center leading-none">
-              Clipr<span className="text-[#10B981] font-mono">.</span>
+              Clipr<span className="text-[#51E0CF] font-mono">.</span>
             </span>
           </div>
 
@@ -1316,11 +1316,11 @@ export default function Dashboard() {
                     }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <span className={isActive ? "text-[#10B981]" : "text-[#6B7C85]"}>{link.icon}</span>
+                    <span className={isActive ? "text-[#51E0CF]" : "text-[#6B7C85]"}>{link.icon}</span>
                     <span>{link.name}</span>
                   </div>
                   {isActive && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#51E0CF] shadow-[0_0_8px_rgba(81,224,207,0.8)] animate-pulse" />
                   )}
                 </button>
               );
@@ -1339,7 +1339,7 @@ export default function Dashboard() {
               <span
                 className={`text-xs block mt-0.5 truncate ${
                   planState.plan === "pro"
-                    ? "text-[#10B981]"
+                    ? "text-[#51E0CF]"
                     : planState.expired
                       ? "text-[#EF8B8B]"
                       : "text-[#6B7C85]"
@@ -1358,7 +1358,7 @@ export default function Dashboard() {
           {planState.plan !== "pro" && (
             <button
               onClick={() => setUpgradeOpen(true)}
-              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#10B981] py-1.5 text-[11px] font-bold text-[#070B0D] hover:bg-[#12cf90] transition-colors shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#51E0CF] py-1.5 text-[11px] font-bold text-[#070B0D] hover:bg-[#43cdbd] transition-colors shadow-[0_0_12px_rgba(81,224,207,0.25)]"
             >
               <Spark className="w-3 h-3" />
               {planState.expired ? "Upgrade to Pro" : "Upgrade"}
@@ -1386,12 +1386,12 @@ export default function Dashboard() {
                 alt="Clipr"
                 width={28}
                 height={28}
-                className="w-[28px] h-[28px] rounded-[7px] shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                className="w-[28px] h-[28px] rounded-[7px] shadow-[0_0_12px_rgba(81,224,207,0.3)]"
               />
             </button>
             <span className="text-base font-semibold tracking-tight text-[#EFEFEF] truncate">
               {sidebarActive === "Home" ? (
-                <>Clipr<span className="text-[#10B981] font-mono">.</span></>
+                <>Clipr<span className="text-[#51E0CF] font-mono">.</span></>
               ) : (
                 sidebarActive
               )}
@@ -1408,7 +1408,7 @@ export default function Dashboard() {
             </button>
             <button className="hidden md:inline-flex text-[#6B7C85] hover:text-[#EFEFEF] transition-colors relative">
               <Bell className="w-3.5 h-3.5" />
-              <span className="absolute top-0 right-0 w-1 h-1 bg-[#10B981] rounded-full" />
+              <span className="absolute top-0 right-0 w-1 h-1 bg-[#51E0CF] rounded-full" />
             </button>
 
             {(X_ENABLED || LINKEDIN_ENABLED) && (
@@ -1420,7 +1420,7 @@ export default function Dashboard() {
                 <span className="flex items-center gap-1.5">
                   <span className="relative flex h-1.5 w-1.5">
                     {(xStatus?.connected || liStatus?.connected || igStatus?.connected) ? (
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#10B981] shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#51E0CF] shadow-[0_0_6px_rgba(81,224,207,0.8)]" />
                     ) : (
                       <>
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
@@ -1469,7 +1469,7 @@ export default function Dashboard() {
                             })
                           );
                         }}
-                        className="shrink-0 text-[10px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-2.5 py-1 rounded-md transition-colors"
+                        className="shrink-0 text-[10px] font-semibold text-[#070B0D] bg-[#51E0CF] hover:bg-[#43cdbd] px-2.5 py-1 rounded-md transition-colors"
                       >
                         Connect
                       </button>
@@ -1506,7 +1506,7 @@ export default function Dashboard() {
                               })
                             );
                           }}
-                          className="shrink-0 text-[10px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-2.5 py-1 rounded-md transition-colors"
+                          className="shrink-0 text-[10px] font-semibold text-[#070B0D] bg-[#51E0CF] hover:bg-[#43cdbd] px-2.5 py-1 rounded-md transition-colors"
                         >
                           Connect
                         </button>
@@ -1553,7 +1553,7 @@ export default function Dashboard() {
                               })
                             );
                           }}
-                          className="shrink-0 text-[10px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-2.5 py-1 rounded-md transition-colors"
+                          className="shrink-0 text-[10px] font-semibold text-[#070B0D] bg-[#51E0CF] hover:bg-[#43cdbd] px-2.5 py-1 rounded-md transition-colors"
                         >
                           Connect
                         </button>
@@ -1583,7 +1583,7 @@ export default function Dashboard() {
                       setConnectMenuOpen(false);
                       handleNav("Settings");
                     }}
-                    className="w-full text-center text-[10px] text-[#6B7C85] hover:text-[#10B981] pt-1 pb-0.5 transition-colors"
+                    className="w-full text-center text-[10px] text-[#6B7C85] hover:text-[#51E0CF] pt-1 pb-0.5 transition-colors"
                   >
                     Manage in Settings →
                   </button>
@@ -1611,11 +1611,11 @@ export default function Dashboard() {
               className={`shrink-0 flex items-center gap-3 px-4 md:px-6 py-2.5 border-b ${
                 planState.expired
                   ? "border-[#EF8B8B]/20 bg-[#EF8B8B]/[0.06]"
-                  : "border-[#10B981]/20 bg-[#10B981]/[0.06]"
+                  : "border-[#51E0CF]/20 bg-[#51E0CF]/[0.06]"
               }`}
             >
               <Spark
-                className={`h-4 w-4 shrink-0 ${planState.expired ? "text-[#EF8B8B]" : "text-[#10B981]"}`}
+                className={`h-4 w-4 shrink-0 ${planState.expired ? "text-[#EF8B8B]" : "text-[#51E0CF]"}`}
               />
               <p className="text-xs text-[#EFEFEF] flex-1 min-w-0">
                 {planState.expired
@@ -1624,7 +1624,7 @@ export default function Dashboard() {
               </p>
               <button
                 onClick={() => setUpgradeOpen(true)}
-                className="shrink-0 rounded-lg bg-[#10B981] px-3 py-1.5 text-[11px] font-bold text-[#070B0D] hover:bg-[#12cf90] transition-colors"
+                className="shrink-0 rounded-lg bg-[#51E0CF] px-3 py-1.5 text-[11px] font-bold text-[#070B0D] hover:bg-[#43cdbd] transition-colors"
               >
                 Upgrade
               </button>
@@ -1669,7 +1669,7 @@ export default function Dashboard() {
                     >
                       <div className="flex flex-col items-center text-center space-y-1.5 pb-2 pt-2 sm:pt-10 md:pt-24 select-none">
                         <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[#EFEFEF]">
-                          What&apos;s your next viral hook, {profile.name}<span className="text-[#10B981]">?</span>
+                          What&apos;s your next viral hook, {profile.name}<span className="text-[#51E0CF]">?</span>
                         </h1>
                         <p className="text-[10px] text-[#6B7C85] tracking-[0.5em] uppercase font-mono font-bold">
                           Clipr AI Content Engine
@@ -1701,7 +1701,7 @@ export default function Dashboard() {
                                   onClick={() => {
                                     setIsPlatformOpen(!isPlatformOpen);
                                   }}
-                                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full text-[11px] font-semibold border bg-[#070B0D] border-[#152226] hover:border-[#10B981]/30 text-[#EFEFEF] transition-all"
+                                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full text-[11px] font-semibold border bg-[#070B0D] border-[#152226] hover:border-[#51E0CF]/30 text-[#EFEFEF] transition-all"
                                 >
                                   {getPlatformIcon(selectedPlatform, 10, true)}
                                   <span>Platform: {selectedPlatform}</span>
@@ -1718,7 +1718,7 @@ export default function Dashboard() {
                                           setSelectedPlatform(plat);
                                           setIsPlatformOpen(false);
                                         }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-[#11191B] hover:text-[#10B981] transition-all flex items-center space-x-2 ${selectedPlatform === plat ? "text-[#10B981] bg-[#11191B]/50 font-bold" : "text-[#6B7C85]"
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-[#11191B] hover:text-[#51E0CF] transition-all flex items-center space-x-2 ${selectedPlatform === plat ? "text-[#51E0CF] bg-[#11191B]/50 font-bold" : "text-[#6B7C85]"
                                           }`}
                                       >
                                         <span style={{ opacity: 0.65 }}>{getPlatformIcon(plat, 12, true)}</span>
@@ -1734,7 +1734,7 @@ export default function Dashboard() {
 
                             {/* Generate button */}
                             <button
-                              className="bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] hover:scale-[1.02] active:scale-[0.98] transition-all text-xs font-bold rounded-full px-4 py-1.5 flex items-center justify-center space-x-1.5 shadow-md"
+                              className="bg-[#51E0CF] hover:bg-[#43cdbd] text-[#070B0D] hover:scale-[1.02] active:scale-[0.98] transition-all text-xs font-bold rounded-full px-4 py-1.5 flex items-center justify-center space-x-1.5 shadow-md"
                               onClick={triggerGenerateIdeas}
                               disabled={isGenerating}
                             >
@@ -1769,7 +1769,7 @@ export default function Dashboard() {
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <div className="h-5 w-20 bg-white/5 rounded-full" />
-                                <div className="h-5 w-24 bg-[rgba(16,185,129,0.12)] rounded-full" />
+                                <div className="h-5 w-24 bg-[rgba(81,224,207,0.12)] rounded-full" />
                               </div>
                               <div className="h-5 w-2/3 bg-white/10 rounded mt-4" />
                               <div className="h-4 w-5/6 bg-white/5 rounded mt-3" />
@@ -1782,7 +1782,7 @@ export default function Dashboard() {
                             <div
                               key={idea.id}
                               onClick={() => setModalIdea(idea)}
-                              className="group flex h-full flex-col rounded-2xl p-5 bg-[#0D1416] border border-[#152226] cursor-pointer hover:border-[#10B981]/50 hover:bg-[#0F181A] transition-all duration-300 opacity-0 translate-y-[24px] animate-card-slide-up shadow-[0_0_24px_rgba(16,185,129,0.06)]"
+                              className="group flex h-full flex-col rounded-2xl p-5 bg-[#0D1416] border border-[#152226] cursor-pointer hover:border-[#51E0CF]/50 hover:bg-[#0F181A] transition-all duration-300 opacity-0 translate-y-[24px] animate-card-slide-up shadow-[0_0_24px_rgba(81,224,207,0.06)]"
                               style={{ animationDelay: `${idx * 80}ms` }}
                             >
                               {/* Card Header Row */}
@@ -1790,7 +1790,7 @@ export default function Dashboard() {
                                 <span className="text-[10px] uppercase tracking-wider font-medium border border-[#152226] bg-[#11191B] rounded-full px-2.5 py-1 text-[#6B7C85] truncate min-w-0">
                                   {idea.vibe || idea.tags?.[0] || "dark and focused"}
                                 </span>
-                                <span className="text-[9px] uppercase font-bold tracking-wider text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 rounded-full px-2 py-1 shrink-0">
+                                <span className="text-[9px] uppercase font-bold tracking-wider text-[#51E0CF] bg-[#51E0CF]/10 border border-[#51E0CF]/25 rounded-full px-2 py-1 shrink-0">
                                   {idea.estimate || "High potential"}
                                 </span>
                               </div>
@@ -1806,7 +1806,7 @@ export default function Dashboard() {
                               </p>
 
                               {/* Footer CTA */}
-                              <div className="mt-auto pt-4 flex items-center gap-1 text-[12px] font-semibold text-[#6B7C85] group-hover:text-[#10B981] transition-colors">
+                              <div className="mt-auto pt-4 flex items-center gap-1 text-[12px] font-semibold text-[#6B7C85] group-hover:text-[#51E0CF] transition-colors">
                                 <span>View idea</span>
                                 <span className="transition-transform group-hover:translate-x-0.5">→</span>
                               </div>
@@ -1895,7 +1895,7 @@ export default function Dashboard() {
                     </div>
                     <button
                       onClick={loadSchedules}
-                      className="shrink-0 text-[11px] text-[#6B7C85] hover:text-[#10B981] border border-[#152226] hover:border-[#10B981]/40 px-3 py-1.5 rounded-lg transition-colors"
+                      className="shrink-0 text-[11px] text-[#6B7C85] hover:text-[#51E0CF] border border-[#152226] hover:border-[#51E0CF]/40 px-3 py-1.5 rounded-lg transition-colors"
                     >
                       Refresh
                     </button>
@@ -1903,13 +1903,13 @@ export default function Dashboard() {
 
                   {schedulesLoading ? (
                     <div className="flex items-center justify-center gap-2 py-16 text-[#6B7C85]">
-                      <span className="w-4 h-4 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+                      <span className="w-4 h-4 border-2 border-[#51E0CF] border-t-transparent rounded-full animate-spin" />
                       <span className="text-sm">Loading…</span>
                     </div>
                   ) : schedules.length === 0 ? (
                     <div className="rounded-xl bg-[#0D1416] border border-[#152226] p-12 text-center flex flex-col items-center gap-3">
                       <div className="w-12 h-12 rounded-2xl bg-[#070B0D] border border-[#152226] flex items-center justify-center">
-                        <CalendarRange className="w-5 h-5 text-[#10B981]" />
+                        <CalendarRange className="w-5 h-5 text-[#51E0CF]" />
                       </div>
                       <h3 className="text-base font-semibold text-[#EFEFEF]">No scheduled posts yet</h3>
                       <p className="text-sm text-[#6B7C85] max-w-xs">
@@ -1920,7 +1920,7 @@ export default function Dashboard() {
                           setActiveTab("My Content");
                           setSidebarActive("My Content");
                         }}
-                        className="mt-1 text-xs font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-4 py-2 rounded-lg transition-colors"
+                        className="mt-1 text-xs font-semibold text-[#070B0D] bg-[#51E0CF] hover:bg-[#43cdbd] px-4 py-2 rounded-lg transition-colors"
                       >
                         Go to My Content
                       </button>
@@ -1930,9 +1930,9 @@ export default function Dashboard() {
                       {schedules.map((s) => {
                         const badge =
                           ({
-                            pending: { t: "Scheduled", c: "text-[#10B981] bg-[#10B981]/10 border-[#10B981]/25" },
-                            processing: { t: "Posting…", c: "text-[#7FA89C] bg-[#10B981]/[0.06] border-[#152226]" },
-                            posted: { t: "Posted", c: "text-[#10B981] bg-[#10B981]/10 border-[#10B981]/25" },
+                            pending: { t: "Scheduled", c: "text-[#51E0CF] bg-[#51E0CF]/10 border-[#51E0CF]/25" },
+                            processing: { t: "Posting…", c: "text-[#7FA89C] bg-[#51E0CF]/[0.06] border-[#152226]" },
+                            posted: { t: "Posted", c: "text-[#51E0CF] bg-[#51E0CF]/10 border-[#51E0CF]/25" },
                             error: { t: "Failed", c: "text-[#EF8B8B] bg-[#EF8B8B]/[0.06] border-[#EF8B8B]/25" },
                           } as const)[s.status] ?? { t: s.status, c: "text-[#6B7C85] border-[#152226]" };
                         return (
@@ -1970,7 +1970,7 @@ export default function Dashboard() {
                                 href={s.result_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="shrink-0 text-[11px] text-[#10B981] hover:underline"
+                                className="shrink-0 text-[11px] text-[#51E0CF] hover:underline"
                               >
                                 View
                               </a>
@@ -2025,7 +2025,7 @@ export default function Dashboard() {
                       </p>
                       <button
                         onClick={() => handleNav("Home")}
-                        className="mt-2 bg-[#10B981] hover:bg-[#0D9E6E] text-[#070B0D] text-xs font-semibold rounded-lg px-4 py-2 transition-all shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                        className="mt-2 bg-[#51E0CF] hover:bg-[#43cdbd] text-[#070B0D] text-xs font-semibold rounded-lg px-4 py-2 transition-all shadow-[0_0_12px_rgba(81,224,207,0.3)]"
                       >
                         Create a video
                       </button>
@@ -2062,7 +2062,7 @@ export default function Dashboard() {
                             {/* Saved description/caption — editable + persisted, and
                                 reused when posting to socials (copy / post buttons). */}
                             {editingCaptionId === item.id ? (
-                              <div className="rounded-lg bg-[#070B0D] border border-[#10B981]/30 p-2">
+                              <div className="rounded-lg bg-[#070B0D] border border-[#51E0CF]/30 p-2">
                                 <textarea
                                   value={captionDraft}
                                   onChange={(e) => setCaptionDraft(e.target.value)}
@@ -2075,7 +2075,7 @@ export default function Dashboard() {
                                   <button
                                     type="button"
                                     onClick={() => saveEditCaption(item.id)}
-                                    className="text-[10px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-2.5 py-1 rounded-md transition-colors"
+                                    className="text-[10px] font-semibold text-[#070B0D] bg-[#51E0CF] hover:bg-[#43cdbd] px-2.5 py-1 rounded-md transition-colors"
                                   >
                                     Save
                                   </button>
@@ -2101,7 +2101,7 @@ export default function Dashboard() {
                                   <button
                                     type="button"
                                     onClick={() => startEditCaption(item)}
-                                    className="text-[10px] font-medium text-[#6B7C85] hover:text-[#10B981] transition-colors"
+                                    className="text-[10px] font-medium text-[#6B7C85] hover:text-[#51E0CF] transition-colors"
                                   >
                                     Edit
                                   </button>
@@ -2109,7 +2109,7 @@ export default function Dashboard() {
                                     <button
                                       type="button"
                                       onClick={() => handleCopyCaption(item)}
-                                      className="text-[10px] font-medium text-[#6B7C85] hover:text-[#10B981] transition-colors"
+                                      className="text-[10px] font-medium text-[#6B7C85] hover:text-[#51E0CF] transition-colors"
                                     >
                                       Copy
                                     </button>
@@ -2126,10 +2126,10 @@ export default function Dashboard() {
                                     onClick={() => handlePostSavedToX(item)}
                                     disabled={xPostingId === item.id}
                                     title={xStatus?.connected ? "Post to X" : "Connect X to post"}
-                                    className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors disabled:opacity-50"
+                                    className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#51E0CF] transition-colors disabled:opacity-50"
                                   >
                                     {xPostingId === item.id ? (
-                                      <span className="block w-3.5 h-3.5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+                                      <span className="block w-3.5 h-3.5 border-2 border-[#51E0CF] border-t-transparent rounded-full animate-spin" />
                                     ) : (
                                       <XLogo className="w-3.5 h-3.5" />
                                     )}
@@ -2140,10 +2140,10 @@ export default function Dashboard() {
                                     onClick={() => handlePostSavedToLinkedIn(item)}
                                     disabled={liPostingId === item.id}
                                     title={liStatus?.connected ? "Post to LinkedIn" : "Connect LinkedIn to post"}
-                                    className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors disabled:opacity-50"
+                                    className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#51E0CF] transition-colors disabled:opacity-50"
                                   >
                                     {liPostingId === item.id ? (
-                                      <span className="block w-3.5 h-3.5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+                                      <span className="block w-3.5 h-3.5 border-2 border-[#51E0CF] border-t-transparent rounded-full animate-spin" />
                                     ) : (
                                       getPlatformIcon("LinkedIn", 14)
                                     )}
@@ -2154,10 +2154,10 @@ export default function Dashboard() {
                                     onClick={() => handlePostSavedToInstagram(item)}
                                     disabled={igPostingId === item.id}
                                     title={igStatus?.connected ? "Post to Instagram" : "Connect Instagram to post"}
-                                    className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors disabled:opacity-50"
+                                    className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#51E0CF] transition-colors disabled:opacity-50"
                                   >
                                     {igPostingId === item.id ? (
-                                      <span className="block w-3.5 h-3.5 border-2 border-[#10B981] border-t-transparent rounded-full animate-spin" />
+                                      <span className="block w-3.5 h-3.5 border-2 border-[#51E0CF] border-t-transparent rounded-full animate-spin" />
                                     ) : (
                                       getPlatformIcon("Reels", 14)
                                     )}
@@ -2172,7 +2172,7 @@ export default function Dashboard() {
                                     })
                                   }
                                   title="Schedule auto-post"
-                                  className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors"
+                                  className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#51E0CF] transition-colors"
                                 >
                                   <Clock className="w-3.5 h-3.5" />
                                 </button>
@@ -2182,7 +2182,7 @@ export default function Dashboard() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   title="Download"
-                                  className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#10B981] transition-colors"
+                                  className="p-1.5 md:p-1 rounded text-[#6B7C85] hover:text-[#51E0CF] transition-colors"
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                 </a>
@@ -2281,7 +2281,7 @@ export default function Dashboard() {
                               {(ref.label || "Reference").replace(/^Ref:\s*/, "")}
                             </p>
                             <div className="flex flex-wrap gap-1 mt-2">
-                              <span className="text-[9px] uppercase tracking-wider font-semibold text-[#10B981] bg-[#10B981]/10 border border-[#10B981]/25 px-1.5 py-0.5 rounded-full">
+                              <span className="text-[9px] uppercase tracking-wider font-semibold text-[#51E0CF] bg-[#51E0CF]/10 border border-[#51E0CF]/25 px-1.5 py-0.5 rounded-full">
                                 {(ref.color_grade || "").replace(/_/g, " ")}
                               </span>
                               {ref.measured?.bpm != null && (
@@ -2328,7 +2328,7 @@ export default function Dashboard() {
                         className={`ml-auto shrink-0 text-[10px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full border ${
                           planState.expired
                             ? "text-[#EF8B8B] bg-[#EF8B8B]/10 border-[#EF8B8B]/25"
-                            : "text-[#10B981] bg-[#10B981]/10 border-[#10B981]/25"
+                            : "text-[#51E0CF] bg-[#51E0CF]/10 border-[#51E0CF]/25"
                         }`}
                       >
                         {planState.plan === "pro" ? "Pro" : planState.expired ? "Trial ended" : "Trial"}
@@ -2339,7 +2339,7 @@ export default function Dashboard() {
                     <div className="rounded-lg border border-[#152226] bg-[#070B0D] p-4 space-y-3">
                       <div className="flex items-center justify-between gap-2">
                         <span className="flex items-center gap-2 text-sm font-semibold text-[#EFEFEF]">
-                          <Spark className="w-3.5 h-3.5 text-[#10B981]" />
+                          <Spark className="w-3.5 h-3.5 text-[#51E0CF]" />
                           Clipr Pro
                         </span>
                         <span className="text-xs text-[#6B7C85]">
@@ -2359,10 +2359,10 @@ export default function Dashboard() {
                           {!planState.expired && (
                             <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#152226]">
                               <div
-                                className="h-full rounded-full bg-[#10B981]"
+                                className="h-full rounded-full bg-[#51E0CF]"
                                 style={{
                                   width: `${(planState.daysLeft / TRIAL_DAYS) * 100}%`,
-                                  boxShadow: "0 0 8px rgba(16,185,129,0.5)",
+                                  boxShadow: "0 0 8px rgba(81,224,207,0.5)",
                                 }}
                               />
                             </div>
@@ -2376,7 +2376,7 @@ export default function Dashboard() {
                         className={
                           planState.plan === "pro"
                             ? "w-full text-xs font-medium text-[#EFEFEF] bg-[#11191B] border border-[#152226] rounded-lg px-3 py-2 hover:bg-[#152226] transition-colors"
-                            : "w-full flex items-center justify-center gap-1.5 text-xs font-bold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] rounded-lg px-3 py-2.5 transition-colors shadow-[0_0_14px_rgba(16,185,129,0.25)]"
+                            : "w-full flex items-center justify-center gap-1.5 text-xs font-bold text-[#070B0D] bg-[#51E0CF] hover:bg-[#43cdbd] rounded-lg px-3 py-2.5 transition-colors shadow-[0_0_14px_rgba(81,224,207,0.25)]"
                         }
                       >
                         {planState.plan === "pro" ? (
@@ -2395,7 +2395,7 @@ export default function Dashboard() {
                   <section className="rounded-xl bg-[#0D1416] border border-[#152226] p-5 space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Brand DNA</h3>
-                      <button onClick={handleResetDna} className="text-[11px] text-[#10B981] hover:text-[#12cf90] hover:underline flex items-center gap-1"><Edit2 className="w-3 h-3" />Edit</button>
+                      <button onClick={handleResetDna} className="text-[11px] text-[#51E0CF] hover:text-[#43cdbd] hover:underline flex items-center gap-1"><Edit2 className="w-3 h-3" />Edit</button>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {[
@@ -2428,8 +2428,8 @@ export default function Dashboard() {
                         {LINKEDIN_ENABLED ? (
                           liStatus?.connected ? (
                             <div className="flex items-center gap-2.5">
-                              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#10B981]">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#51E0CF]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#51E0CF] shadow-[0_0_8px_rgba(81,224,207,0.8)]" />
                                 Connected
                               </span>
                               <button
@@ -2451,7 +2451,7 @@ export default function Dashboard() {
                                   })
                                 )
                               }
-                              className="text-[11px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-3 py-1.5 rounded-lg transition-colors shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                              className="text-[11px] font-semibold text-[#070B0D] bg-[#51E0CF] hover:bg-[#43cdbd] px-3 py-1.5 rounded-lg transition-colors shadow-[0_0_12px_rgba(81,224,207,0.25)]"
                             >
                               Connect
                             </button>
@@ -2476,8 +2476,8 @@ export default function Dashboard() {
                         {X_ENABLED ? (
                           xStatus?.connected ? (
                             <div className="flex items-center gap-2.5">
-                              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#10B981]">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#51E0CF]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#51E0CF] shadow-[0_0_8px_rgba(81,224,207,0.8)]" />
                                 Connected
                               </span>
                               <button
@@ -2499,7 +2499,7 @@ export default function Dashboard() {
                                   })
                                 )
                               }
-                              className="text-[11px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-3 py-1.5 rounded-lg transition-colors shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                              className="text-[11px] font-semibold text-[#070B0D] bg-[#51E0CF] hover:bg-[#43cdbd] px-3 py-1.5 rounded-lg transition-colors shadow-[0_0_12px_rgba(81,224,207,0.25)]"
                             >
                               Connect
                             </button>
@@ -2526,8 +2526,8 @@ export default function Dashboard() {
                         {INSTAGRAM_ENABLED ? (
                           igStatus?.connected ? (
                             <div className="flex items-center gap-2.5">
-                              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#10B981]">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#51E0CF]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#51E0CF] shadow-[0_0_8px_rgba(81,224,207,0.8)]" />
                                 Connected
                               </span>
                               <button
@@ -2549,7 +2549,7 @@ export default function Dashboard() {
                                   })
                                 )
                               }
-                              className="text-[11px] font-semibold text-[#070B0D] bg-[#10B981] hover:bg-[#12cf90] px-3 py-1.5 rounded-lg transition-colors shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                              className="text-[11px] font-semibold text-[#070B0D] bg-[#51E0CF] hover:bg-[#43cdbd] px-3 py-1.5 rounded-lg transition-colors shadow-[0_0_12px_rgba(81,224,207,0.25)]"
                             >
                               Connect
                             </button>
@@ -2578,13 +2578,13 @@ export default function Dashboard() {
                     <h3 className="text-[10px] uppercase font-mono tracking-widest text-[#6B7C85] font-semibold">Preferences</h3>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-[#EFEFEF]">Theme</span>
-                      <span className="flex items-center gap-2 text-xs text-[#6B7C85]"><span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />Dark</span>
+                      <span className="flex items-center gap-2 text-xs text-[#6B7C85]"><span className="w-1.5 h-1.5 rounded-full bg-[#51E0CF]" />Dark</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-[#EFEFEF]">Default platform</span>
                       <div className="flex items-center gap-1.5">
                         {(["TikTok", "LinkedIn", "Reels"] as const).map((plat) => (
-                          <button key={plat} onClick={() => setSelectedPlatform(plat)} className={`text-[11px] px-2.5 py-1 rounded-lg border transition-colors ${selectedPlatform === plat ? "border-[#10B981] text-[#10B981] bg-[#10B981]/10" : "border-[#152226] text-[#6B7C85] hover:text-[#EFEFEF]"}`}>{plat}</button>
+                          <button key={plat} onClick={() => setSelectedPlatform(plat)} className={`text-[11px] px-2.5 py-1 rounded-lg border transition-colors ${selectedPlatform === plat ? "border-[#51E0CF] text-[#51E0CF] bg-[#51E0CF]/10" : "border-[#152226] text-[#6B7C85] hover:text-[#EFEFEF]"}`}>{plat}</button>
                         ))}
                       </div>
                     </div>
@@ -2668,7 +2668,7 @@ export default function Dashboard() {
                       setInputVal(`Write a direct, short-form ${selectedPlatform === "LinkedIn" ? "LinkedIn post" : "TikTok script"} addressing the sudden trend: "${trend.title}". Keep it punchy!`);
                       setActiveTab("Create");
                     }}
-                    className="text-[10px] font-semibold text-[#10B981] hover:text-[#12cf90] transition-colors flex items-center space-x-1"
+                    className="text-[10px] font-semibold text-[#51E0CF] hover:text-[#43cdbd] transition-colors flex items-center space-x-1"
                   >
                     <span>Write my take</span>
                     <span>→</span>
@@ -2689,7 +2689,7 @@ export default function Dashboard() {
               onClick={() => setIsEditingVoice(!isEditingVoice)}
               className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors p-1"
             >
-              <Edit2 className="w-3 h-3 text-[#10B981]" />
+              <Edit2 className="w-3 h-3 text-[#51E0CF]" />
             </button>
           </div>
 
@@ -2701,7 +2701,7 @@ export default function Dashboard() {
                   type="text"
                   value={voiceTone}
                   onChange={(e) => setVoiceTone(e.target.value)}
-                  className="w-full bg-[#070B0D] border border-[#152226] rounded px-2 py-1.5 text-xs text-[#EFEFEF] outline-none focus:border-[#10B981]/50"
+                  className="w-full bg-[#070B0D] border border-[#152226] rounded px-2 py-1.5 text-xs text-[#EFEFEF] outline-none focus:border-[#51E0CF]/50"
                 />
               </div>
               <div className="space-y-1">
@@ -2709,12 +2709,12 @@ export default function Dashboard() {
                 <textarea
                   value={voicePreview}
                   onChange={(e) => setVoicePreview(e.target.value)}
-                  className="w-full bg-[#070B0D] border border-[#152226] rounded p-2 text-xs text-[#EFEFEF] outline-none resize-none h-16 focus:border-[#10B981]/50"
+                  className="w-full bg-[#070B0D] border border-[#152226] rounded p-2 text-xs text-[#EFEFEF] outline-none resize-none h-16 focus:border-[#51E0CF]/50"
                 />
               </div>
               <button
                 onClick={() => setIsEditingVoice(false)}
-                className="w-full py-1.5 text-[10px] font-bold bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] rounded transition-colors"
+                className="w-full py-1.5 text-[10px] font-bold bg-[#51E0CF] hover:bg-[#43cdbd] text-[#070B0D] rounded transition-colors"
               >
                 Save settings
               </button>
@@ -2764,11 +2764,11 @@ export default function Dashboard() {
                 handleNav(link.name as "Home" | "My Clips" | "My Content" | "Calendar" | "References" | "Settings")
               }
               className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
-                isActive ? "text-[#10B981]" : "text-[#6B7C85] hover:text-[#EFEFEF]"
+                isActive ? "text-[#51E0CF]" : "text-[#6B7C85] hover:text-[#EFEFEF]"
               }`}
             >
               {isActive && (
-                <span className="absolute top-0 h-0.5 w-8 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                <span className="absolute top-0 h-0.5 w-8 rounded-full bg-[#51E0CF] shadow-[0_0_8px_rgba(81,224,207,0.8)]" />
               )}
               {link.icon}
               <span>{link.label}</span>
@@ -2801,8 +2801,8 @@ export default function Dashboard() {
               style={{
                 background: 'rgba(13, 20, 22, 0.96)',
                 backdropFilter: 'blur(16px)',
-                border: '1px solid rgba(16, 185, 129, 0.4)',
-                boxShadow: '0 0 32px rgba(16, 185, 129, 0.12), inset 0 1px 0 rgba(255,255,255,0.04)'
+                border: '1px solid rgba(81,224,207, 0.4)',
+                boxShadow: '0 0 32px rgba(81,224,207, 0.12), inset 0 1px 0 rgba(255,255,255,0.04)'
               }}
             >
               {/* Close Button */}
@@ -2840,7 +2840,7 @@ export default function Dashboard() {
                     handleSelectIdea(modalIdea);
                     setModalIdea(null);
                   }}
-                  className="text-[#10B981] font-semibold text-[15px] flex items-center gap-1 hover:opacity-85 transition-opacity"
+                  className="text-[#51E0CF] font-semibold text-[15px] flex items-center gap-1 hover:opacity-85 transition-opacity"
                   style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   Create storyboard <span className="ml-1">→</span>
@@ -2901,7 +2901,7 @@ export default function Dashboard() {
                         onClick={() => setSchedulePlatform("twitter")}
                         className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-all ${
                           schedulePlatform === "twitter"
-                            ? "border-[#10B981] bg-[#10B981]/10 text-[#EFEFEF]"
+                            ? "border-[#51E0CF] bg-[#51E0CF]/10 text-[#EFEFEF]"
                             : "border-[#152226] bg-[#070B0D] text-[#6B7C85] hover:border-[#1E343A]"
                         }`}
                       >
@@ -2914,7 +2914,7 @@ export default function Dashboard() {
                         onClick={() => setSchedulePlatform("linkedin")}
                         className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-all ${
                           schedulePlatform === "linkedin"
-                            ? "border-[#10B981] bg-[#10B981]/10 text-[#EFEFEF]"
+                            ? "border-[#51E0CF] bg-[#51E0CF]/10 text-[#EFEFEF]"
                             : "border-[#152226] bg-[#070B0D] text-[#6B7C85] hover:border-[#1E343A]"
                         }`}
                       >
@@ -2927,7 +2927,7 @@ export default function Dashboard() {
                         onClick={() => setSchedulePlatform("instagram")}
                         className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-all ${
                           schedulePlatform === "instagram"
-                            ? "border-[#10B981] bg-[#10B981]/10 text-[#EFEFEF]"
+                            ? "border-[#51E0CF] bg-[#51E0CF]/10 text-[#EFEFEF]"
                             : "border-[#152226] bg-[#070B0D] text-[#6B7C85] hover:border-[#1E343A]"
                         }`}
                       >
@@ -2948,7 +2948,7 @@ export default function Dashboard() {
                       type="date"
                       value={scheduleDate}
                       onChange={(e) => setScheduleDate(e.target.value)}
-                      className="w-full bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2.5 text-sm text-[#EFEFEF] outline-none focus:border-[#10B981] transition-colors [color-scheme:dark]"
+                      className="w-full bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2.5 text-sm text-[#EFEFEF] outline-none focus:border-[#51E0CF] transition-colors [color-scheme:dark]"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -2959,7 +2959,7 @@ export default function Dashboard() {
                       type="time"
                       value={scheduleTime}
                       onChange={(e) => setScheduleTime(e.target.value)}
-                      className="w-full bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2.5 text-sm text-[#EFEFEF] outline-none focus:border-[#10B981] transition-colors [color-scheme:dark]"
+                      className="w-full bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2.5 text-sm text-[#EFEFEF] outline-none focus:border-[#51E0CF] transition-colors [color-scheme:dark]"
                     />
                   </div>
                 </div>
@@ -2974,7 +2974,7 @@ export default function Dashboard() {
                     onChange={(e) => setScheduleCaption(e.target.value)}
                     rows={3}
                     placeholder="Post text…"
-                    className="w-full resize-y bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2.5 text-sm text-[#EFEFEF] outline-none focus:border-[#10B981] transition-colors placeholder:text-[#6B7C85] scrollbar-thin"
+                    className="w-full resize-y bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-2.5 text-sm text-[#EFEFEF] outline-none focus:border-[#51E0CF] transition-colors placeholder:text-[#6B7C85] scrollbar-thin"
                   />
                 </div>
 
@@ -3004,7 +3004,7 @@ export default function Dashboard() {
                 <button
                   onClick={confirmSchedule}
                   disabled={scheduleSubmitting}
-                  className="flex-1 py-2.5 rounded-lg bg-[#10B981] hover:bg-[#0D9E6E] text-[#070B0D] text-sm font-bold transition-all flex items-center justify-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.3)] disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="flex-1 py-2.5 rounded-lg bg-[#51E0CF] hover:bg-[#43cdbd] text-[#070B0D] text-sm font-bold transition-all flex items-center justify-center gap-1.5 shadow-[0_0_12px_rgba(81,224,207,0.3)] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {scheduleSubmitting ? (
                     <>
@@ -3037,17 +3037,17 @@ export default function Dashboard() {
             <div
               className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-2xl backdrop-blur-md ${
                 xToast.kind === "ok"
-                  ? "bg-[#0D1416]/95 border-[#10B981]/40"
+                  ? "bg-[#0D1416]/95 border-[#51E0CF]/40"
                   : "bg-[#1A1012]/95 border-[#EF8B8B]/40"
               }`}
             >
               <div
                 className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
-                  xToast.kind === "ok" ? "bg-[#10B981]/15" : "bg-[#EF8B8B]/15"
+                  xToast.kind === "ok" ? "bg-[#51E0CF]/15" : "bg-[#EF8B8B]/15"
                 }`}
               >
                 {xToast.kind === "ok" ? (
-                  <Check className="h-3 w-3 text-[#10B981]" />
+                  <Check className="h-3 w-3 text-[#51E0CF]" />
                 ) : (
                   <X className="h-3 w-3 text-[#EF8B8B]" />
                 )}

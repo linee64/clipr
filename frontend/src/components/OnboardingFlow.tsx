@@ -164,12 +164,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
     return (
       <div className="fixed inset-0 z-50 bg-[#070B0D] flex flex-col items-center justify-center overflow-y-auto p-6 py-10 select-none">
-        <div className="absolute top-[30%] left-[50%] -translate-x-[50%] w-[300px] h-[300px] bg-[#10B981] rounded-full blur-[120px] opacity-[0.2] animate-pulse pointer-events-none" />
+        <div className="absolute top-[30%] left-[50%] -translate-x-[50%] w-[300px] h-[300px] bg-[#51E0CF] rounded-full blur-[120px] opacity-[0.2] animate-pulse pointer-events-none" />
         
         <div className="relative z-10 max-w-md w-full text-center space-y-8">
-          <div className="w-20 h-20 rounded-2xl bg-[#0D1416] border border-[#152226] flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(16,185,129,0.15)] relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#10B981]/10 to-transparent animate-spin" style={{ animationDuration: '3s' }} />
-            <Sparkles className="w-8 h-8 text-[#10B981] relative z-10 animate-pulse" />
+          <div className="w-20 h-20 rounded-2xl bg-[#0D1416] border border-[#152226] flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(81,224,207,0.15)] relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#51E0CF]/10 to-transparent animate-spin" style={{ animationDuration: '3s' }} />
+            <Sparkles className="w-8 h-8 text-[#51E0CF] relative z-10 animate-pulse" />
           </div>
 
           <div className="space-y-3">
@@ -186,14 +186,14 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <div key={idx} className="flex items-center space-x-3 text-sm transition-all duration-300">
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border ${
                     isCompleted 
-                      ? "bg-[#10B981]/15 border-[#10B981] text-[#10B981]" 
+                      ? "bg-[#51E0CF]/15 border-[#51E0CF] text-[#51E0CF]" 
                       : isCurrent 
-                      ? "border-[#10B981] text-[#10B981] animate-pulse" 
+                      ? "border-[#51E0CF] text-[#51E0CF] animate-pulse" 
                       : "border-[#152226] text-[#6B7C85]"
                   }`}>
                     {isCompleted ? <Check className="w-3 h-3" /> : <span className="text-[10px] font-mono">{idx + 1}</span>}
                   </div>
-                  <span className={isCompleted ? "text-white/95" : isCurrent ? "text-[#10B981] font-medium" : "text-[#6B7C85]"}>
+                  <span className={isCompleted ? "text-white/95" : isCurrent ? "text-[#51E0CF] font-medium" : "text-[#6B7C85]"}>
                     {msg}
                   </span>
                 </div>
@@ -204,7 +204,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           {/* Progress bar */}
           <div className="w-full bg-[#152226] h-1.5 rounded-full overflow-hidden">
             <motion.div 
-              className="bg-[#10B981] h-full"
+              className="bg-[#51E0CF] h-full"
               initial={{ width: "0%" }}
               animate={{ width: `${(generationStep / messages.length) * 100}%` }}
               transition={{ duration: 0.5 }}
@@ -219,8 +219,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     <div className="fixed inset-0 z-50 bg-[#070B0D] flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
 
       {/* Background glow orbs */}
-      <div className="absolute top-[-10%] left-[20%] w-[350px] h-[350px] bg-gradient-to-br from-[#10B981] to-emerald-950 rounded-full blur-[120px] opacity-[0.08] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[10%] w-[400px] h-[400px] bg-gradient-to-tr from-emerald-950 to-emerald-500 rounded-full blur-[140px] opacity-[0.05] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[20%] w-[350px] h-[350px] bg-gradient-to-br from-[#51E0CF] to-[#0A0F0F] rounded-full blur-[120px] opacity-[0.08] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[10%] w-[400px] h-[400px] bg-gradient-to-tr from-[#0A0F0F] to-[#51E0CF] rounded-full blur-[140px] opacity-[0.05] pointer-events-none" />
 
       {/* LEFT PANEL: Progress & Info */}
       <div className="w-full md:w-[320px] shrink-0 bg-[#0B1012] border-b md:border-b-0 md:border-r border-[#152226] p-6 md:p-8 flex flex-col justify-between relative z-10">
@@ -235,7 +235,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               className="w-6 h-6 rounded-[6px]"
             />
             <span className="text-lg font-bold tracking-tight text-white">
-              Clipr<span className="text-[#10B981] font-mono">.</span>
+              Clipr<span className="text-[#51E0CF] font-mono">.</span>
             </span>
           </div>
 
@@ -255,9 +255,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <div key={idx} className="flex items-center space-x-3">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-mono border transition-all ${
                     isPast 
-                      ? "bg-[#10B981]/10 border-[#10B981] text-[#10B981]" 
+                      ? "bg-[#51E0CF]/10 border-[#51E0CF] text-[#51E0CF]" 
                       : isActive 
-                      ? "border-[#10B981] text-[#10B981] bg-[#10B981]/5 shadow-[0_0_10px_rgba(16,185,129,0.2)]" 
+                      ? "border-[#51E0CF] text-[#51E0CF] bg-[#51E0CF]/5 shadow-[0_0_10px_rgba(81,224,207,0.2)]" 
                       : "border-[#152226] text-[#6B7C85]"
                   }`}>
                     {isPast ? <Check className="w-3.5 h-3.5" /> : idx + 1}
@@ -278,7 +278,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
         {/* Small badge */}
         <div className="pt-4 border-t border-[#152226] text-[10px] text-[#6B7C85] font-mono flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#51E0CF] animate-pulse" />
           <span>Quick start in 1 minute</span>
         </div>
       </div>
@@ -287,7 +287,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <div className="flex-1 flex flex-col md:justify-between p-6 md:p-12 pb-10 md:pb-12 relative z-10 md:min-h-[450px]">
         {/* Mobile step bar indicator */}
         <div className="md:hidden w-full bg-[#152226] h-1 rounded-full mb-6 overflow-hidden">
-          <div className="bg-[#10B981] h-full" style={{ width: `${(step / 4) * 100}%` }} />
+          <div className="bg-[#51E0CF] h-full" style={{ width: `${(step / 4) * 100}%` }} />
         </div>
 
         <div className="max-w-xl w-full mx-auto md:my-auto space-y-6">
@@ -295,7 +295,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {step === 1 && (
               <motion.div key="step1" {...stepsTransitions} className="space-y-4">
                 <div className="space-y-2">
-                  <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold flex items-center gap-1.5">
+                  <span className="text-xs uppercase font-mono tracking-widest text-[#51E0CF] font-bold flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5" /> Step 1 of 4
                   </span>
                   <h2 className="text-2xl font-black text-white tracking-tight">
@@ -314,7 +314,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && name.trim()) handleNext();
                     }}
-                    className="w-full bg-[#0D1416] border border-[#152226] hover:border-[#1E343A] focus:border-[#10B981] rounded-xl px-4 py-3.5 text-white text-sm outline-none focus:ring-1 focus:ring-[#10B981]/30 transition-all placeholder:text-[#6B7C85]"
+                    className="w-full bg-[#0D1416] border border-[#152226] hover:border-[#1E343A] focus:border-[#51E0CF] rounded-xl px-4 py-3.5 text-white text-sm outline-none focus:ring-1 focus:ring-[#51E0CF]/30 transition-all placeholder:text-[#6B7C85]"
                     placeholder="For example: Alex Rivera"
                     autoFocus
                   />
@@ -325,7 +325,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {step === 2 && (
               <motion.div key="step2" {...stepsTransitions} className="space-y-4">
                 <div className="space-y-2">
-                  <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold flex items-center gap-1.5">
+                  <span className="text-xs uppercase font-mono tracking-widest text-[#51E0CF] font-bold flex items-center gap-1.5">
                     <Briefcase className="w-3.5 h-3.5" /> Step 2 of 4 <span className="text-[#6B7C85] text-xs font-normal font-sans lowercase">(optional)</span>
                   </span>
                   <h2 className="text-2xl font-black text-white tracking-tight">
@@ -340,7 +340,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <textarea
                     value={product}
                     onChange={(e) => setProduct(e.target.value)}
-                    className="w-full bg-[#0D1416] border border-[#152226] hover:border-[#1E343A] focus:border-[#10B981] rounded-xl p-4 text-white text-sm outline-none resize-none h-32 focus:ring-1 focus:ring-[#10B981]/30 transition-all placeholder:text-[#6B7C85]"
+                    className="w-full bg-[#0D1416] border border-[#152226] hover:border-[#1E343A] focus:border-[#51E0CF] rounded-xl p-4 text-white text-sm outline-none resize-none h-32 focus:ring-1 focus:ring-[#51E0CF]/30 transition-all placeholder:text-[#6B7C85]"
                     placeholder="For example: UGC content about fitness and healthy habits for millennials OR A B2B project management platform for small businesses"
                     autoFocus
                   />
@@ -355,7 +355,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {step === 3 && (
               <motion.div key="step3" {...stepsTransitions} className="space-y-4">
                 <div className="space-y-2">
-                  <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold flex items-center gap-1.5">
+                  <span className="text-xs uppercase font-mono tracking-widest text-[#51E0CF] font-bold flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5" /> Step 3 of 4 <span className="text-[#6B7C85] text-xs font-normal font-sans lowercase">(optional)</span>
                   </span>
                   <h2 className="text-2xl font-black text-white tracking-tight">
@@ -371,7 +371,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     type="text"
                     value={audience}
                     onChange={(e) => setAudience(e.target.value)}
-                    className="w-full bg-[#0D1416] border border-[#152226] hover:border-[#1E343A] focus:border-[#10B981] rounded-xl px-4 py-3.5 text-white text-sm outline-none focus:ring-1 focus:ring-[#10B981]/30 transition-all placeholder:text-[#6B7C85]"
+                    className="w-full bg-[#0D1416] border border-[#152226] hover:border-[#1E343A] focus:border-[#51E0CF] rounded-xl px-4 py-3.5 text-white text-sm outline-none focus:ring-1 focus:ring-[#51E0CF]/30 transition-all placeholder:text-[#6B7C85]"
                     placeholder="For example: Aspiring designers, solo founders, college students"
                     autoFocus
                   />
@@ -384,7 +384,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                         <button
                            key={tag}
                            onClick={() => setAudience(tag)}
-                           className="px-3 py-1.5 rounded-full text-xs border border-[#152226] bg-[#0D1416] text-[#6B7C85] hover:text-white hover:border-[#10B981] transition-all"
+                           className="px-3 py-1.5 rounded-full text-xs border border-[#152226] bg-[#0D1416] text-[#6B7C85] hover:text-white hover:border-[#51E0CF] transition-all"
                         >
                           {tag}
                         </button>
@@ -398,7 +398,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {step === 4 && (
               <motion.div key="step4" {...stepsTransitions} className="space-y-4">
                 <div className="space-y-2">
-                  <span className="text-xs uppercase font-mono tracking-widest text-[#10B981] font-bold flex items-center gap-1.5">
+                  <span className="text-xs uppercase font-mono tracking-widest text-[#51E0CF] font-bold flex items-center gap-1.5">
                     <MessageSquare className="w-3.5 h-3.5" /> Step 4 of 4
                   </span>
                   <h2 className="text-2xl font-black text-white tracking-tight">
@@ -418,7 +418,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                         onClick={() => setPlatform(plat)}
                         className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center gap-3 transition-all duration-200 ${
                           isSelected
-                            ? "border-[#10B981] bg-[#10B981]/5 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                            ? "border-[#51E0CF] bg-[#51E0CF]/5 shadow-[0_0_12px_rgba(81,224,207,0.15)]"
                             : "border-[#152226] bg-[#0D1416] hover:bg-[#11191B] hover:border-[#1E343A]"
                         }`}
                       >
@@ -463,7 +463,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <button
               onClick={handleNext}
               disabled={isNextDisabled()}
-              className={`bg-[#10B981] disabled:opacity-30 disabled:pointer-events-none hover:bg-[#12cf90] text-[#070B0D] text-xs font-semibold px-5 py-2.5 rounded-lg flex items-center space-x-1.5 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]`}
+              className={`bg-[#51E0CF] disabled:opacity-30 disabled:pointer-events-none hover:bg-[#43cdbd] text-[#070B0D] text-xs font-semibold px-5 py-2.5 rounded-lg flex items-center space-x-1.5 transition-all shadow-[0_0_15px_rgba(81,224,207,0.2)]`}
             >
               <span>{step === 4 ? "Create DNA" : "Next"}</span>
               {step === 4 ? <Sparkles className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}

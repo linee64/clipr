@@ -4,11 +4,11 @@
 // so a NEW account in the same browser gets a fresh trial instead of inheriting a
 // previous user's elapsed clock (or their local Pro flag).
 
-export const TRIAL_DAYS = 5;
-export const PRO_PRICE = "$10.00";
-export const PRO_PRICE_1M = "$10.00";
-export const PRO_PRICE_3M = "$14.99";
-export const PRO_PRICE_6M = "$35.00";
+export const TRIAL_DAYS = 3;
+export const PRO_PRICE = "$6.99";
+export const PRO_PRICE_1M = "$6.99";
+export const PRO_PRICE_3M = "$12.99";
+export const PRO_PRICE_6M = "$34.99";
 export const FREE_VIDEO_LIMIT = 5;
 export const PRO_VIDEO_LIMIT = 20;
 

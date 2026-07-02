@@ -35,7 +35,7 @@ export function VideoQuotaBadge({
   if (unlimited) {
     const chip = (
       <span
-        className={`inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[#10B981]/25 bg-[#10B981]/10 px-2 py-0.5 text-[10px] font-semibold text-[#10B981] ${className}`}
+        className={`inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[#51E0CF]/25 bg-[#51E0CF]/10 px-2 py-0.5 text-[10px] font-semibold text-[#51E0CF] ${className}`}
         title="Unlimited video renders"
       >
         <Film className="h-3 w-3 shrink-0" aria-hidden />
@@ -45,13 +45,13 @@ export function VideoQuotaBadge({
     if (compact) return chip;
     return (
       <div
-        className={`rounded-lg border border-[#10B981]/25 bg-[#10B981]/10 px-3 py-2.5 ${className}`}
+        className={`rounded-lg border border-[#51E0CF]/25 bg-[#51E0CF]/10 px-3 py-2.5 ${className}`}
         title="Unlimited video renders"
       >
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#EFEFEF]">
-          <Film className="h-3.5 w-3.5 shrink-0 text-[#10B981]" aria-hidden />
+          <Film className="h-3.5 w-3.5 shrink-0 text-[#51E0CF]" aria-hidden />
           Video renders
-          <span className="ml-auto text-[11px] font-bold text-[#10B981]">Unlimited</span>
+          <span className="ml-auto text-[11px] font-bold text-[#51E0CF]">Unlimited</span>
         </span>
       </div>
     );
@@ -84,7 +84,7 @@ export function VideoQuotaBadge({
     }
     return (
       <span
-        className={`inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[#10B981]/25 bg-[#10B981]/10 px-2 py-0.5 text-[10px] font-semibold text-[#10B981] ${className}`}
+        className={`inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[#51E0CF]/25 bg-[#51E0CF]/10 px-2 py-0.5 text-[10px] font-semibold text-[#51E0CF] ${className}`}
         title={`${safeLeft} of ${safeLimit} video renders left this month`}
       >
         <Film className="h-3 w-3 shrink-0" aria-hidden />
@@ -115,7 +115,7 @@ export function VideoQuotaBadge({
   }
   return (
     <div
-      className={`rounded-lg border border-[#10B981]/25 bg-[#10B981]/10 px-3 py-2.5 space-y-2 ${className}`}
+      className={`rounded-lg border border-[#51E0CF]/25 bg-[#51E0CF]/10 px-3 py-2.5 space-y-2 ${className}`}
       title="Monthly video render allowance"
     >
       <QuotaBody safeLeft={safeLeft} safeLimit={safeLimit} used={used} pct={pct} empty={empty} low={low} />
@@ -138,8 +138,8 @@ function QuotaBody({
   empty: boolean;
   low: boolean;
 }) {
-  const accentClass = empty ? "text-[#EF8B8B]" : low ? "text-amber-400" : "text-[#10B981]";
-  const barClass = empty ? "bg-[#EF8B8B]" : low ? "bg-amber-400" : "bg-[#10B981]";
+  const accentClass = empty ? "text-[#EF8B8B]" : low ? "text-amber-400" : "text-[#51E0CF]";
+  const barClass = empty ? "bg-[#EF8B8B]" : low ? "bg-amber-400" : "bg-[#51E0CF]";
 
   return (
     <>
@@ -158,7 +158,7 @@ function QuotaBody({
           className={`h-full rounded-full transition-all duration-500 ${barClass}`}
           style={{
             width: `${pct}%`,
-            boxShadow: empty ? "none" : "0 0 8px rgba(16,185,129,0.35)",
+            boxShadow: empty ? "none" : "0 0 8px rgba(81,224,207,0.35)",
           }}
         />
       </div>
