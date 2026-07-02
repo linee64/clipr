@@ -235,6 +235,7 @@ class CheckoutRequest(BaseModel):
     # customer) — it's what the webhook later maps the subscription back onto. Stored
     # client-side as clipr_email since there's no per-user auth yet.
     email: str = ""
+    plan_type: str = "1_month"
 
 
 class BillingPortalRequest(BaseModel):

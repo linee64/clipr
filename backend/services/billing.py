@@ -70,8 +70,12 @@ def _access_token() -> str:
     return _env("POLAR_ACCESS_TOKEN")
 
 
-def _product_id() -> str:
-    return _env("POLAR_PRODUCT_ID")
+def _product_id(plan_type: str = "1_month") -> str:
+    # 1_month -> POLAR_PRODUCT_ID_1M
+    suffix = plan_type.upper().replace("MONTHS", "M").replace("MONTH", "M")
+    env_name = f"POLAR_PRODUCT_ID_{suffix}"
+    # Fallback to the generic POLAR_PRODUCT_ID for legacy configs
+    return _env(env_name) or _env("POLAR_PRODUCT_ID")
 
 
 def _webhook_secret() -> str:
@@ -101,14 +105,14 @@ def _success_url() -> str:
 
 
 def is_configured() -> bool:
-    return bool(_access_token() and _product_id())
+    return bool(_access_token() and _product_id("1_month"))
 
 
 def _require_configured() -> None:
     if not is_configured():
         raise BillingNotConfigured(
             "Billing is not configured on the server. Set POLAR_ACCESS_TOKEN and "
-            "POLAR_PRODUCT_ID."
+            "POLAR_PRODUCT_ID_1M, POLAR_PRODUCT_ID_3M, POLAR_PRODUCT_ID_6M."
         )
 
 
@@ -241,12 +245,12 @@ async def _polar_post(path: str, body: dict) -> httpx.Response:
     raise BillingError("Couldn't reach Polar — please check your connection and try again.")
 
 
-async def create_checkout(email: str) -> str:
-    """Create a Polar checkout for the $15/mo product and return its hosted URL."""
+async def create_checkout(email: str, plan_type: str = "1_month") -> str:
+    """Create a Polar checkout for the requested plan and return its hosted URL."""
     _require_configured()
     email = _normalize_email(email)
     body = {
-        "products": [_product_id()],
+        "products": [_product_id(plan_type)],
         "success_url": _success_url(),
         "customer_email": email,
         # Links the Polar customer to our side so the webhook can map it back.
@@ -304,6 +308,7 @@ def _record_from_subscription(email: str, sub: dict) -> dict:
         "current_period_end": sub.get("current_period_end") or "",
         "cancel_at_period_end": bool(sub.get("cancel_at_period_end")),
         "subscription_id": sub.get("id") or "",
+        "product_id": sub.get("product_id") or "",
         "last_event": "reconcile",
     }
 
@@ -407,6 +412,7 @@ async def get_status(email: str | None) -> dict:
         "status": record.get("status", ""),
         "current_period_end": record.get("current_period_end", ""),
         "cancel_at_period_end": bool(record.get("cancel_at_period_end")),
+        "product_id": record.get("product_id", ""),
     }
 
 
@@ -481,6 +487,7 @@ async def handle_webhook(payload: bytes, headers: dict) -> None:
         "current_period_end": data.get("current_period_end") or "",
         "cancel_at_period_end": bool(data.get("cancel_at_period_end")),
         "subscription_id": data.get("id") or "",
+        "product_id": data.get("product_id") or "",
         "last_event": etype,
     }
     await _write_record(email, record)

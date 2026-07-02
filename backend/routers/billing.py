@@ -23,7 +23,7 @@ logger = logging.getLogger("clipr.billing")
 @router.post("/checkout")
 async def checkout(request: CheckoutRequest):
     try:
-        return {"url": await billing.create_checkout(request.email)}
+        return {"url": await billing.create_checkout(request.email, request.plan_type)}
     except billing.BillingNotConfigured as e:
         raise HTTPException(status_code=503, detail=str(e))
     except billing.BillingError as e:

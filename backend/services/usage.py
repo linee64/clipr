@@ -25,10 +25,29 @@ from services.storage import _get_supabase
 
 logger = logging.getLogger("clipr.usage")
 
+import os
+
 ACCOUNTS_TABLE = "accounts"
 TRIAL_DAYS = 5
 FREE_LIMITS = {"regen": 3, "voiceover": 2}
 VIDEO_LIMITS = {"free": 5, "pro": 20}
+
+async def _get_limits(email: str) -> dict:
+    base_free = {"regen": 3, "voiceover": 2, "video": 5}
+    if not email: return base_free
+    if await billing.is_unlimited_pro(email):
+        return {"regen": float("inf"), "voiceover": float("inf"), "video": float("inf")}
+    sub = await billing.get_status(email)
+    if sub.get("unlimited"):
+        return {"regen": float("inf"), "voiceover": float("inf"), "video": float("inf")}
+    if not sub.get("active"):
+        return base_free
+    pid = sub.get("product_id") or ""
+    if pid == os.getenv("POLAR_PRODUCT_ID_6M"):
+        return {"regen": float("inf"), "voiceover": float("inf"), "video": 50}
+    if pid == os.getenv("POLAR_PRODUCT_ID_3M"):
+        return {"regen": float("inf"), "voiceover": float("inf"), "video": 20}
+    return {"regen": 10, "voiceover": 10, "video": 10}
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -60,21 +79,21 @@ def _current_period() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m")
 
 
-def _videos_used_this_month(account: dict) -> int:
+def _videos_used_this_month(account: dict, field: str = "videos_used") -> int:
     if account.get("videos_period") != _current_period():
         return 0
-    return int(account.get("videos_used") or 0)
+    return int(account.get(field) or 0)
 
 
 def _reset_videos_period_if_needed_sync(email: str) -> None:
-    """Zero the monthly video counter when the calendar month has rolled over."""
+    """Zero the monthly usage counters when the calendar month has rolled over."""
     sb = _get_supabase()
     cur = _ensure_sync(email)
     period = _current_period()
     if cur.get("videos_period") == period:
         return
     sb.table(ACCOUNTS_TABLE).update(
-        {"videos_used": 0, "videos_period": period, "updated_at": _now_iso()}
+        {"videos_used": 0, "regen_used": 0, "voiceover_used": 0, "videos_period": period, "updated_at": _now_iso()}
     ).eq("email", email).execute()
 
 
@@ -161,48 +180,33 @@ async def _is_pro(email: str) -> bool:
     return await billing.is_active(email)
 
 
-async def _video_limit(email: str) -> int:
-    return VIDEO_LIMITS["pro"] if await _is_pro(email) else VIDEO_LIMITS["free"]
-
-
 async def check_quota(email: str | None, action: str) -> None:
-    """Raise QuotaExceeded if a free account is already at the limit for `action`,
-    WITHOUT recording a use.
-
-    Use this as an up-front gate for expensive/async work (e.g. an AI-voiceover render
-    that runs in the background and can fail/OOM): the caller checks quota here to return
-    429 immediately, then calls record_use() only once the work actually succeeds — so a
-    failed render never burns a free credit.
-
-    Pro accounts are unlimited (no-op). With no resolvable email, or if the accounts
-    table is missing / a transient DB error occurs, we fail OPEN (allow) so
-    billing-adjacent flows keep working.
-    """
     email = _norm(email)
-    if not email or action not in FREE_LIMITS:
-        return
-    if await _is_pro(email):
-        return
+    if not email: return
+    limits = await _get_limits(email)
+    limit = limits.get(action, 0)
+    if limit == float("inf"): return
+    
     try:
+        await asyncio.to_thread(_reset_videos_period_if_needed_sync, email)
         account = await _ensure(email)
-        used = int(account.get(f"{action}_used") or 0)
+        used = _videos_used_this_month(account, f"{action}_used")
     except Exception as e:
         logger.warning("usage meter unavailable for %s/%s: %s", email, action, e)
         return
-    if used >= FREE_LIMITS[action]:
-        raise QuotaExceeded(action, FREE_LIMITS[action])
+    if used >= limit:
+        raise QuotaExceeded(action, limit)
 
 
 async def record_use(email: str | None, action: str) -> None:
-    """Record one use of a metered `action` (no enforcement). Call this only AFTER the
-    work genuinely succeeded. Pro is a no-op; failures fail OPEN (logged, not raised)."""
     email = _norm(email)
-    if not email or action not in FREE_LIMITS:
-        return
-    if await _is_pro(email):
-        return
+    if not email: return
+    limits = await _get_limits(email)
+    if limits.get(action, 0) == float("inf"): return
     try:
+        await asyncio.to_thread(_reset_videos_period_if_needed_sync, email)
         await asyncio.to_thread(_bump_sync, email, f"{action}_used")
+        await asyncio.to_thread(_touch_videos_period_sync, email)
     except Exception as e:
         logger.warning("usage increment failed for %s/%s: %s", email, action, e)
 
@@ -236,31 +240,22 @@ def _reserve_sync(email: str, field: str, limit: int) -> bool:
 
 
 async def reserve(email: str | None, action: str) -> None:
-    """Atomically reserve one use of `action` up front (gate + charge in one step).
-
-    Raises QuotaExceeded if the free account is already at the limit. Pro / no email /
-    missing accounts table fail OPEN (allow). Pair with refund() to release the credit
-    if the work it paid for didn't ultimately deliver (failed render, music-only TTS
-    fallback) — that gives charge-on-success semantics while still being concurrency-safe
-    (unlike a read-only check + a much-later record, which N parallel requests can race).
-    """
     email = _norm(email)
-    if not email or action not in FREE_LIMITS:
-        return
-    if await _is_pro(email):
-        return
-    limit = FREE_LIMITS[action]
+    if not email: return
+    limits = await _get_limits(email)
+    limit = limits.get(action, 0)
+    if limit == float("inf"): return
     try:
+        await asyncio.to_thread(_reset_videos_period_if_needed_sync, email)
         reserved = await asyncio.to_thread(_reserve_sync, email, f"{action}_used", limit)
     except Exception as e:
-        # RPC missing (migration 004 not applied yet) or a transient DB error: fall back
-        # to the non-atomic gate+increment so the meter still works pre-migration.
         logger.warning("atomic reserve unavailable for %s/%s, falling back: %s", email, action, e)
         await check_quota(email, action)
         await record_use(email, action)
         return
     if not reserved:
         raise QuotaExceeded(action, limit)
+    await asyncio.to_thread(_touch_videos_period_sync, email)
 
 
 def _refund_sync(email: str, field: str) -> None:
@@ -278,13 +273,10 @@ def _refund_sync(email: str, field: str) -> None:
 
 
 async def refund(email: str | None, action: str) -> None:
-    """Release a previously reserved use (best-effort, floored at 0). Pro / no email is a
-    no-op. Failures fail OPEN (logged, not raised)."""
     email = _norm(email)
-    if not email or action not in FREE_LIMITS:
-        return
-    if await _is_pro(email):
-        return
+    if not email: return
+    limits = await _get_limits(email)
+    if limits.get(action, 0) == float("inf"): return
     try:
         await asyncio.to_thread(_refund_sync, email, f"{action}_used")
     except Exception as e:
@@ -292,18 +284,11 @@ async def refund(email: str | None, action: str) -> None:
 
 
 async def reserve_video(email: str | None) -> None:
-    """Atomically reserve one monthly video render (applies to Free and Pro).
-
-    Raises QuotaExceeded when the account has used its plan allowance for the
-    current calendar month. Pair with refund_video() if the render doesn't deliver.
-    Unlimited/founder accounts skip metering entirely.
-    """
     email = _norm(email)
-    if not email:
-        return
-    if await billing.is_unlimited_pro(email):
-        return
-    limit = await _video_limit(email)
+    if not email: return
+    limits = await _get_limits(email)
+    limit = limits.get("video", 0)
+    if limit == float("inf"): return
     try:
         reserved = await asyncio.to_thread(_video_reserve_sync, email, limit)
     except Exception as e:
@@ -371,19 +356,17 @@ async def require_template_allowed(email: str | None, template_id: str) -> None:
 async def account_status(email: str | None) -> dict:
     """Trial + usage snapshot for an email; starts the trial on first call."""
     email = _norm(email)
-    unlimited = bool(email and await billing.is_unlimited_pro(email))
-    video_limit = VIDEO_LIMITS["free"]
-    if email and not unlimited:
-        video_limit = await _video_limit(email)
+    limits = await _get_limits(email) if email else await _get_limits("")
+    unlimited = limits.get("video") == float("inf")
     base = {
         "trial_days_left": TRIAL_DAYS,
         "trial_expired": False,
         "regen_used": 0,
-        "regen_limit": FREE_LIMITS["regen"],
+        "regen_limit": None if limits.get("regen") == float("inf") else limits.get("regen"),
         "voiceover_used": 0,
-        "voiceover_limit": FREE_LIMITS["voiceover"],
+        "voiceover_limit": None if limits.get("voiceover") == float("inf") else limits.get("voiceover"),
         "videos_used": 0,
-        "videos_limit": None if unlimited else video_limit,
+        "videos_limit": None if limits.get("video") == float("inf") else limits.get("video"),
         "unlimited": unlimited,
     }
     if not email:
@@ -398,9 +381,9 @@ async def account_status(email: str | None) -> dict:
         **base,
         "trial_days_left": days_left,
         "trial_expired": expired,
-        "regen_used": int(account.get("regen_used") or 0),
-        "voiceover_used": int(account.get("voiceover_used") or 0),
-        "videos_used": _videos_used_this_month(account),
-        "videos_limit": None if unlimited else video_limit,
+        "regen_used": _videos_used_this_month(account, "regen_used"),
+        "voiceover_used": _videos_used_this_month(account, "voiceover_used"),
+        "videos_used": _videos_used_this_month(account, "videos_used"),
+        "videos_limit": base["videos_limit"],
         "unlimited": unlimited,
     }

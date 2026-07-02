@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X } from "lucide-react";
-import { PRO_PRICE, TRIAL_DAYS, type PlanKind } from "@/lib/plan";
+import { X } from "lucide-react";
+import { PRO_PRICE_1M, PRO_PRICE_3M, PRO_PRICE_6M, type PlanKind } from "@/lib/plan";
 
 // Four-point sparkle (inline so we don't depend on a specific lucide icon set).
 function Spark({ className = "w-4 h-4" }: { className?: string }) {
@@ -14,23 +14,16 @@ function Spark({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-const FEATURES = [
-  "20 AI video renders per month",
-  "Every reference style & template",
-  "Auto-post to X, TikTok & LinkedIn",
-  "Beat-synced cuts + word-by-word captions",
-  "Priority rendering",
-];
-
 interface UpgradeModalProps {
   open: boolean;
   plan: PlanKind;
   daysLeft: number;
   onClose: () => void;
-  onSubscribe: () => void;
+  onSubscribe: (planType: "1_month" | "3_months" | "6_months") => void;
   onCancel: () => void;
   /** true while a checkout / portal redirect is in flight */
   busy?: boolean;
+  defaultSelectedPlan?: "1_month" | "3_months" | "6_months";
 }
 
 export function UpgradeModal({
@@ -41,8 +34,16 @@ export function UpgradeModal({
   onSubscribe,
   onCancel,
   busy = false,
+  defaultSelectedPlan,
 }: UpgradeModalProps) {
   const isPro = plan === "pro";
+  const [selectedPlan, setSelectedPlan] = useState<"1_month" | "3_months" | "6_months">("3_months");
+
+  useEffect(() => {
+    if (open && defaultSelectedPlan) {
+      setSelectedPlan(defaultSelectedPlan);
+    }
+  }, [open, defaultSelectedPlan]);
   return (
     <AnimatePresence>
       {open && (
@@ -113,30 +114,53 @@ export function UpgradeModal({
                 </>
               )}
 
-              {/* price */}
-              <div className="mt-5 flex flex-wrap items-end gap-x-1.5 gap-y-1">
-                <span className="text-4xl font-extrabold tracking-tight text-[#EFEFEF]">
-                  {PRO_PRICE}
-                </span>
-                <span className="mb-1 text-sm text-[#6B7C85]">/month</span>
-                {!isPro && (
-                  <span className="mb-1 ml-1 rounded-full border border-[#10B981]/25 bg-[#10B981]/10 px-2 py-0.5 text-[10px] font-semibold text-[#10B981]">
-                    {TRIAL_DAYS}-day free trial
-                  </span>
-                )}
-              </div>
-
-              {/* features */}
-              <ul className="mt-5 space-y-2.5">
-                {FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-sm text-[#EFEFEF]">
-                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#10B981]/15">
-                      <Check className="h-2.5 w-2.5 text-[#10B981]" strokeWidth={3} />
-                    </span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
+              {/* price / plan selection */}
+              {!isPro && (
+                <div className="mt-5 space-y-2">
+                  <button
+                    onClick={() => setSelectedPlan("1_month")}
+                    className={`w-full flex items-center justify-between rounded-xl border p-3 ${selectedPlan === "1_month" ? "border-[#10B981] bg-[#10B981]/10" : "border-zinc-800 bg-zinc-900/50"}`}
+                  >
+                    <div className="text-left">
+                      <div className="text-sm font-bold text-white">1-Month Pro</div>
+                      <div className="text-xs text-zinc-500 mt-0.5">10 videos, 10 regens/mo</div>
+                    </div>
+                    <div className="text-right flex items-baseline justify-end gap-1">
+                      <div className="text-lg font-bold text-white">{PRO_PRICE_1M}</div>
+                      <div className="text-xs text-zinc-500">/mo</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setSelectedPlan("3_months")}
+                    className={`w-full flex items-center justify-between rounded-xl border p-3 ${selectedPlan === "3_months" ? "border-[#10B981] bg-[#10B981]/10" : "border-zinc-800 bg-zinc-900/50"}`}
+                  >
+                    <div className="text-left flex flex-col items-start">
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-bold text-white">3-Month Pro</div>
+                        <span className="bg-[#10B981] text-zinc-950 text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase">Save 50%</span>
+                      </div>
+                      <div className="text-xs text-zinc-500 mt-0.5">20 videos, unlimited regens</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-white">{PRO_PRICE_3M}</div>
+                      <div className="text-xs text-zinc-500 line-through">$30</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setSelectedPlan("6_months")}
+                    className={`w-full flex items-center justify-between rounded-xl border p-3 ${selectedPlan === "6_months" ? "border-indigo-500 bg-indigo-500/10" : "border-zinc-800 bg-zinc-900/50"}`}
+                  >
+                    <div className="text-left">
+                      <div className="text-sm font-bold text-white">6-Month Pro</div>
+                      <div className="text-xs text-zinc-500 mt-0.5">50 videos, priority queue</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-white">{PRO_PRICE_6M}</div>
+                      <div className="text-xs text-zinc-500">~$5.83/mo</div>
+                    </div>
+                  </button>
+                </div>
+              )}
 
               {/* CTA */}
               {isPro ? (
@@ -158,16 +182,18 @@ export function UpgradeModal({
               ) : (
                 <div className="mt-7 space-y-2.5">
                   <button
-                    onClick={onSubscribe}
+                    onClick={() => onSubscribe(selectedPlan)}
                     disabled={busy}
-                    className="w-full rounded-xl bg-[#10B981] py-3.5 text-sm font-bold text-[#070B0D] hover:bg-[#12cf90] transition-colors shadow-[0_0_20px_rgba(16,185,129,0.35)] disabled:opacity-60"
+                    className={`w-full rounded-xl py-3.5 text-sm font-bold text-white transition-colors shadow-lg disabled:opacity-60 ${selectedPlan === "6_months" ? "bg-indigo-500 hover:bg-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.35)]" : "bg-[#10B981] hover:bg-[#12cf90] text-[#070B0D] shadow-[0_0_20px_rgba(16,185,129,0.35)]"}`}
                   >
                     {busy
                       ? "Redirecting to checkout…"
-                      : `${daysLeft > 0 ? "Upgrade to Pro" : "Reactivate Pro"} · ${PRO_PRICE}/mo`}
+                      : selectedPlan === "3_months" && daysLeft > 0
+                        ? "Start Free Trial"
+                        : "Upgrade to Pro"}
                   </button>
                   <p className="text-center text-[11px] text-[#6B7C85]">
-                    Cancel anytime{daysLeft > 0 ? " — you won't be charged until your trial ends." : "."}
+                    Cancel anytime{selectedPlan === "3_months" && daysLeft > 0 ? " — you won't be charged until your trial ends." : "."}
                   </p>
                 </div>
               )}

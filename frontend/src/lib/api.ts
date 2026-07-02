@@ -555,13 +555,13 @@ export async function getBillingStatus(): Promise<BillingStatus> {
  * Start a Polar checkout for Pro and send the browser to the hosted checkout page.
  * Polar returns to POLAR_SUCCESS_URL (the dashboard with ?billing=success) when done.
  */
-export async function startCheckout(): Promise<void> {
+export async function startCheckout(planType: "1_month" | "3_months" | "6_months" = "1_month"): Promise<void> {
   const email = getBillingEmail();
   if (!email) throw new Error("Add your email first so we can link your subscription.");
   const res = await fetch(`${getApiBase()}/api/billing/checkout`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, plan_type: planType }),
   });
   const { url } = await parseJson<{ url: string }>(res);
   window.location.href = url;

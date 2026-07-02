@@ -25,6 +25,13 @@ const config: Config = {
           foreground: "var(--text)",
         },
       },
+      fontFamily: {
+        sans: ["var(--font-inter)", "sans-serif"],
+        display: ["var(--font-space-grotesk)", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "monospace"],
+        serif: ["var(--font-serif)", "serif"],
+        cursive: ["var(--font-cursive)", "cursive"],
+      },
       animation: {
         marquee: "marquee 25s linear infinite",
         pulseSlow: "pulseSlow 8s ease-in-out infinite",

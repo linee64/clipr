@@ -17,7 +17,15 @@ def _patch_pro(monkeypatch, is_pro: bool):
     async def fake_is_pro(email):
         return is_pro
 
+    async def fake_limits(email):
+        if is_pro:
+            return {"regen": float("inf"), "voiceover": float("inf"), "video": float("inf")}
+        else:
+            return {"regen": 3, "voiceover": 2, "video": 5}
+
     monkeypatch.setattr(usage, "_is_pro", fake_is_pro)
+    monkeypatch.setattr(usage, "_get_limits", fake_limits)
+    monkeypatch.setattr(usage, "_reset_videos_period_if_needed_sync", lambda email: None)
 
 
 # --------------------------------------------------------------------------- _norm
@@ -78,7 +86,10 @@ def test_check_quota_under_limit_ok(monkeypatch):
     _patch_pro(monkeypatch, False)
 
     async def fake_ensure(email):
-        return {"regen_used": usage.FREE_LIMITS["regen"] - 1}
+        return {
+            "videos_period": usage._current_period(),
+            "regen_used": usage.FREE_LIMITS["regen"] - 1
+        }
 
     monkeypatch.setattr(usage, "_ensure", fake_ensure)
     _run(usage.check_quota("a@b.co", "regen"))  # must not raise
@@ -88,7 +99,10 @@ def test_check_quota_at_limit_raises(monkeypatch):
     _patch_pro(monkeypatch, False)
 
     async def fake_ensure(email):
-        return {"regen_used": usage.FREE_LIMITS["regen"]}
+        return {
+            "videos_period": usage._current_period(),
+            "regen_used": usage.FREE_LIMITS["regen"]
+        }
 
     monkeypatch.setattr(usage, "_ensure", fake_ensure)
     with pytest.raises(usage.QuotaExceeded):
@@ -201,19 +215,19 @@ def test_refund_failure_fails_open(monkeypatch):
 
 # ---------------------------------------------------------------------- reserve_video
 def test_reserve_video_under_limit_ok(monkeypatch):
-    async def fake_limit(email):
-        return usage.VIDEO_LIMITS["free"]
+    async def fake_limits(email):
+        return {"video": usage.VIDEO_LIMITS["free"]}
 
-    monkeypatch.setattr(usage, "_video_limit", fake_limit)
+    monkeypatch.setattr(usage, "_get_limits", fake_limits)
     monkeypatch.setattr(usage, "_video_reserve_sync", lambda e, lim: True)
     _run(usage.reserve_video("a@b.co"))
 
 
 def test_reserve_video_over_limit_raises(monkeypatch):
-    async def fake_limit(email):
-        return usage.VIDEO_LIMITS["free"]
+    async def fake_limits(email):
+        return {"video": usage.VIDEO_LIMITS["free"]}
 
-    monkeypatch.setattr(usage, "_video_limit", fake_limit)
+    monkeypatch.setattr(usage, "_get_limits", fake_limits)
     monkeypatch.setattr(usage, "_video_reserve_sync", lambda e, lim: False)
     with pytest.raises(usage.QuotaExceeded) as exc:
         _run(usage.reserve_video("a@b.co"))
@@ -224,14 +238,14 @@ def test_reserve_video_over_limit_raises(monkeypatch):
 def test_reserve_video_pro_uses_pro_limit(monkeypatch):
     seen = []
 
-    async def fake_limit(email):
-        return usage.VIDEO_LIMITS["pro"]
+    async def fake_limits(email):
+        return {"video": usage.VIDEO_LIMITS["pro"]}
 
     def fake_reserve(email, limit):
         seen.append(limit)
         return True
 
-    monkeypatch.setattr(usage, "_video_limit", fake_limit)
+    monkeypatch.setattr(usage, "_get_limits", fake_limits)
     monkeypatch.setattr(usage, "_video_reserve_sync", fake_reserve)
     _run(usage.reserve_video("a@b.co"))
     assert seen == [usage.VIDEO_LIMITS["pro"]]

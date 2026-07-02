@@ -338,6 +338,7 @@ export default function Dashboard() {
     expired: false,
   });
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [defaultSelectedPlan, setDefaultSelectedPlan] = useState<"1_month" | "3_months" | "6_months" | undefined>(undefined);
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
   // True once the backend confirms Polar is wired; until then "upgrade" falls back
   // to the local stub so the demo still flips to Pro without a payment provider.
@@ -349,6 +350,19 @@ export default function Dashboard() {
 
   useEffect(() => {
     setPlanState(readPlan());
+  }, []);
+
+  useEffect(() => {
+    try {
+      const selected = localStorage.getItem("clipr_selected_plan");
+      if (selected === "1_month" || selected === "3_months" || selected === "6_months") {
+        setDefaultSelectedPlan(selected);
+        setUpgradeOpen(true);
+        localStorage.removeItem("clipr_selected_plan");
+      }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   // Hydrate plan + trial + usage from the backend. An active Polar sub → Pro;
@@ -387,19 +401,22 @@ export default function Dashboard() {
     refreshBilling();
   }, [refreshBilling]);
 
-  // Free-tier allowances remaining (Infinity for Pro), from the server counts.
+  // Free-tier allowances remaining (Infinity for Pro limits), from the server counts.
   const isProPlan = planState.plan === "pro" || !!billing?.unlimited;
-  const freeRegenLeft = isProPlan
+  
+  const freeRegenLeft = billing?.regen_limit === null
     ? Infinity
     : Math.max(0, (billing?.regen_limit ?? 3) - (billing?.regen_used ?? 0));
-  const freeVoiceoverLeft = isProPlan
+    
+  const freeVoiceoverLeft = billing?.voiceover_limit === null
     ? Infinity
     : Math.max(0, (billing?.voiceover_limit ?? 2) - (billing?.voiceover_used ?? 0));
+    
   const isUnlimitedPro = !!billing?.unlimited;
-  const videosLimit = isUnlimitedPro
-    ? Infinity
-    : billing?.videos_limit ?? (isProPlan ? PRO_VIDEO_LIMIT : FREE_VIDEO_LIMIT);
-  const videosLeft = isUnlimitedPro
+  const videosLimit = billing?.videos_limit === null 
+    ? Infinity 
+    : (billing?.videos_limit ?? (isProPlan ? PRO_VIDEO_LIMIT : FREE_VIDEO_LIMIT));
+  const videosLeft = billing?.videos_limit === null
     ? Infinity
     : Math.max(0, videosLimit - (billing?.videos_used ?? 0));
 
@@ -464,7 +481,7 @@ export default function Dashboard() {
         /* ignore */
       }
     }
-  }, []);
+  }, [refreshBilling]);
 
   // Resolve the displayed profile: prefer the name the user typed in onboarding
   // (clipr_name); otherwise fall back to the email's local part, lightly
@@ -670,7 +687,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (planType: "1_month" | "3_months" | "6_months" = "3_months") => {
     if (!billingConfigured) {
       setPlanState(setPlan("pro"));
       setUpgradeOpen(false);
@@ -683,7 +700,7 @@ export default function Dashboard() {
     if (!ensureBillingEmail()) return;
     setBillingBusy(true);
     try {
-      await startCheckout(); // redirects to Polar; control leaves the page
+      await startCheckout(planType); // redirects to Polar; control leaves the page
     } catch (e) {
       setBillingBusy(false);
       setXToast({
@@ -3055,6 +3072,7 @@ export default function Dashboard() {
         onSubscribe={handleSubscribe}
         onCancel={handleCancelPlan}
         busy={billingBusy}
+        defaultSelectedPlan={defaultSelectedPlan}
       />
 
     </div>

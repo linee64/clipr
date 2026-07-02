@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Playfair_Display, Alex_Brush, Space_Grotesk, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -12,6 +13,26 @@ const geistMono = localFont({
   src: "./fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
   weight: "100 900",
+});
+const playfair = Playfair_Display({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-serif",
+  weight: ["400", "500", "600", "700"],
+});
+const alexBrush = Alex_Brush({
+  subsets: ["latin"],
+  variable: "--font-cursive",
+  weight: ["400"],
+});
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  weight: ["400", "500", "600", "700"],
+});
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -43,7 +64,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased text-white selection:bg-[#10B981] selection:text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} ${alexBrush.variable} ${spaceGrotesk.variable} ${inter.variable} font-sans antialiased text-white selection:bg-[#10B981] selection:text-white`}
       >
         <div className="noise-overlay" />
         {children}

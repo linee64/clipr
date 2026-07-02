@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { submitWaitlist } from "@/app/actions";
 import { Button } from "./ui/button";
@@ -17,7 +17,7 @@ export function WaitlistForm() {
   // After a successful sign-up, mark the user registered and send them into the
   // app. There's no real auth gate yet — the dashboard runs onboarding for any
   // user without a saved brand DNA.
-  const goToDashboard = (userEmail?: string) => {
+  const goToDashboard = useCallback((userEmail?: string) => {
     try {
       localStorage.setItem("clipr_registered", "1");
       if (userEmail) localStorage.setItem("clipr_email", userEmail);
@@ -25,7 +25,28 @@ export function WaitlistForm() {
       /* ignore */
     }
     window.location.href = "/dashboard";
-  };
+  }, []);
+
+  const handleGoogleUserRegistered = useCallback(async (userEmail: string) => {
+    setStatus("loading");
+    const formData = new FormData();
+    formData.append("email", userEmail);
+    try {
+      const response = await submitWaitlist(formData);
+      if (response.success) {
+        setStatus("success");
+        setMessage(`Welcome, ${userEmail} — taking you in…`);
+        setDbCount((prev) => prev + 1);
+        setTimeout(() => goToDashboard(userEmail), 900);
+      } else {
+        setStatus("error");
+        setMessage(response.message);
+      }
+    } catch {
+      setStatus("error");
+      setMessage("An unexpected error occurred during Google registration.");
+    }
+  }, [goToDashboard]);
 
   useEffect(() => {
     async function fetchCount() {
@@ -81,28 +102,7 @@ export function WaitlistForm() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
-
-  const handleGoogleUserRegistered = async (userEmail: string) => {
-    setStatus("loading");
-    const formData = new FormData();
-    formData.append("email", userEmail);
-    try {
-      const response = await submitWaitlist(formData);
-      if (response.success) {
-        setStatus("success");
-        setMessage(`Welcome, ${userEmail} — taking you in…`);
-        setDbCount((prev) => prev + 1);
-        setTimeout(() => goToDashboard(userEmail), 900);
-      } else {
-        setStatus("error");
-        setMessage(response.message);
-      }
-    } catch {
-      setStatus("error");
-      setMessage("An unexpected error occurred during Google registration.");
-    }
-  };
+  }, [handleGoogleUserRegistered]);
 
   const handleGoogleLogin = async () => {
     setStatus("loading");
@@ -333,7 +333,7 @@ export function WaitlistForm() {
             {200 + dbCount} creators on board
           </span>
           <span className="text-zinc-800">•</span>
-          <span>Free 5-day trial · No card</span>
+          <span>Free plan available · No card</span>
         </div>
         <p className="text-xs text-zinc-400 text-center">
           Already have an account?{" "}
