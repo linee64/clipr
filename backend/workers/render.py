@@ -1145,21 +1145,14 @@ async def run_broll_render(
                                 if group_end > next_start:
                                     group_end = next_start
 
-                            accumulated = []
-                            for i, w in enumerate(g):
-                                accumulated.append(w["word"])
-                                w_start = float(w["start"])
-                                if i == len(g) - 1:
-                                    w_end = group_end
-                                else:
-                                    w_end = float(g[i+1]["start"])
-                                
-                                dur = max(0.01, w_end - w_start)
-                                lyrics_as_scenes.append({
-                                    "start_time": w_start,
-                                    "duration_seconds": dur,
-                                    "phrase": " ".join(accumulated)
-                                })
+                            w_start = float(g[0]["start"])
+                            dur = max(0.01, group_end - w_start)
+                            phrase = " ".join([w["word"] for w in g])
+                            lyrics_as_scenes.append({
+                                "start_time": w_start,
+                                "duration_seconds": dur,
+                                "phrase": phrase
+                            })
                 print(
                     f"[broll_render {job_id}] lyrics mode: using "
                     f"{len(lyrics_segments)} transcribed segments directly",

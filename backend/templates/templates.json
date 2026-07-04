@@ -433,7 +433,7 @@
       "all"
     ],
     "locked": true,
-    "letterbox": true,
+    "letterbox": false,
     "hold_first_scene": true,
     "scene_count": [
       5,
