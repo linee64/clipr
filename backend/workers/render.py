@@ -1218,7 +1218,7 @@ async def run_broll_render(
             segments = [
                 {
                     "start": s["start_time"],
-                    "end": s["start_time"] + max(0.1, s["duration_seconds"] - 0.04),
+                    "end": s["start_time"] + (s["duration_seconds"] if subtitle_source == "lyrics" else max(0.1, s["duration_seconds"] - 0.04)),
                     "text": s.get("phrase", ""),
                 }
                 for s in subs_source
@@ -1260,7 +1260,7 @@ async def run_broll_render(
             segments = [
                 {
                     "start": s["start_time"],
-                    "end": s["start_time"] + max(0.1, s["duration_seconds"] - 0.04),
+                    "end": s["start_time"] + (s["duration_seconds"] if subtitle_source == "lyrics" else max(0.1, s["duration_seconds"] - 0.04)),
                     "text": s.get("phrase", ""),
                 }
                 for s in subs_source
