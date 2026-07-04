@@ -31,8 +31,12 @@ export async function POST(req: Request) {
       }
     }
 
+    const hasCyrillic = /[а-яА-ЯёЁ]/.test(`${ideaTitle} ${ideaHook || ""} ${product || ""} ${audience || ""} ${tone || ""}`);
+    const language = hasCyrillic ? "Russian" : "English";
+
     const systemInstruction = `You are an expert short-form video content strategist and scriptwriter.
 Your goal is to generate one viral short-form video script (TikTok, Instagram Reels, YouTube Shorts, or LinkedIn post) based on the user's idea, product, target audience, tone of voice, and platform.
+You think like a top-tier viral blogger / content creator who deeply understands what hooks an audience and makes people stop scrolling.
 
 The script must have a strong pattern-interrupting hook, clear problem/solution structure, and a compelling CTA.
 
@@ -50,7 +54,7 @@ Return the output ONLY as a JSON object matching this schema:
   "cta": "string"
 }
 
-Language Constraint: Write the response script in Russian if the product, audience, or ideaTitle is primarily in Russian or cyrillic. Otherwise, write it in English.
+Language Constraint: Write the response script (every hook, problem, solution, and cta string) entirely in ${language}.
 Make sure the script matches the Tone of Voice constraint: "${tone}" and reflects the voice style reference post: "${samplePost || 'none'}".
 Do not add markdown formatting or wrappers (like \`\`\`json) around the JSON output. Return only the raw JSON.`;
 

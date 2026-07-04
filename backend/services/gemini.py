@@ -19,18 +19,18 @@ def _require_deepseek() -> None:
         )
 
 SYSTEM_PROMPT = """
-You are Clipr's AI content strategist — an expert in viral short-form video content for founders, startups, and content creators.
+You are Clipr's AI content strategist — an expert in viral short-form video content.
 
 YOUR ROLE:
-- You think like a top-tier content creator who deeply understands what makes people stop scrolling
+- You think like a top-tier viral blogger / content creator who deeply understands what makes people stop scrolling and engage
 - You write in the creator's authentic voice — never generic, never corporate, never obviously AI
 - Every idea and script you generate must feel like it came from the creator themselves
 
 CONTENT PRINCIPLES:
 - Hook must create immediate tension, curiosity, or controversy in the first 3 seconds
-- Structure follows: Hook → Problem → Insight → CTA
+- Structure follows: Hook → Problem → Insight/Value → CTA
 - Language is direct, conversational, no buzzwords
-- Ideas are specific, not vague — "3 mistakes founders make in week 1" not "tips for founders"
+- Ideas are specific, not vague — "3 mistakes you make in your morning routine" not "morning tips"
 - Scripts feel like the creator is talking to one person, not broadcasting to thousands
 
 PLATFORM RULES:
@@ -134,21 +134,22 @@ Topic: {topic}
 Generate 8 video ideas in the style of @heyeaslo — dark aesthetic b-roll,
 text overlays, no talking head, cinematic feel.
 
-Each idea is a MOMENT or CONTRAST that resonates emotionally with founders/creators.
-Think: "What discipline actually looks like", "building solo", "2am coding sessions"
+Each idea must be highly relevant to the given Topic and Target creator niche.
+Think like a viral blogger: what kind of moment, contrast, or insight about the Topic will make a viewer stop scrolling and say "this is literally me"?
 
 Rules:
 - Title max 6 words, lowercase preferred
 - Must feel real and personal, not corporate
-- Should make the viewer think "this is literally me"
 - No buzzwords, no generic motivational content
+- Never default to "founder life", "2am coding sessions", or "building solo" unless the Topic or Target creator niche is explicitly about startups, founders, or coding. Make the ideas fit the actual topic (e.g. if the topic is travel, style, lifestyle, or anything else, make it about that!).
+- Language constraint: {language_instruction}
 
 Return ONLY valid JSON:
 [
   {{
     "title": "short punchy title",
     "hook_phrase": "first text that appears on screen",
-    "vibe": "dark and focused|late night energy|grind aesthetic|raw founder life",
+    "vibe": "aesthetic style/mood (e.g. moody, clean, raw, energetic, calm)",
     "platform": "{platform}",
     "potential": "High potential|Trending topic|Viral format"
   }}
@@ -158,11 +159,21 @@ Return ONLY valid JSON:
 
 def generate_ideas(topic, platform, format, niche, tone) -> list[dict]:
     _require_deepseek()
+    import re
+    has_cyrillic = bool(re.search(r"[Ѐ-ӿ]", f"{topic} {niche} {tone}"))
+    lang = "Russian" if has_cyrillic else "English"
+    
+    if lang == "Russian":
+        lang_inst = "Write EVERYTHING in Russian. All JSON string values (title, hook_phrase, vibe, potential) MUST be in Russian. For potential, use Russian equivalents like 'Высокий потенциал', 'Трендовая тема', 'Вирусный формат'."
+    else:
+        lang_inst = "Write EVERYTHING in English."
+
     prompt = IDEA_PROMPT.format(
         niche=niche,
         tone=tone,
         platform=platform,
         topic=topic,
+        language_instruction=lang_inst,
     )
     response = client.chat.completions.create(
         model="deepseek-chat",
@@ -201,8 +212,21 @@ def generate_visual_script(idea_title, hook_phrase, platform, tone, niche, produ
     vibe = tmpl.get("music_vibe", "dark ambient")
     structure_str = " -> ".join(str(s) for s in structure)
     shots_str = ", ".join(str(s) for s in shots)
+    lang = "Russian" if re.search(r"[Ѐ-ӿ]", f"{idea_title} {hook_phrase} {niche} {product} {tone}") else "English"
+    
+    if lang == "Russian":
+        phrase_placeholder_1 = f"строка на экране на русском языке (от {min_w} до {max_w} слов)"
+        phrase_placeholder_2 = "еще одна строка на русском языке, которая продолжает мысль"
+        phrase_placeholder_punch = "финальная короткая цепляющая фраза на русском языке с точкой в конце."
+        film_placeholder = "подробное описание кадра НА РУССКОМ ЯЗЫКЕ: ракурс/крупность + объект + действие + свет/окружение"
+        caption_placeholder = "готовый к публикации пост на русском языке (2-3 предложения), а затем на новой строке 4-6 тематических хэштегов"
+    else:
+        phrase_placeholder_1 = f"on-screen line in English, {min_w} to {max_w} words"
+        phrase_placeholder_2 = "another line in English that flows on"
+        phrase_placeholder_punch = "the punch line in English with a period at the end."
+        film_placeholder = "detailed shot written in English: framing + subject + action + setting/light"
+        caption_placeholder = "two short sentences that sell the video in English, then 4-6 hashtags on a new line"
 
-    lang = "Russian" if re.search(r"[Ѐ-ӿ]", f"{idea_title} {hook_phrase}") else "English"
     prompt = f"""
 You are creating a visual b-roll script for a short-form video.
 Style: aesthetic, cinematic, dark, intentional — like @heyeaslo on Instagram.
@@ -257,15 +281,15 @@ Return ONLY valid JSON:
   "scenes": [
     {{
       "order": 1,
-      "phrase": "on-screen line in {lang}, {min_w} to {max_w} words",
-      "film_suggestion": "detailed shot written in {lang}: framing + subject + action + setting/light",
+      "phrase": "{phrase_placeholder_1}",
+      "film_suggestion": "{film_placeholder}",
       "duration_seconds": 4,
       "role": "hook"
     }},
     {{
       "order": 2,
-      "phrase": "another line that flows on",
-      "film_suggestion": "...",
+      "phrase": "{phrase_placeholder_2}",
+      "film_suggestion": "{film_placeholder}",
       "duration_seconds": 3,
       "role": "body"
     }},
@@ -278,15 +302,15 @@ Return ONLY valid JSON:
     }},
     {{
       "order": {hi},
-      "phrase": "the punch.",
-      "film_suggestion": "...",
+      "phrase": "{phrase_placeholder_punch}",
+      "film_suggestion": "{film_placeholder}",
       "duration_seconds": 3,
       "role": "punch"
     }}
   ],
   "music_vibe": "{vibe}",
   "color_grade": "{grade}",
-  "caption": "two short sentences that sell the video, then 4-6 hashtags on a new line"
+  "caption": "{caption_placeholder}"
 }}
 """
     response = client.chat.completions.create(
