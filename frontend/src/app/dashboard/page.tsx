@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { v4 as uuidv4 } from "uuid";
 import "../globals.css";
 import {
   Home,
@@ -19,9 +20,11 @@ import {
   X,
   Check,
   Clock,
-  ChevronRight
+  ChevronRight,
+  Sparkles,
+  Zap,
+  Send
 } from "lucide-react";
-import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { CreateFlow } from "@/components/create/CreateFlow";
 import { BYOCFlow } from "@/components/create/BYOCFlow";
 import type { FlowStep } from "@/components/create/StepIndicator";
@@ -54,6 +57,11 @@ import {
   startCheckout,
   openBillingPortal,
   generateIdeas,
+  fetchTracks,
+  startBrollRender,
+  getRenderStatus,
+  searchPexelsVideos,
+  importPexelsClip,
   type BillingStatus,
 } from "@/lib/api";
 import type { TemplateOption, ScheduledPost } from "@/lib/types";
@@ -101,140 +109,56 @@ interface ScriptVariant {
 }
 
 const generateDynamicIdeas = (product: string, platform: string): IdeaCard[] => {
-  const keywords = product.length > 25 ? product.substring(0, 25) + "..." : product;
+  const topic = product.length > 20 ? product.substring(0, 20) + "…" : product || "your content";
   return [
     {
       id: "dynamic-1",
-      title: `3 ошибки при продвижении: ${keywords}`,
-      hook: `Большинство создателей думают, что продвигать ${keywords} просто. Вот почему они ошибаются.`,
-      vibe: "dark and focused",
-      tags: ["dark and focused", platform],
-      estimate: "Высокий потенциал",
-      script: {
-        hook: `Большинство думают, что рассказывать про ${keywords} легко. Вот почему они ошибаются.`,
-        problem: [
-          "Вы начинаете объяснять сложные термины с первых секунд",
-          "Аудитория скучает и сразу скроллит дальше",
-          "Вы теряете до 80% удержания на первой секунде ролика"
-        ],
-        solution: [
-          "Начните с сильного визуального хука или вопроса",
-          "Объясняйте тему простыми словами как 5-летнему ребенку",
-          "Сделайте призыв к действию в середине видео"
-        ],
-        cta: "Подпишись, чтобы не совершать эти ошибки!"
-      }
+      title: `stop sleeping on: ${topic}`,
+      hook: `most people ignore this. here's why you shouldn't.`,
+      vibe: "bold and punchy",
+      tags: ["bold and punchy", platform],
+      estimate: "High potential",
     },
     {
       id: "dynamic-2",
-      title: `Почему я почти провалил запуск ${keywords}`,
-      hook: `Моя самая большая ошибка при работе с ${keywords}. Не повторяйте её.`,
-      vibe: "late night energy",
-      tags: ["late night energy", platform],
-      estimate: "Трендовый формат",
-      script: {
-        hook: `Моя самая большая ошибка при работе с ${keywords}. Не повторяйте её.`,
-        problem: [
-          "Я потратил 3 месяца на идеальную подготовку",
-          "Забыл спросить реальных пользователей, что им нужно",
-          "В итоге запустился в пустую тишину без единой продажи"
-        ],
-        solution: [
-          "Делайте CustDev и говорите с клиентами до запуска",
-          "Создайте MVP за 3 дня и сразу тестируйте спрос",
-          "Корректируйте подачу на основе реальной обратной связи"
-        ],
-        cta: "Подпишись, делюсь опытом фаундера без прикрас"
-      }
+      title: `the ${topic} transformation`,
+      hook: `what changed when I started taking this seriously`,
+      vibe: "clean and aspirational",
+      tags: ["clean and aspirational", platform],
+      estimate: "Viral format",
     },
     {
       id: "dynamic-3",
-      title: `Чек-лист на 5 минут: Идеальный старт в ${keywords}`,
-      hook: `Если бы я начинал работать с ${keywords} с нуля, я бы сделал это.`,
-      vibe: "grind aesthetic",
-      tags: ["grind aesthetic", platform],
-      estimate: "Вирусный хук",
-      script: {
-        hook: `Если бы я начинал работать с ${keywords} с нуля, я бы сделал это.`,
-        problem: [
-          "Новички тратят тысячи долларов на платные курсы",
-          "Изучают устаревшие теории вместо реальной практики",
-          "Бросают начатое из-за отсутствия быстрого результата"
-        ],
-        solution: [
-          "Начните с бесплатных гайдов и open-source инструментов",
-          "Найдите наставника или поддерживающее комьюнити",
-          "Каждый день делайте одно маленькое практическое действие"
-        ],
-        cta: "Забирай чек-лист в описании моего профиля"
-      }
+      title: `unpopular take on ${topic}`,
+      hook: `I said what everyone's thinking about this`,
+      vibe: "controversial",
+      tags: ["controversial", platform],
+      estimate: "Trending topic",
     },
     {
       id: "dynamic-4",
-      title: `Честное мнение: Почему ${keywords} изменит всё в 2026 году`,
-      hook: `Непопулярное мнение: будущее контента и ${keywords} за этим решением.`,
-      vibe: "raw founder life",
-      tags: ["raw founder life", platform],
-      estimate: "Горячая тема",
-      script: {
-        hook: `Непопулярное мнение: будущее контента и ${keywords} за этим решением.`,
-        problem: [
-          "Большинство продолжают использовать старые шаблоны",
-          "Рынок меняется слишком быстро, а вы стоите на месте",
-          "Скоро ваши методы перестанут приносить клиентов вообще"
-        ],
-        solution: [
-          "Внедряйте новые ИИ-инструменты в ежедневную рутину",
-          "Делайте фокус на искренность и живое общение",
-          "Адаптируйте контент под короткие форматы немедленно"
-        ],
-        cta: "Напиши в комментариях, согласен ты или нет"
-      }
+      title: `behind the ${topic} result`,
+      hook: `the part nobody posts about`,
+      vibe: "raw and honest",
+      tags: ["raw and honest", platform],
+      estimate: "High potential",
     },
     {
       id: "dynamic-5",
-      title: `Как за 1 минуту объяснить ${keywords}`,
-      hook: `Тебе нужно всего 60 секунд, чтобы понять суть ${keywords}.`,
-      vibe: "clean and clear",
-      tags: ["clean and clear", platform],
-      estimate: "Вирусный хук",
-      script: {
-        hook: `Тебе нужно всего 60 секунд, чтобы понять суть ${keywords}.`,
-        problem: [
-          "Люди думают, что разобраться слишком сложно и долго",
-          "Поэтому откладывают и так и не пробуют",
-          "А конкуренты уже используют это каждый день"
-        ],
-        solution: [
-          "Покажи один понятный пример за 15 секунд",
-          "Сравни «до» и «после» наглядно",
-          "Дай простой первый шаг прямо в видео"
-        ],
-        cta: "Сохрани, чтобы попробовать сегодня"
-      }
+      title: `30 seconds on ${topic}`,
+      hook: `the shortest guide you'll ever need`,
+      vibe: "fast energy",
+      tags: ["fast energy", platform],
+      estimate: "Viral format",
     },
     {
       id: "dynamic-6",
-      title: `Главная ошибка новичков в ${keywords}`,
-      hook: `Эту ошибку с ${keywords} совершают почти все. А ты?`,
-      vibe: "bold reveal",
-      tags: ["bold reveal", platform],
-      estimate: "Трендовый формат",
-      script: {
-        hook: `Эту ошибку с ${keywords} совершают почти все. А ты?`,
-        problem: [
-          "Все копируют чужие шаблоны без понимания",
-          "Результат получается серым и незаметным",
-          "Время и силы уходят впустую"
-        ],
-        solution: [
-          "Найди свой угол и говори от себя",
-          "Тестируй маленькими итерациями каждый день",
-          "Опирайся на реальные данные, а не на догадки"
-        ],
-        cta: "Подпишись, чтобы не повторять чужих ошибок"
-      }
-    }
+      title: `one ${topic} mistake to fix`,
+      hook: `almost everyone gets this wrong. do this instead.`,
+      vibe: "helpful",
+      tags: ["helpful", platform],
+      estimate: "Trending topic",
+    },
   ];
 };
 
@@ -242,60 +166,60 @@ const generateDynamicIdeas = (product: string, platform: string): IdeaCard[] => 
 const IDEA_CARDS: IdeaCard[] = [
   {
     id: "idea-1",
-    title: "what discipline looks like",
-    hook: "nobody sees this part",
-    vibe: "dark and focused",
-    tags: ["dark and focused", "TikTok"],
+    title: "stop doing this one thing",
+    hook: "it's holding you back more than you think",
+    vibe: "bold and punchy",
+    tags: ["bold and punchy", "TikTok"],
     estimate: "High potential"
   },
   {
     id: "idea-2",
-    title: "building solo at 2am",
-    hook: "just you and the screen",
-    vibe: "late night energy",
-    tags: ["late night energy", "TikTok"],
-    estimate: "High potential"
+    title: "the 30-second glow up",
+    hook: "watch what happens when you change this",
+    vibe: "transformation",
+    tags: ["transformation", "Reels"],
+    estimate: "Viral format"
   },
   {
     id: "idea-3",
-    title: "the grind nobody posts",
-    hook: "same desk. different day.",
-    vibe: "grind aesthetic",
-    tags: ["grind aesthetic", "Reels"],
+    title: "behind the final result",
+    hook: "what actually went into making this",
+    vibe: "raw and honest",
+    tags: ["raw and honest", "TikTok"],
     estimate: "Trending topic"
   },
   {
     id: "idea-4",
-    title: "raw founder life",
-    hook: "no team. no safety net.",
-    vibe: "raw founder life",
-    tags: ["raw founder life", "TikTok"],
-    estimate: "Viral format"
+    title: "unpopular opinion:",
+    hook: "most people won't say this out loud",
+    vibe: "controversial",
+    tags: ["controversial", "TikTok"],
+    estimate: "High potential"
   },
   {
     id: "idea-5",
-    title: "before vs after",
-    hook: "the part nobody shows",
-    vibe: "clean and clear",
-    tags: ["clean and clear", "Reels"],
+    title: "what I learned in 90 days",
+    hook: "the one thing that changed everything",
+    vibe: "story payoff",
+    tags: ["story payoff", "Reels"],
     estimate: "Viral format"
   },
   {
     id: "idea-6",
-    title: "watch this in 30s",
-    hook: "stop scrolling, this is quick",
-    vibe: "bold reveal",
-    tags: ["bold reveal", "TikTok"],
+    title: "try this right now",
+    hook: "you need 10 seconds and nothing else",
+    vibe: "fast energy",
+    tags: ["fast energy", "TikTok"],
     estimate: "Trending topic"
   }
 ];
 
 const TRENDS_DATA = [
-  { id: "t-1", source: "REDDIT", title: "Founders moving from Slack to Discord", time: "2h ago" },
-  { id: "t-2", source: "GOOGLE TRENDS", title: "AI HR automation tools search spike", time: "3h ago" },
-  { id: "t-3", source: "NEWS", title: "The rise of fraction-of-time executive hires", time: "5h ago" },
-  { id: "t-4", source: "REDDIT", title: "Why micro-SaaS is still king in 2026", time: "8h ago" },
-  { id: "t-5", source: "GOOGLE TRENDS", title: "Short-form video hook formulas", time: "12h ago" }
+  { id: "t-1", source: "REDDIT", title: "Creators moving from polished to raw content", time: "2h ago" },
+  { id: "t-2", source: "GOOGLE TRENDS", title: "Short-form video hook formulas trending", time: "3h ago" },
+  { id: "t-3", source: "NEWS", title: "TikTok pushing longer vertical videos again", time: "5h ago" },
+  { id: "t-4", source: "REDDIT", title: "Audio-first content making a comeback", time: "8h ago" },
+  { id: "t-5", source: "GOOGLE TRENDS", title: "AI tools for creators surge in 2026", time: "12h ago" }
 ];
 
 interface SavedVideo {
@@ -816,13 +740,11 @@ export default function Dashboard() {
     setXToast({ kind: "ok", text: "Description saved." });
   };
 
-  // Onboarding & DNA States
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(true);
-  const [isLoadingOnboarding, setIsLoadingOnboarding] = useState<boolean>(true);
+  // DNA State — loaded from localStorage, no onboarding gate
   const [ideas, setIdeas] = useState<IdeaCard[]>(IDEA_CARDS);
 
   // Create Tab States
-  const [inputVal, setInputVal] = useState("I'm building an AI tool for HR automation and want to explain why onboarding matters...");
+  const [inputVal, setInputVal] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState<"TikTok" | "LinkedIn" | "Reels">("TikTok");
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -873,6 +795,209 @@ export default function Dashboard() {
   const [modalIdea, setModalIdea] = useState<IdeaCard | null>(null);
   const [isPlatformOpen, setIsPlatformOpen] = useState(false);
 
+  // ----------------------------------------------------
+  // SUPER CLIPR — Autonomous Agent Mode (Pro only)
+  // ----------------------------------------------------
+  const [isSuperCliprMode, setIsSuperCliprMode] = useState(false);
+  const [agentVideoCount, setAgentVideoCount] = useState(5);
+  const [agentIntervalMinutes, setAgentIntervalMinutes] = useState(360);
+  const [agentPlatforms, setAgentPlatforms] = useState<string[]>(["twitter"]);
+  const [agentUseVoiceover, setAgentUseVoiceover] = useState(false);
+  const [isAgentRunning, setIsAgentRunning] = useState(false);
+  const [agentProgress, setAgentProgress] = useState<{ done: number; total: number; status: string } | null>(null);
+  const [agentError, setAgentError] = useState<string | null>(null);
+  const [agentConfigOpen, setAgentConfigOpen] = useState(false);
+
+  const toggleAgentPlatform = (p: string) => {
+    setAgentPlatforms((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+    );
+  };
+
+  const handleSuperCliprToggle = () => {
+    if (!isProPlan) {
+      // Show upgrade modal — set a plan and open it
+      setDefaultSelectedPlan("3_months");
+      setUpgradeOpen(true);
+      return;
+    }
+    const next = !isSuperCliprMode;
+    setIsSuperCliprMode(next);
+    setAgentConfigOpen(next);
+    if (!next) {
+      setAgentProgress(null);
+      setAgentError(null);
+    }
+  };
+
+  /** Poll the render status endpoint until done or error, then return the output URL. */
+  const pollUntilRendered = async (jobId: string, timeoutMs = 300_000): Promise<string> => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 4000));
+      try {
+        const s = await getRenderStatus(jobId);
+        if (s.status === "done") return s.output_url;
+        if (s.status === "error") throw new Error(s.error || "Render job failed");
+      } catch (e) {
+        // 404 is fine — job may not have started yet
+        if (!(e instanceof Error && e.message.includes("not found"))) throw e;
+      }
+    }
+    throw new Error("Render timed out — try again with fewer videos or a shorter duration.");
+  };
+
+  const handleStartAgent = async () => {
+    if (!inputVal.trim()) return;
+    setIsAgentRunning(true);
+    setAgentProgress({ done: 0, total: agentVideoCount, status: "Gathering assets…" });
+    setAgentError(null);
+
+    const savedDna = localStorage.getItem("clipr_dna");
+    let dna = { product: "", audience: "", tone: "casual", platform: "TikTok" };
+    if (savedDna) {
+      try { dna = JSON.parse(savedDna); } catch {}
+    }
+    const topic = inputVal.trim() || dna.product || "your content";
+    const email = localStorage.getItem("clipr_email") || "";
+
+    try {
+      // Pre-fetch a pool of music tracks (one will be picked per video)
+      const allTracks = await fetchTracks();
+      if (!allTracks.length) throw new Error("No background music tracks available.");
+
+      // Pre-fetch a pool of b-roll clips from Pexels so every video has footage
+      const brollQuery = topic || dna.product || dna.audience || "cinematic background";
+      setAgentProgress({ done: 0, total: agentVideoCount, status: "Importing b-roll clips…" });
+      const pexelsRes = await searchPexelsVideos(brollQuery, 1);
+      const pexelsPool = (pexelsRes?.videos || []).slice(0, Math.max(agentVideoCount * 3, 9));
+
+      const importedClipIds: string[] = [];
+      for (const pv of pexelsPool) {
+        try {
+          const { clip_id } = await importPexelsClip(pv.id);
+          importedClipIds.push(clip_id);
+        } catch {
+          // Some Pexels downloads may fail — skip and keep going
+        }
+      }
+      if (!importedClipIds.length) {
+        throw new Error("Could not import any b-roll clips. Please try a different topic.");
+      }
+
+      for (let i = 0; i < agentVideoCount; i++) {
+        setAgentProgress({ done: i, total: agentVideoCount, status: `Writing script ${i + 1}/${agentVideoCount}…` });
+
+        // Step 1: Generate idea
+        const { ideas: rawIdeas } = await generateIdeas({
+          topic: `${topic} (video ${i + 1} of ${agentVideoCount})`,
+          platform: selectedPlatform,
+          format: (["Story", "Hot Take", "Tutorial", "List"] as const)[i % 4],
+          niche: dna.audience || "",
+          tone: dna.tone || "casual",
+        });
+
+        if (!Array.isArray(rawIdeas) || rawIdeas.length === 0) {
+          throw new Error(`No idea generated for video ${i + 1}`);
+        }
+        const idea = rawIdeas[0];
+
+        setAgentProgress({ done: i, total: agentVideoCount, status: `Generating storyboard ${i + 1}/${agentVideoCount}…` });
+
+        // Step 2: Generate visual script
+        const apiBase = getApiBase();
+        const scriptRes = await fetch(`${apiBase}/api/scripts/visual`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            idea_title: idea.title || "Untitled",
+            hook_phrase: idea.hook_phrase || "",
+            platform: selectedPlatform,
+            tone: dna.tone || "casual",
+            niche: dna.audience || "",
+            product: topic,
+            email,
+          }),
+        });
+        if (!scriptRes.ok) {
+          const errText = await scriptRes.text();
+          throw new Error(`Script generation failed: ${errText}`);
+        }
+        const scriptData = await scriptRes.json();
+        const scenes = scriptData.scenes;
+        if (!Array.isArray(scenes) || scenes.length === 0) {
+          throw new Error(`No scenes in storyboard for video ${i + 1}`);
+        }
+
+        // Step 3: Pick a music track and a subset of b-roll clips for this video
+        const track = allTracks[i % allTracks.length];
+        // Cycle through imported clips — assign 1-2 clips per scene
+        const clipIds: string[] = scenes.map(
+          (_: unknown, idx: number) => importedClipIds[(i * scenes.length + idx) % importedClipIds.length]
+        );
+
+        setAgentProgress({ done: i, total: agentVideoCount, status: `Rendering video ${i + 1}/${agentVideoCount}…` });
+
+        // Step 4: Start b-roll render
+        const jobId = uuidv4();
+        await startBrollRender({
+          job_id: jobId,
+          scenes: scenes,
+          clip_ids: clipIds,
+          audio_file_id: track.id,
+          audio_volume: 0.6,
+          color_grade: scriptData.color_grade?.split("|")[0]?.trim() || "dark_cinematic",
+          platform: selectedPlatform,
+          template_id: scriptData.template_id || "",
+          ...(agentUseVoiceover
+            ? { add_voiceover: true, voice_id: "21m00Tcm4TlvDq8ikWAM" }
+            : {}),
+        });
+
+        // Step 5: Wait for render to complete
+        const outputUrl = await pollUntilRendered(jobId);
+
+        setAgentProgress({ done: i, total: agentVideoCount, status: `Scheduling video ${i + 1}/${agentVideoCount}…` });
+
+        // Step 6: Schedule posting for each selected platform
+        for (const plat of agentPlatforms) {
+          const scheduleAt = Math.floor(Date.now() / 1000) + (i * agentIntervalMinutes + 1) * 60;
+          try {
+            await createSchedule({
+              platform: plat as "twitter" | "linkedin" | "instagram",
+              output_url: outputUrl,
+              caption: scriptData.caption || idea.title || "",
+              title: idea.title || `Agent video ${i + 1}`,
+              scheduled_at: scheduleAt,
+            });
+          } catch (e) {
+            console.error(`Failed to schedule on ${plat}:`, e);
+          }
+        }
+      }
+
+      setAgentProgress({ done: agentVideoCount, total: agentVideoCount, status: "Complete!" });
+      setXToast({ kind: "ok", text: `${agentVideoCount} videos generated & scheduled! Check Calendar.` });
+
+      // Refresh schedules in the background
+      loadSchedules();
+
+      // Reset after a short delay
+      setTimeout(() => {
+        setIsAgentRunning(false);
+        setAgentProgress(null);
+        setIsSuperCliprMode(false);
+        setAgentConfigOpen(false);
+        setInputVal("");
+      }, 3000);
+    } catch (err) {
+      console.error("Super Clipr agent error:", err);
+      setAgentError(err instanceof Error ? err.message : "Agent failed");
+      setIsAgentRunning(false);
+      setAgentProgress(null);
+    }
+  };
+
   // Auto-expanding textarea ref
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -908,51 +1033,21 @@ export default function Dashboard() {
         setSelectedPlatform(plat);
         setInputVal("");
         setIdeas(generateDynamicIdeas(dna.product, dna.platform));
-        setHasCompletedOnboarding(true);
       } catch (e) {
         console.error("Error parsing saved DNA", e);
-        setHasCompletedOnboarding(true);
       }
-    } else {
-      // No brand DNA yet (e.g. a freshly registered user) → run onboarding first.
-      setHasCompletedOnboarding(false);
     }
-    setIsLoadingOnboarding(false);
+    // Onboarding removed — dashboard loads directly with sensible defaults.
   }, []);
-
-  const handleOnboardingComplete = (data: {
-    name: string;
-    product: string;
-    audience: string;
-    tone: "formal" | "casual";
-    samplePost: string;
-    platform: "TikTok" | "Instagram Reels" | "LinkedIn" | "YouTube Shorts" | "Twitter / X";
-  }) => {
-    localStorage.setItem("clipr_dna", JSON.stringify(data));
-    // Persist the name the user gave in onboarding and reflect it in the profile.
-    if (data.name?.trim()) {
-      const n = data.name.trim();
-      localStorage.setItem("clipr_name", n);
-      setProfile((p) => ({ ...p, name: n, initial: (n.charAt(0) || p.initial).toUpperCase() }));
-    }
-    setVoiceTone(data.tone === "casual" ? "Как с другом" : "Формальный эксперт");
-    setVoicePreview(
-      `Тема: ${data.product.length > 60 ? data.product.substring(0, 60) + "..." : data.product}. Целевая аудитория: ${data.audience}.`
-    );
-
-    let plat: "TikTok" | "LinkedIn" | "Reels" = "TikTok";
-    if (data.platform === "LinkedIn") plat = "LinkedIn";
-    else if (data.platform === "Instagram Reels" || data.platform === "YouTube Shorts" || data.platform === "Twitter / X") plat = "Reels";
-
-    setSelectedPlatform(plat);
-    setInputVal("");
-    setIdeas(generateDynamicIdeas(data.product, data.platform));
-    setHasCompletedOnboarding(true);
-  };
 
   const handleResetDna = () => {
     localStorage.removeItem("clipr_dna");
-    setHasCompletedOnboarding(false);
+    // Reset to defaults — no onboarding, dashboard stays accessible.
+    setVoiceTone("Casual founder");
+    setVoicePreview("Direct, no fluff, fast-paced, talking directly to operators.");
+    setSelectedPlatform("TikTok");
+    setInputVal("");
+    setIdeas(IDEA_CARDS);
   };
 
   const handleLogout = async () => {
@@ -1105,13 +1200,18 @@ export default function Dashboard() {
         try { dna = JSON.parse(savedDna); } catch {}
       }
 
-      const topic = inputVal.trim() || dna.product || "Clipr platform";
+      const topic = inputVal.trim() || dna.product || "";
+
+      // Pick a format based on the topic length to add variety — short topics
+      // get "Hot Take" (punchy), long ones get "Story" (narrative).
+      const formats = ["Story", "Hot Take", "Tutorial", "List"] as const;
+      const pickedFormat = formats[(topic.length * 7) % formats.length];
 
       const { ideas: rawIdeas } = await generateIdeas({
         topic,
         platform: selectedPlatform || dna.platform || "TikTok",
-        format: "Story",
-        niche: dna.audience || dna.product || "content creators",
+        format: pickedFormat,
+        niche: dna.audience || "",
         tone: dna.tone || "casual",
       });
 
@@ -1255,18 +1355,6 @@ export default function Dashboard() {
     }
   };
 
-  if (isLoadingOnboarding) {
-    return (
-      <div className="h-screen bg-[#070B0D] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#51E0CF] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!hasCompletedOnboarding) {
-    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
-  }
-
   return (
     <div className="relative h-screen bg-[#070B0D] text-[#EFEFEF] flex flex-col md:flex-row font-sans overflow-hidden antialiased text-[14px] leading-[1.6]">
 
@@ -1370,10 +1458,10 @@ export default function Dashboard() {
       {/* ----------------------------------------------------
           CENTER WORKSPACE (bg #070B0D)
          ---------------------------------------------------- */}
-      <main className="flex-1 flex flex-col h-full relative z-10 bg-[#070B0D] overflow-hidden">
+      <main className="flex-1 flex flex-col h-full relative z-10 bg-[#070B0D] overflow-y-auto">
 
         {/* TOP NAVBAR */}
-        <header className="h-16 md:h-12 border-b border-[#152226] bg-[#070B0D] px-4 md:px-6 flex items-center justify-between sticky top-0 z-20">
+        <header className="h-16 md:h-12 border-b border-[#152226] bg-[#070B0D]/80 backdrop-blur-md px-4 md:px-6 flex items-center justify-between sticky top-0 z-20">
           {/* ----- MOBILE: logo mark + current section title (the sidebar is hidden) ----- */}
           <div className="md:hidden flex items-center gap-2.5 min-w-0">
             <button
@@ -1608,7 +1696,7 @@ export default function Dashboard() {
           (planState.expired || planState.daysLeft <= 2) &&
           !trialBannerDismissed && (
             <div
-              className={`shrink-0 flex items-center gap-3 px-4 md:px-6 py-2.5 border-b ${
+              className={`shrink-0 flex items-center gap-3 px-4 md:px-6 py-2.5 border-b backdrop-blur-sm ${
                 planState.expired
                   ? "border-[#EF8B8B]/20 bg-[#EF8B8B]/[0.06]"
                   : "border-[#51E0CF]/20 bg-[#51E0CF]/[0.06]"
@@ -1641,7 +1729,7 @@ export default function Dashboard() {
           )}
 
         {/* WORKSPACE CONTENT */}
-        <div className={`flex-1 w-full ${activeTab === "Create" ? "overflow-hidden" : "overflow-y-auto"}`}>
+        <div className={`flex-1 w-full "overflow-y-auto"`}>
           <div className={`w-full mx-auto ${activeTab === "Create" ? "h-full max-w-5xl px-4 sm:px-6 py-4 pb-20 md:pb-4 flex flex-col justify-between" : "p-4 sm:p-6 md:p-8 pb-24 md:pb-8 max-w-4xl space-y-6"}`}>
 
             <AnimatePresence mode="wait">
@@ -1729,22 +1817,205 @@ export default function Dashboard() {
                                 )}
                               </div>
 
+                              {/* Super Clipr Toggle — Pro-only autonomous agent */}
+                              <button
+                                onClick={handleSuperCliprToggle}
+                                disabled={isAgentRunning}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all border ${
+                                  isSuperCliprMode
+                                    ? "bg-gradient-to-r from-[#51E0CF]/20 to-[#a78bfa]/20 border-[#51E0CF]/50 text-[#51E0CF] shadow-[0_0_12px_rgba(81,224,207,0.2)]"
+                                    : isProPlan
+                                      ? "bg-[#070B0D] border-[#a78bfa]/20 hover:border-[#a78bfa]/50 text-[#a78bfa] hover:shadow-[0_0_10px_rgba(167,139,250,0.15)]"
+                                      : "bg-[#070B0D] border-[#152226] text-[#6B7C85] hover:border-[#a78bfa]/30"
+                                } disabled:opacity-50`}
+                              >
+                                <Sparkles className={`w-3.5 h-3.5 ${isSuperCliprMode ? "text-[#51E0CF]" : isProPlan ? "text-[#a78bfa]" : "text-[#6B7C85]"}`} />
+                                <span>Super Clipr</span>
+                                {!isProPlan && <span className="text-[9px] bg-[#51E0CF]/15 text-[#51E0CF] px-1.5 py-0.5 rounded-full font-mono">PRO</span>}
+                                {isSuperCliprMode && <Zap className="w-3 h-3 text-[#51E0CF] animate-pulse" />}
+                              </button>
 
                             </div>
 
-                            {/* Generate button */}
-                            <button
-                              className="bg-[#51E0CF] hover:bg-[#43cdbd] text-[#070B0D] hover:scale-[1.02] active:scale-[0.98] transition-all text-xs font-bold rounded-full px-4 py-1.5 flex items-center justify-center space-x-1.5 shadow-md"
-                              onClick={triggerGenerateIdeas}
-                              disabled={isGenerating}
-                            >
-                              <span>{isGenerating ? "Creating..." : "Create"}</span>
-                              {!isGenerating && <span className="text-xs font-bold">→</span>}
-                            </button>
+                            {/* Generate / Start Agent button */}
+                            {isSuperCliprMode ? (
+                              <button
+                                className="bg-gradient-to-r from-[#51E0CF] to-[#a78bfa] hover:from-[#43cdbd] hover:to-[#8b6fe8] text-[#070B0D] hover:scale-[1.02] active:scale-[0.98] transition-all text-xs font-bold rounded-full px-4 py-1.5 flex items-center justify-center space-x-1.5 shadow-[0_0_18px_rgba(81,224,207,0.25)] disabled:opacity-60 disabled:hover:scale-100"
+                                onClick={handleStartAgent}
+                                disabled={isAgentRunning || !inputVal.trim()}
+                              >
+                                {isAgentRunning ? (
+                                  <span>Running…</span>
+                                ) : (
+                                  <>
+                                    <Send className="w-3 h-3" />
+                                    <span>Start Agent</span>
+                                  </>
+                                )}
+                              </button>
+                            ) : (
+                              <button
+                                className="bg-[#51E0CF] hover:bg-[#43cdbd] text-[#070B0D] hover:scale-[1.02] active:scale-[0.98] transition-all text-xs font-bold rounded-full px-4 py-1.5 flex items-center justify-center space-x-1.5 shadow-md"
+                                onClick={triggerGenerateIdeas}
+                                disabled={isGenerating}
+                              >
+                                <span>{isGenerating ? "Creating..." : "Create"}</span>
+                                {!isGenerating && <span className="text-xs font-bold">→</span>}
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
+                  )}
+
+                  {/* ───── Super Clipr Agent Configuration Panel ───── */}
+                  {isSuperCliprMode && agentConfigOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                      className="mx-4 mt-2 mb-1 overflow-hidden"
+                    >
+                      <div className="max-h-[380px] overflow-y-auto pr-0.5">
+                        <div className="bg-[#0D1517] border border-[#152226] rounded-2xl p-5 space-y-4 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#51E0CF]/20 to-[#a78bfa]/20 border border-[#51E0CF]/30 flex items-center justify-center">
+                              <Zap className="w-3.5 h-3.5 text-[#51E0CF]" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-[#EFEFEF]">Super Clipr Agent</div>
+                              <div className="text-[10px] text-[#6B7C85]">Автономный режим — бот сгенерирует и запланирует видео</div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => { setIsSuperCliprMode(false); setAgentConfigOpen(false); }}
+                            className="text-[#6B7C85] hover:text-[#EFEFEF] transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        {/* Config grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Video count */}
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7C85]">Кол-во видео</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="range"
+                                min={1}
+                                max={isProPlan ? 20 : 0}
+                                value={agentVideoCount}
+                                onChange={(e) => setAgentVideoCount(Number(e.target.value))}
+                                className="flex-1 accent-[#51E0CF] h-1"
+                              />
+                              <span className="text-xs font-mono font-bold text-[#EFEFEF] w-8 text-center bg-[#070B0D] border border-[#152226] rounded-lg py-1">{agentVideoCount}</span>
+                            </div>
+                          </div>
+
+                          {/* Interval */}
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7C85]">Интервал</label>
+                            <select
+                              value={agentIntervalMinutes}
+                              onChange={(e) => setAgentIntervalMinutes(Number(e.target.value))}
+                              className="w-full bg-[#070B0D] border border-[#152226] rounded-lg px-3 py-1.5 text-xs text-[#EFEFEF] focus:border-[#51E0CF]/50 focus:outline-none"
+                            >
+                              <optgroup label="Минуты">
+                                {[1, 5, 10, 15, 30, 45].map((m) => (
+                                  <option key={`min-${m}`} value={m}>{m} мин</option>
+                                ))}
+                              </optgroup>
+                              <optgroup label="Часы">
+                                {[1, 2, 3, 4, 6, 8, 12, 24].map((h) => (
+                                  <option key={`hr-${h}`} value={h * 60}>{h} ч</option>
+                                ))}
+                              </optgroup>
+                            </select>
+                          </div>
+
+                          {/* Platforms */}
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7C85]">Платформы</label>
+                            <div className="flex items-center gap-2">
+                              {[
+                                { id: "twitter", label: "X", icon: "𝕏" },
+                                { id: "linkedin", label: "LNKD", icon: "in" },
+                              ].map((p) => (
+                                <button
+                                  key={p.id}
+                                  onClick={() => toggleAgentPlatform(p.id)}
+                                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
+                                    agentPlatforms.includes(p.id)
+                                      ? "bg-[#51E0CF]/10 border-[#51E0CF]/40 text-[#51E0CF]"
+                                      : "bg-[#070B0D] border-[#152226] text-[#6B7C85]"
+                                  }`}
+                                >
+                                  {p.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Voiceover toggle */}
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-semibold uppercase tracking-wider text-[#6B7C85]">ИИ-озвучка</label>
+                            <button
+                              onClick={() => setAgentUseVoiceover(!agentUseVoiceover)}
+                              className={`relative w-10 h-5 rounded-full transition-all ${
+                                agentUseVoiceover ? "bg-[#51E0CF]" : "bg-[#152226]"
+                              }`}
+                            >
+                              <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                                agentUseVoiceover ? "translate-x-5" : "translate-x-0"
+                              }`} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Progress display when running */}
+                        {agentProgress && (
+                          <div className="space-y-2 pt-2 border-t border-[#152226]">
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="text-[#6B7C85]">Прогресс</span>
+                              <span className="text-[#51E0CF] font-mono font-bold">
+                                {agentProgress.done}/{agentProgress.total}
+                              </span>
+                            </div>
+                            <div className="h-1.5 bg-[#070B0D] rounded-full overflow-hidden">
+                              <motion.div
+                                className="h-full rounded-full bg-gradient-to-r from-[#51E0CF] to-[#a78bfa]"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(agentProgress.done / agentProgress.total) * 100}%` }}
+                                transition={{ duration: 0.4 }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-[#6B7C85]">{agentProgress.status}</p>
+                          </div>
+                        )}
+
+                        {/* Error display */}
+                        {agentError && (
+                          <div className="text-[10px] text-amber-400 bg-amber-950/20 border border-amber-500/20 px-3 py-2 rounded-lg">
+                            {agentError}
+                          </div>
+                        )}
+
+                        {/* Tip */}
+                        {!agentProgress && !agentError && (
+                          <div className="text-[10px] text-[#6B7C85] pt-1 border-t border-[#152226]/50">
+                            💡 Напишите в поле выше что-то вроде: <span className="text-[#51E0CF]/80 italic">"10 видео о спорте, каждые 6 часов на X"</span> — и нажмите <span className="text-[#a78bfa] font-semibold">Start Agent</span>
+                          </div>
+                        )}
+                      </div>
+                      </div>
+                    </motion.div>
                   )}
 
                   {/* Ideas Feed (responsive grid, up to 3 cols) — fits all 6 ideas without scrolling, hidden once an idea is selected */}
@@ -1753,7 +2024,7 @@ export default function Dashboard() {
                     // a centered (justify-center) overflowing flex column clips its top
                     // behind the header with no way to scroll up. Center only on md+ where
                     // the 3-col grid fits without scrolling.
-                    <div className="w-full flex-1 flex flex-col items-center justify-start md:justify-center min-h-0 overflow-y-auto px-4 py-6 scrollbar-thin">
+                    <div className="w-full flex-1 flex flex-col items-center justify-start md:justify-center min-h-0 overflow-y-auto px-4 py-6">
                       {ideasError && (
                         <div className="text-[11px] mb-4 text-amber-400 bg-amber-950/20 border border-amber-500/20 px-3 py-1.5 rounded-lg max-w-[1080px] w-full text-center">
                           {ideasError}
@@ -2614,7 +2885,7 @@ export default function Dashboard() {
       {/* ----------------------------------------------------
           RIGHT SIDEBAR: TRENDS (280px, bg #0B1012, border-l #152226)
          ---------------------------------------------------- */}
-      <aside className={`hidden lg:flex flex-col shrink-0 border-[#152226] bg-[#0B1012] p-5 justify-between relative z-10 transition-all duration-300 h-full overflow-y-auto ${rightSidebarCollapsed ? "w-0 p-0 border-l-0 opacity-0 overflow-hidden" : "w-[280px] border-l"
+      <aside className={`hidden lg:flex flex-col shrink-0 border-[#152226] bg-[#0B1012] justify-between relative z-10 transition-all duration-300 h-full ${rightSidebarCollapsed ? "w-0 p-0 border-l-0 opacity-0 overflow-hidden" : "w-[280px] p-5 border-l overflow-y-auto"
         }`}>
 
         {/* Trend feeds */}

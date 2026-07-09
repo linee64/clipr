@@ -5,10 +5,10 @@
 // previous user's elapsed clock (or their local Pro flag).
 
 export const TRIAL_DAYS = 3;
-export const PRO_PRICE = "$6.99";
-export const PRO_PRICE_1M = "$6.99";
-export const PRO_PRICE_3M = "$12.99";
-export const PRO_PRICE_6M = "$34.99";
+export const PRO_PRICE = "$5";
+export const PRO_PRICE_1M = "$5";
+export const PRO_PRICE_3M = "$11.99";
+export const PRO_PRICE_6M = "$25";
 export const FREE_VIDEO_LIMIT = 5;
 export const PRO_VIDEO_LIMIT = 20;
 

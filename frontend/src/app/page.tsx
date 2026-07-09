@@ -567,7 +567,7 @@ export default function Home() {
         </div>
         {/* Promo Badge */}
         <div className="bg-[#51E0CF]/10 border border-[#51E0CF]/30 px-4 py-1.5 rounded-full text-[11px] text-[#51E0CF] font-mono tracking-wider font-semibold mb-16 max-w-fit">
-          Save up to 38% on multi-month plans
+          Save up to 20% on multi-month plans
         </div>
 
         {/* Plans Grid */}
@@ -628,7 +628,7 @@ export default function Home() {
               </div>
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold font-display bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent">$6.99</span>
+                  <span className="text-4xl font-bold font-display bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent">$5</span>
                   <span className="text-xs text-white/50 font-sans">/ month</span>
                 </div>
                 <p className="text-[10px] text-white/40 mt-1 font-sans">Billed monthly</p>
@@ -672,7 +672,7 @@ export default function Home() {
           {/* Plan 3: 3-Month Pro (Most Popular) */}
           <div className="p-6 rounded-2xl bg-white/[0.02] border-2 border-[#51E0CF] backdrop-blur-md flex flex-col justify-between shadow-[0_0_30px_rgba(81,224,207,0.12)] relative group transform md:-translate-y-2 transition-all duration-300">
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#51E0CF] text-[#0A0F0F] text-[9px] font-mono font-bold uppercase tracking-wider px-4 py-1 rounded-full shadow-[0_4px_12px_rgba(81,224,207,0.25)] whitespace-nowrap">
-              Most Popular (Save 38% · 3-Day Free Trial)
+              Most Popular (Save 20% · 3-Day Free Trial)
             </div>
             
             <div className="space-y-6 mt-2">
@@ -683,10 +683,10 @@ export default function Home() {
               <div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-lg text-white/40 line-through font-display font-medium mr-1.5">
-                    $20.97
+                    $15
                   </span>
                   <span className="text-4xl font-bold font-display bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent">
-                    $12.99
+                    $11.99
                   </span>
                   <span className="text-xs text-white/50 font-sans">
                     / 3 months
@@ -750,10 +750,10 @@ export default function Home() {
               <div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-lg text-white/40 line-through font-display font-medium mr-1.5">
-                    $41.94
+                    $30
                   </span>
                   <span className="text-4xl font-bold font-display bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent">
-                    $34.99
+                    $25
                   </span>
                   <span className="text-xs text-white/50 font-sans">
                     / 6 months
