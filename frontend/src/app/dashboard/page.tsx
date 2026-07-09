@@ -2010,7 +2010,7 @@ export default function Dashboard() {
                         {/* Tip */}
                         {!agentProgress && !agentError && (
                           <div className="text-[10px] text-[#6B7C85] pt-1 border-t border-[#152226]/50">
-                            💡 Напишите в поле выше что-то вроде: <span className="text-[#51E0CF]/80 italic">"10 видео о спорте, каждые 6 часов на X"</span> — и нажмите <span className="text-[#a78bfa] font-semibold">Start Agent</span>
+                            💡 Напишите в поле выше что-то вроде: <span className="text-[#51E0CF]/80 italic">&quot;10 видео о спорте, каждые 6 часов на X&quot;</span> — и нажмите <span className="text-[#a78bfa] font-semibold">Start Agent</span>
                           </div>
                         )}
                       </div>
