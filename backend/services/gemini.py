@@ -358,6 +358,7 @@ def generate_byoc_script(
     ref_subtitles: list[str] | None = None,
     avg_words_per_line: int = 4,
     subtitle_pattern: dict | None = None,
+    scene_contexts: list[str] | None = None,
 ) -> str:
     _require_deepseek()
     import re
@@ -365,6 +366,19 @@ def generate_byoc_script(
 
     pattern = subtitle_pattern or {}
     pattern_type = pattern.get("type", "single")
+
+    # Build scene context block if we have visual understanding from Gemini
+    scene_block = ""
+    if scene_contexts:
+        # Match lengths safely
+        max_idx = min(scene_count, len(scene_contexts))
+        ctx_lines = []
+        for i in range(max_idx):
+            c = scene_contexts[i]
+            if c:
+                ctx_lines.append(f"Scene {i+1}: {c}")
+        if ctx_lines:
+            scene_block = "\nWHAT IS HAPPENING IN EACH SCENE (Visual AI Context):\n" + "\n".join(ctx_lines) + "\n\nMake sure the subtitle line for a scene matches the mood and action of what is happening visually in that scene!\n"
 
     # --- Two-field pattern: static + dynamic ---
     if pattern_type == "two_field" and pattern.get("static_line"):
@@ -377,7 +391,7 @@ def generate_byoc_script(
 You are creating subtitles for a short-form TikTok/Reels video.
 The video has exactly {scene_count} scene cuts.
 User's context/topic: {context}
-
+{scene_block}
 CRITICAL PATTERN — this video has TWO subtitle fields:
 - A STATIC line that stays the same every scene: "{static_line}" (positioned at {static_pos})
 - A DYNAMIC word/phrase that CHANGES every scene (positioned at {"top" if static_pos == "bottom" else "bottom"})
@@ -391,6 +405,7 @@ Rules for dynamic words:
 - Write exactly {scene_count} words/phrases (one per scene cut)
 - Each should be 1-3 words max (short, impactful, like the reference samples)
 - They should thematically fit with "{static_line}" when read together
+- They MUST match the visual context of the scene if provided above.
 - Language: {lang}
 - No numbering, no timestamps, no quotes — just the dynamic text, one per line
 - Each should create a powerful pair with "{static_line}"
@@ -447,6 +462,7 @@ If there are more, condense them down to {scene_count} lines.
 You are creating subtitles for a short-form TikTok/Reels video.
 The video has exactly {scene_count} scene cuts.
 User's context/topic: {context}
+{scene_block}
 {ref_block}
 Rules:
 - Write exactly {scene_count} lines (one per scene cut)
@@ -455,6 +471,7 @@ Rules:
 - Language: {lang}
 - No numbering, no timestamps, no quotes — just the subtitle text
 - Each line should flow naturally into the next
+- The subtitle MUST align with the action happening in the scene if visual context is provided.
 
 Return ONLY the {scene_count} lines, nothing else.
 """

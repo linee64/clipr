@@ -9,20 +9,14 @@ from services.storage import upload_file
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 TEMP_DIR = BACKEND_DIR / "temp"
 
+import yt_dlp
+
 def download_reference_video(url: str) -> str:
     """Download video from URL (Instagram, TikTok, etc.) using yt-dlp."""
     os.makedirs(TEMP_DIR, exist_ok=True)
     out_id = str(uuid.uuid4())
     output_path = str(TEMP_DIR / f"{out_id}_ref.mp4")
     
-    # Try importing yt_dlp dynamically
-    try:
-        import yt_dlp
-    except ImportError:
-        # Install yt-dlp if not present
-        subprocess.check_call(["pip", "install", "yt-dlp"])
-        import yt_dlp
-        
     ydl_opts = {
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
         'outtmpl': output_path,
@@ -37,40 +31,40 @@ def download_reference_video(url: str) -> str:
             'Sec-Fetch-Mode': 'navigate',
         }
     }
+
+    # Add custom cookies file if configured via environment or exists in project root
+    cookies_file = os.getenv("YT_DLP_COOKIES_FILE") or str(BACKEND_DIR / "cookies.txt")
+    cookies_file_txt_txt = str(BACKEND_DIR / "cookies.txt.txt")
+    if os.path.exists(cookies_file):
+        ydl_opts['cookiefile'] = cookies_file
+    elif os.path.exists(cookies_file_txt_txt):
+        ydl_opts['cookiefile'] = cookies_file_txt_txt
     
-    # Try downloading with cookies from different local browsers
-    browsers = ['chrome', 'edge', 'firefox', 'opera', 'brave']
+    # Try downloading with cookies from different local browsers if no cookies file is provided
     downloaded = False
-    
-    for browser in browsers:
-        opts = dict(ydl_opts)
-        opts['cookiesfrombrowser'] = browser
-        try:
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                ydl.download([url])
-            downloaded = True
-            break
-        except Exception:
-            continue
+    if 'cookiefile' not in ydl_opts:
+        browsers = ['chrome', 'edge', 'firefox', 'opera', 'brave']
+        for browser in browsers:
+            opts = dict(ydl_opts)
+            opts['cookiesfrombrowser'] = ((browser, None, None, None),)
+            try:
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    ydl.download([url])
+                downloaded = True
+                break
+            except Exception:
+                continue
             
     if not downloaded:
         try:
-            # Fallback to direct download without cookies
+            # Fallback to direct download using whatever settings we resolved (e.g. cookiefile if exists)
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
         except Exception as e:
-            # If download fails, automatically update yt-dlp and retry once
-            try:
-                subprocess.check_call(["pip", "install", "-U", "yt-dlp"])
-                import importlib
-                importlib.reload(yt_dlp)
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([url])
-            except Exception as retry_err:
-                raise RuntimeError(
-                    f"Ошибка загрузки Instagram/TikTok референса: {str(e)}. "
-                    f"Попробуйте загрузить видео файлом напрямую, если ссылка заблокирована Instagram."
-                )
+            raise RuntimeError(
+                f"Ошибка загрузки Instagram/TikTok референса: {str(e)}. "
+                f"Попробуйте загрузить видео файлом напрямую, если ссылка заблокирована Instagram."
+            )
         
     if not os.path.exists(output_path):
         # In case merging did not create the file with .mp4 extension exactly or named differently
@@ -92,6 +86,34 @@ def extract_reference_audio(video_path: str) -> str:
     
     return mp3_path
 
+def extract_scene_keyframes(video_path: str, cuts: list[float], duration: float, frames_dir: Path) -> list[str]:
+    """Extract one representative frame per scene (from the middle of each scene)."""
+    from services.editor import _tool
+    # Build scene midpoints
+    boundaries = [0.0] + cuts + [duration]
+    frame_paths: list[str] = []
+    for idx in range(len(boundaries) - 1):
+        t_start = boundaries[idx]
+        t_end = boundaries[idx + 1]
+        midpoint = round((t_start + t_end) / 2.0, 3)
+        out_path = str(frames_dir / f"scene_{idx:03d}.jpg")
+        try:
+            _run([
+                _tool("ffmpeg"), "-y",
+                "-ss", str(midpoint),
+                "-i", video_path,
+                "-frames:v", "1",
+                "-q:v", "3",
+                "-vf", "scale=540:-1",
+                out_path,
+            ])
+            if os.path.exists(out_path):
+                frame_paths.append(out_path)
+        except Exception:
+            pass
+    return frame_paths
+
+
 def analyze_reference_cuts(video_path: str, duration: float) -> list[float]:
     """Determine cut timestamps from video using ffmpeg scene detection."""
     try:
@@ -101,7 +123,7 @@ def analyze_reference_cuts(video_path: str, duration: float) -> list[float]:
                 "-i",
                 video_path,
                 "-filter:v",
-                "select='gt(scene,0.4)',showinfo",
+                "select='gt(scene,0.15)',showinfo",
                 "-f",
                 "null",
                 "-",
@@ -117,6 +139,7 @@ def analyze_reference_cuts(video_path: str, duration: float) -> list[float]:
     # Always bound timings to [0, duration]
     valid_times = [t for t in times if 0 < t < duration]
     return valid_times
+
 
 def _detect_subtitle_pattern(per_frame_texts: list[list[dict]]) -> dict:
     """Detect static vs dynamic subtitle fields from per-frame OCR data.
@@ -217,8 +240,13 @@ def _detect_subtitle_pattern(per_frame_texts: list[list[dict]]) -> dict:
     }
 
 
-def analyze_reference_subtitles(video_path: str) -> dict:
-    """Analyze subtitle style and pattern using EasyOCR if available, else fallback."""
+def analyze_reference_subtitles(video_path: str, cuts: list[float] | None = None, duration: float | None = None) -> dict:
+    """Analyze subtitle style and pattern using EasyOCR + Gemini Vision.
+
+    EasyOCR gives pixel-accurate Y-coordinates for alignment math.
+    Gemini Vision adds understanding of subtitle content, style (uppercase/bold/color)
+    and visual context for each scene (e.g. 'мужчина бежит', 'сцена драки').
+    """
     fallback = {
         "caption_style": "karaoke",
         "caption_alignment": 2,
@@ -230,70 +258,136 @@ def analyze_reference_subtitles(video_path: str) -> dict:
             "type": "single", "static_line": None, "static_position": None,
             "dynamic_samples": [], "per_frame_texts": [],
         },
+        "scene_contexts": [],
     }
-    try:
-        import easyocr
-        reader = easyocr.Reader(["en", "ru"], gpu=False, verbose=False)
-    except Exception:
-        return fallback
-        
+
     frames_dir = TEMP_DIR / f"_ocr_ref_{os.getpid()}"
     frames_dir.mkdir(parents=True, exist_ok=True)
+
     try:
         from services.editor import _tool
-        # Sample frames from the video to check subtitle properties
-        _run(
-            [
-                _tool("ffmpeg"),
-                "-y",
-                "-i",
-                video_path,
-                "-vf",
-                "fps=1,scale=540:-1",
-                str(frames_dir / "f_%03d.jpg"),
-            ]
-        )
-        
+        from services.vision import analyze_frames_batch, GEMINI_READY
+
+        # ── Step 1: Sample frames at 1fps for EasyOCR alignment math ──────────
+        _run([
+            _tool("ffmpeg"), "-y",
+            "-i", video_path,
+            "-vf", "fps=1,scale=540:-1",
+            str(frames_dir / "f_%03d.jpg"),
+        ])
+
+        all_frames_sorted = sorted(frames_dir.glob("f_*.jpg"))
+
+        # ── Step 2: EasyOCR for Y-coord alignment + uppercase detection ────────
         detected_y_coords: list[float] = []
         is_uppercase = False
         total_words = 0
         detected_texts: list[str] = []
-        # Per-frame structured data for pattern detection
         per_frame_texts: list[list[dict]] = []
+
+        try:
+            import easyocr
+            reader = easyocr.Reader(["en", "ru"], gpu=False, verbose=False)
+
+            for img in all_frames_sorted[:12]:
+                with open(img, "rb") as fh:
+                    img_bytes = fh.read()
+                results = reader.readtext(img_bytes)
+                frame_texts: list[str] = []
+                frame_structured: list[dict] = []
+                for box, text, conf in results:
+                    if conf > 0.4 and len(text.strip()) > 2:
+                        top_y = box[0][1]
+                        bottom_y = box[2][1]
+                        center_y = (top_y + bottom_y) / 2.0
+                        detected_y_coords.append(center_y)
+                        if text.isupper():
+                            is_uppercase = True
+                        total_words += len(text.split())
+                        frame_texts.append(text.strip())
+                        frame_structured.append({"text": text.strip(), "y": center_y})
+                if frame_texts:
+                    detected_texts.append(" ".join(frame_texts))
+                if frame_structured:
+                    per_frame_texts.append(frame_structured)
+        except Exception:
+            pass  # EasyOCR optional; Gemini will still run
+
+        # ── Step 3: Gemini Vision on scene keyframes ────────────────────────────
+        scene_contexts: list[str] = []
+        is_bold = False
+        detected_colors = []
         
-        for img in sorted(frames_dir.glob("*.jpg"))[:10]:
-            with open(img, "rb") as f:
-                img_bytes = f.read()
-            results = reader.readtext(img_bytes)
-            frame_texts: list[str] = []
-            frame_structured: list[dict] = []
-            for box, text, conf in results:
-                if conf > 0.4 and len(text.strip()) > 2:
-                    top_y = box[0][1]
-                    bottom_y = box[2][1]
-                    center_y = (top_y + bottom_y) / 2.0
-                    detected_y_coords.append(center_y)
+        if GEMINI_READY and (cuts is not None) and (duration is not None):
+            # Extract one keyframe per scene for Vision analysis
+            kf_dir = frames_dir / "kf"
+            kf_dir.mkdir(exist_ok=True)
+            keyframe_paths = extract_scene_keyframes(video_path, cuts, duration, kf_dir)
+            if keyframe_paths:
+                vision_results = analyze_frames_batch(keyframe_paths)
+                for i, res in enumerate(vision_results):
+                    ctx = res.get("scene_context", "")
+                    sub_text = res.get("subtitle_text", "")
+                    sub_pos = res.get("subtitle_position", "none")
+                    style = res.get("subtitle_style", {})
                     
-                    if text.isupper():
+                    if style.get("bold"):
+                        is_bold = True
+                    if style.get("color"):
+                        detected_colors.append(style.get("color").lower())
+ 
+                    # Build a human-readable tag
+                    label_parts = []
+                    if ctx:
+                        label_parts.append(ctx)
+                    if sub_text:
+                        label_parts.append(f'текст: "{sub_text}" ({sub_pos})')
+                    if style.get("uppercase"):
                         is_uppercase = True
-                    total_words += len(text.split())
-                    frame_texts.append(text.strip())
-                    frame_structured.append({"text": text.strip(), "y": center_y})
-            
-            if frame_texts:
-                detected_texts.append(" ".join(frame_texts))
-            if frame_structured:
-                per_frame_texts.append(frame_structured)
-                    
-        # Estimate alignment
-        alignment = 2
+ 
+                    scene_contexts.append(" — ".join(label_parts) if label_parts else "")
+ 
+                    # Feed Gemini-detected text into EasyOCR's per_frame_texts
+                    # only if EasyOCR gave us nothing (fallback enrichment)
+                    if sub_text and len(per_frame_texts) <= i:
+                        # Use image height (~960 for 540w vertical video) to estimate y
+                        y_approx = {"top": 80.0, "center": 480.0, "bottom": 880.0}.get(sub_pos, 880.0)
+                        per_frame_texts.append([{"text": sub_text, "y": y_approx}])
+                        detected_y_coords.append(y_approx)
+                        if sub_text.isupper():
+                            is_uppercase = True
+                        total_words += len(sub_text.split())
+        elif GEMINI_READY and all_frames_sorted:
+            # No cuts provided — just run Gemini on the 1fps frames
+            vision_results = analyze_frames_batch([str(p) for p in all_frames_sorted[:8]])
+            for res in vision_results:
+                ctx = res.get("scene_context", "")
+                if ctx:
+                    scene_contexts.append(ctx)
+                sub_text = res.get("subtitle_text", "")
+                style = res.get("subtitle_style", {})
+                if style.get("bold"):
+                    is_bold = True
+                if style.get("color"):
+                    detected_colors.append(style.get("color").lower())
+                if sub_text and style.get("uppercase"):
+                    is_uppercase = True
+
+        # ── Step 4: Compute alignment from Y-coords ─────────────────────────────
+        alignment = 2  # bottom (ASS default)
+        margin_v = 150 # default
         if detected_y_coords:
             avg_y = sum(detected_y_coords) / len(detected_y_coords)
-            if avg_y < 160:
-                alignment = 8
-            elif avg_y < 340:
-                alignment = 5
-                
+            if avg_y < 240:
+                alignment = 8   # top
+                margin_v = int(max(40, min(600, avg_y * 2.0)))
+            elif avg_y < 480:
+                alignment = 5   # center
+                margin_v = 0
+            else:
+                alignment = 2   # bottom
+                margin_v = int(max(40, min(800, 1920 - (avg_y * 2.0))))
+
         caption_style = "karaoke" if total_words > 5 else "broll_center"
 
         avg_words = 4
@@ -309,21 +403,45 @@ def analyze_reference_subtitles(video_path: str) -> dict:
 
         # Detect subtitle pattern (static vs dynamic fields)
         subtitle_pattern = _detect_subtitle_pattern(per_frame_texts)
-        
+
+        # Determine active color
+        active_color = "&H9EE500&"  # Default mint highlight
+        if detected_colors:
+            color_counts = {}
+            for col in detected_colors:
+                color_counts[col] = color_counts.get(col, 0) + 1
+            most_common = max(color_counts, key=color_counts.get)
+            
+            if "yellow" in most_common:
+                active_color = "&H00FFFF&"
+            elif "green" in most_common:
+                active_color = "&H2ECC71&"
+            elif "white" in most_common:
+                active_color = "&HFFFFFF&"
+            elif "red" in most_common:
+                active_color = "&H0000FF&"
+            elif "orange" in most_common:
+                active_color = "&H00A5FF&"
+
         return {
             "caption_style": caption_style,
             "caption_alignment": alignment,
+            "caption_marginv": margin_v,
             "caption_font": "Impact" if is_uppercase else "Arial Black",
             "caption_uppercase": is_uppercase,
+            "caption_bold": is_bold,
+            "caption_active_color": active_color,
             "detected_texts": unique_texts,
             "avg_words_per_line": avg_words,
             "subtitle_pattern": subtitle_pattern,
+            "scene_contexts": scene_contexts,
         }
     except Exception:
         return fallback
     finally:
         import shutil
         shutil.rmtree(frames_dir, ignore_errors=True)
+
 
 def analyze_reference_colors(video_path: str) -> dict:
     """Analyze color values to build a custom color-grade filter."""

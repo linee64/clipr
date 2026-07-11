@@ -1862,5 +1862,1173 @@
         "YOURSELF"
       ]
     }
+  },
+  {
+    "id": "ref-custom-5c210a68",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      1,
+      1
+    ],
+    "pacing": {
+      "target_cut_len": 17.58,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        17.576009
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "3dd9601f-1e86-48fd-9bee-e4d7f5342cd8",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION"
+      ]
+    }
+  },
+  {
+    "id": "ref-custom-66fcf08e",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      1,
+      1
+    ],
+    "pacing": {
+      "target_cut_len": 17.58,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        17.576009
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "c08e3f3a-38eb-4fdc-bcdf-bcb3975d9e30",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION"
+      ]
+    }
+  },
+  {
+    "id": "ref-custom-4971e038",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      1,
+      1
+    ],
+    "pacing": {
+      "target_cut_len": 17.58,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        17.576009
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "b68b9a70-838a-4015-8187-afc9abb9cc71",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION"
+      ]
+    }
+  },
+  {
+    "id": "ref-custom-fff542b0",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      1,
+      1
+    ],
+    "pacing": {
+      "target_cut_len": 17.58,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        17.576009
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "c03f5039-668f-4536-ac70-250498a80f14",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      ""
+    ]
+  },
+  {
+    "id": "ref-custom-1c2497cd",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      1,
+      1
+    ],
+    "pacing": {
+      "target_cut_len": 17.58,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        17.576009
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "acae0a0d-c209-4813-bec7-b66d6efbf922",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      ""
+    ]
+  },
+  {
+    "id": "ref-custom-d465fe38",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      1,
+      1
+    ],
+    "pacing": {
+      "target_cut_len": 17.58,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        17.576009
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "a988545d-5348-4984-93cf-f022741df9fb",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      ""
+    ]
+  },
+  {
+    "id": "ref-custom-e2022750",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      6,
+      6
+    ],
+    "pacing": {
+      "target_cut_len": 2.93,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.333,
+        0.233,
+        2.667,
+        8.267,
+        1.367,
+        4.709
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "7cd62434-6231-41b2-ac46-506b562ae174",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "id": "ref-custom-4bc1046c",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      6,
+      6
+    ],
+    "pacing": {
+      "target_cut_len": 2.93,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.333,
+        0.233,
+        2.667,
+        8.267,
+        1.367,
+        4.709
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "42d88079-9a93-464d-bea5-9b8068de8faa",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "id": "ref-custom-765908ca",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      6,
+      6
+    ],
+    "pacing": {
+      "target_cut_len": 2.93,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.333,
+        0.233,
+        2.667,
+        8.267,
+        1.367,
+        4.709
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "1954cea0-756b-4f11-b2ed-3cca20c2f264",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "id": "ref-custom-b6928051",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      6,
+      6
+    ],
+    "pacing": {
+      "target_cut_len": 2.93,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.333,
+        0.233,
+        2.667,
+        8.267,
+        1.367,
+        4.709
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "02b5b7db-1042-4c74-a189-c5380263a7b0",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "id": "ref-custom-49e18001",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      6,
+      6
+    ],
+    "pacing": {
+      "target_cut_len": 2.93,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.333,
+        0.233,
+        2.667,
+        8.267,
+        1.367,
+        4.709
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "bbc59fc9-d9f7-40d9-9053-7c89153e6d52",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "id": "ref-custom-8ece2c2b",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      6,
+      6
+    ],
+    "pacing": {
+      "target_cut_len": 2.93,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.333,
+        0.233,
+        2.667,
+        8.267,
+        1.367,
+        4.709
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "0d6feaec-6b7c-4b37-970d-295bf579d5e9",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "id": "ref-custom-41a88b2e",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      6,
+      6
+    ],
+    "pacing": {
+      "target_cut_len": 2.93,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.333,
+        0.233,
+        2.667,
+        8.267,
+        1.367,
+        4.709
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "5eae8d3b-b636-4be1-a5c3-8e566639b5c3",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  },
+  {
+    "id": "ref-custom-7c719edd",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      6,
+      6
+    ],
+    "pacing": {
+      "target_cut_len": 2.93,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.333,
+        0.233,
+        2.667,
+        8.267,
+        1.367,
+        4.709
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "d98b425d-29e0-4327-8f91-31aa507f6f58",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      "Мужчина монтирует видео за компьютером",
+      "Парень кашляет в кулак — текст: \"YOU\" (center)",
+      "парень грустит на кровати — текст: \"90\" (center)",
+      "парень пьет воду из бутылки — текст: \"DON'T\" (center)",
+      "парень записывает голосовое сообщение — текст: \"LAZINESS\" (center)",
+      "Парень стоит спиной в комнате — текст: \"EMPIRES\" (center)"
+    ]
+  },
+  {
+    "id": "ref-custom-3e493ac8",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      6,
+      6
+    ],
+    "pacing": {
+      "target_cut_len": 2.93,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.333,
+        0.233,
+        2.667,
+        8.267,
+        1.367,
+        4.709
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 2,
+    "caption_uppercase": true,
+    "caption_bold": false,
+    "caption_active_color": "&HFFFFFF&",
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "899fa856-9cc3-407d-9d70-e8cd7387c554",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      "парень монтирует видео за компьютером",
+      "парень кашляет в кулак — текст: \"YOU\" (center)",
+      "Парень сидит на кровати, обхватив голову — текст: \"90\" (center)",
+      "парень пьет воду из бутылки — текст: \"DON'T\" (center)",
+      "Парень говорит по телефону — текст: \"LAZINESS\" (center)",
+      "парень стоит спиной в комнате — текст: \"EMPIRES\" (center)"
+    ]
+  },
+  {
+    "id": "ref-custom-8cce1aea",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      6,
+      6
+    ],
+    "pacing": {
+      "target_cut_len": 2.93,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        0.333,
+        0.233,
+        2.667,
+        8.267,
+        1.367,
+        4.709
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 5,
+    "caption_marginv": 0,
+    "caption_uppercase": true,
+    "caption_bold": false,
+    "caption_active_color": "&HFFFFFF&",
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.045:saturation=0.90,colorbalance=rm=0.032:bm=-0.032,vignette=PI/6",
+    "recommended_track": "7bd98809-3772-4fc9-98ed-1595f5545c9a",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "YOU",
+      "ONE",
+      "TUNNEL",
+      "DESTROY",
+      "MED CRITf",
+      "NEED",
+      "OBSESSION",
+      "STOP",
+      "LAZINESS"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "YOU",
+        "ONE",
+        "TUNNEL",
+        "DESTROY",
+        "MED",
+        "CRITf",
+        "NEED",
+        "OBSESSION",
+        "STOP",
+        "LAZINESS"
+      ]
+    },
+    "scene_contexts": [
+      "Мужчина монтирует видео за столом",
+      "",
+      "",
+      "парень пьет воду — текст: \"DON'T\" (center)",
+      "Парень говорит по телефону — текст: \"LAZINESS\" (center)",
+      "парень стоит спиной в комнате — текст: \"EMPIRES\" (center)"
+    ]
+  },
+  {
+    "id": "ref-custom-c303d1d0",
+    "label": "Ref: www.instagram.com",
+    "platforms": [
+      "all"
+    ],
+    "scene_count": [
+      6,
+      6
+    ],
+    "pacing": {
+      "target_cut_len": 1.63,
+      "max_cuts_per_scene": 5,
+      "zooms": [
+        1.0,
+        1.12
+      ],
+      "exact_timings": [
+        1.3,
+        1.567,
+        1.167,
+        1.267,
+        2.767,
+        1.567
+      ]
+    },
+    "caption_style": "karaoke",
+    "caption_font": "Impact",
+    "caption_alignment": 8,
+    "caption_marginv": 304,
+    "caption_uppercase": true,
+    "caption_bold": false,
+    "caption_active_color": "&HFFFFFF&",
+    "color_grade": "custom",
+    "grade_filter": "eq=contrast=1.05:brightness=-0.014:saturation=0.91,colorbalance=rm=0.040:bm=-0.040",
+    "recommended_track": "cd741430-be37-4671-a706-eb6a37633347",
+    "is_custom": true,
+    "ref": "Ref: www.instagram.com",
+    "ref_subtitles": [
+      "advice",
+      "AMBITIONS",
+      "ASPIRATIONS",
+      "beyour guide;",
+      "But [ have so many",
+      "Hentyof time",
+      "Plenty of time Net;",
+      "'wou re lucky"
+    ],
+    "avg_words_per_line": 2,
+    "subtitle_pattern": {
+      "type": "single",
+      "static_line": null,
+      "static_position": null,
+      "dynamic_samples": [
+        "advice",
+        "AMBITIONS",
+        "ASPIRATIONS",
+        "beyour",
+        "guide;",
+        "But [ have so many",
+        "Hentyof time",
+        "Plenty of time",
+        "Net;",
+        "'wou re lucky"
+      ]
+    },
+    "scene_contexts": [
+      "Рабочий стол в кафе — текст: \"My advice\" (center)",
+      "Девушка в хиджабе выбирает книгу — текст: \"and your\" (center)",
+      "",
+      "",
+      "книжные полки в магазине — текст: \"Plenty of time yet,\" (center)",
+      "рабочий стол с ноутбуком и книгой — текст: \"if you're lucky.\" (center)",
+      ""
+    ]
   }
 ]

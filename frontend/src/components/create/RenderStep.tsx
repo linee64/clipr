@@ -112,6 +112,15 @@ export function RenderStep({
   const title = videoTitle?.trim() || "Your Clipr video";
   const captionText = caption?.trim() || renderStatus?.description?.trim() || title;
 
+  // Cycling NLE operation labels during render
+  const opLabels = ["✂️ Cutting", "🎬 Splicing", "🎨 Color grading", "🔊 Syncing audio", "📐 Framing", "✨ Adding effects"];
+  const [opIdx, setOpIdx] = React.useState(0);
+  React.useEffect(() => {
+    if (isDone || isError) return;
+    const id = setInterval(() => setOpIdx((i) => (i + 1) % opLabels.length), 2500);
+    return () => clearInterval(id);
+  }, [isDone, isError, opLabels.length]);
+
   // X (Twitter) auto-post state. We check the connection once the render lands so
   // the button can offer "Connect X" vs "Post to X" without an extra click.
   const [xStatus, setXStatus] = React.useState<TwitterStatus | null>(null);
@@ -229,100 +238,260 @@ export function RenderStep({
           ))}
         </div>
       )}
-      <div className={`${isDone ? "max-w-4xl" : "max-w-lg"} mx-auto`}>
+      <div className={`${isDone ? "max-w-4xl" : "max-w-2xl"} mx-auto`}>
         {!isDone && !isError && (
           <div className="bg-[#0D1416] border border-[#152226] rounded-xl p-5 sm:p-8">
             {(() => {
               const pct = Math.max(0, Math.min(100, progress));
+
+              /* ── NLE clip track data ─────────────────────────── */
+              const clipTracks = [
+                { label: "V1", clips: [
+                  { start: 0, w: 18, color: "#10B981", delay: 0 },
+                  { start: 20, w: 14, color: "#14B8A6", delay: 0.15 },
+                  { start: 36, w: 22, color: "#10B981", delay: 0.25 },
+                  { start: 60, w: 16, color: "#059669", delay: 0.4 },
+                  { start: 78, w: 22, color: "#10B981", delay: 0.5 },
+                ]},
+                { label: "V2", clips: [
+                  { start: 4, w: 12, color: "#06B6D4", delay: 0.1 },
+                  { start: 26, w: 20, color: "#0891B2", delay: 0.3 },
+                  { start: 52, w: 18, color: "#06B6D4", delay: 0.45 },
+                  { start: 72, w: 28, color: "#0E7490", delay: 0.55 },
+                ]},
+                { label: "V3", clips: [
+                  { start: 0, w: 30, color: "#8B5CF6", delay: 0.2 },
+                  { start: 34, w: 24, color: "#7C3AED", delay: 0.35 },
+                  { start: 62, w: 38, color: "#8B5CF6", delay: 0.5 },
+                ]},
+              ];
+
+              /* ── Audio waveform (36 bars) ────────────────────── */
+              const waveBars = Array.from({ length: 36 }, (_, i) => {
+                const x = (i / 35);
+                return 0.2 + 0.8 * Math.abs(Math.sin(x * Math.PI * 3.5 + 1.2) * Math.cos(x * Math.PI * 2.1));
+              });
+
+              /* ── Cut markers ────────────────────────────────── */
+              const cutPositions = [18, 36, 52, 60, 78];
+
+              /* ── Timeline ruler ticks ────────────────────────── */
+              const rulerTicks = Array.from({ length: 11 }, (_, i) => i * 10);
+
+              /* ── Cycling operation labels ────────────────────── */
+              const currentOpLabel = opLabels[opIdx];
+
               return (
-                <div className="relative flex flex-col items-center text-center px-2 sm:px-6 py-2">
-                  {/* atmospheric mint glow behind the phone */}
+                <div className="relative flex flex-col items-center text-center px-1 sm:px-4 py-2">
+                  {/* atmospheric glow */}
                   <div
-                    className="pointer-events-none absolute left-1/2 top-[120px] h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
-                    style={{ background: "radial-gradient(circle, rgba(16,185,129,0.10) 0%, rgba(16,185,129,0) 70%)" }}
+                    className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+                    style={{ background: "radial-gradient(ellipse, rgba(16,185,129,0.07) 0%, rgba(6,182,212,0.04) 40%, transparent 70%)" }}
                   />
 
-                  {/* PHONE — breathes on the downbeat with a beat-pulse ring */}
-                  <motion.div
-                    className="relative"
-                    animate={{ scale: [1, 1.018, 1] }}
-                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                  {/* ── NLE WINDOW CHROME ───────────────────────── */}
+                  <div
+                    className="relative w-full max-w-[520px] rounded-xl overflow-hidden border"
+                    style={{ borderColor: "#1E2D32", background: "#080E10", boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 30px rgba(16,185,129,0.06)" }}
                   >
-                    <motion.div
-                      className="absolute -inset-3 rounded-[2rem] border"
-                      style={{ borderColor: "rgba(16,185,129,0.35)" }}
-                      animate={{ opacity: [0, 0.55, 0], scale: [0.92, 1.1, 1.16] }}
-                      transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
-                    />
-                    <div
-                      className="relative aspect-[9/16] w-[164px] overflow-hidden rounded-[1.6rem] border bg-[#070B0D] p-2"
-                      style={{ borderColor: "#152226", boxShadow: "0 20px 60px rgba(0,0,0,0.5), 0 0 22px rgba(16,185,129,0.12)" }}
-                    >
-                      <div className="absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-[#152226]" />
+                    {/* Title bar */}
+                    <div className="flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: "#152226", background: "#0A1214" }}>
+                      <div className="flex gap-1.5">
+                        <span className="w-[9px] h-[9px] rounded-full bg-[#EF4444]/80" />
+                        <span className="w-[9px] h-[9px] rounded-full bg-[#F59E0B]/80" />
+                        <span className="w-[9px] h-[9px] rounded-full bg-[#10B981]/80" />
+                      </div>
+                      <span className="text-[9px] font-mono text-[#3A4A50] ml-2">Clipr Timeline — {title}</span>
+                      <div className="ml-auto flex items-center gap-1.5">
+                        <motion.span
+                          className="w-1.5 h-1.5 rounded-full bg-[#10B981]"
+                          animate={{ opacity: [1, 0.3, 1] }}
+                          transition={{ duration: 1.2, repeat: Infinity }}
+                        />
+                        <span className="text-[8px] font-mono text-[#10B981]">RENDERING</span>
+                      </div>
+                    </div>
 
-                      {/* clip tiles snapping into the frame on the beat */}
-                      <div className="mt-4 grid grid-cols-2 gap-1.5">
-                        {[0, 1, 2, 3].map((i) => (
+                    {/* ── Preview strip (mini) ─────────────────── */}
+                    <div className="px-3 pt-3 pb-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[8px] font-mono text-[#3A4A50] uppercase tracking-wider">Preview</span>
+                        <motion.span
+                          key={opIdx}
+                          className="text-[8px] font-mono text-[#10B981]/70"
+                          animate={{ opacity: [0, 1, 1, 0] }}
+                          transition={{ duration: 2.5, repeat: 0, times: [0, 0.1, 0.85, 1] }}
+                        >
+                          {currentOpLabel}
+                        </motion.span>
+                      </div>
+                      {/* Mini preview frames */}
+                      <div className="flex gap-[2px] h-[32px] overflow-hidden rounded-md">
+                        {Array.from({ length: 16 }, (_, i) => (
                           <motion.div
                             key={i}
-                            className="aspect-square overflow-hidden rounded-md border"
-                            style={{ borderColor: "rgba(16,185,129,0.18)", background: "linear-gradient(135deg, rgba(16,185,129,0.16) 0%, rgba(13,20,22,0.9) 60%)" }}
-                            animate={{ opacity: [0, 0, 1, 1, 0], scale: [0.6, 0.6, 1, 1, 0.6], y: [10, 10, 0, 0, 10] }}
-                            transition={{ duration: 3.2, times: [0, 0.05, 0.22, 0.85, 1], repeat: Infinity, ease: "easeOut", delay: i * 0.12 }}
+                            className="flex-1 rounded-[2px]"
+                            style={{
+                              background: `linear-gradient(${135 + i * 15}deg, ${
+                                i % 3 === 0 ? "rgba(16,185,129,0.3)" : i % 3 === 1 ? "rgba(6,182,212,0.25)" : "rgba(139,92,246,0.25)"
+                              } 0%, rgba(8,14,16,0.9) 80%)`,
+                            }}
+                            animate={{
+                              opacity: i / 16 * 100 < pct ? [0.5, 1, 0.8] : [0.15, 0.25, 0.15],
+                            }}
+                            transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.06 }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* ── RULER ─────────────────────────────────── */}
+                    <div className="relative mx-3 mt-2 h-4 border-b" style={{ borderColor: "#152226" }}>
+                      {rulerTicks.map((t) => (
+                        <div key={t} className="absolute top-0 flex flex-col items-center" style={{ left: `${t}%` }}>
+                          <div className="w-px h-2" style={{ background: t % 20 === 0 ? "#3A4A50" : "#1E2D32" }} />
+                          {t % 20 === 0 && (
+                            <span className="text-[7px] font-mono text-[#3A4A50] mt-0.5 leading-none">
+                              {`${Math.floor(t * 0.3 / 60)}:${String(Math.floor((t * 0.3) % 60)).padStart(2, "0")}`}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* ── TRACKS ────────────────────────────────── */}
+                    <div className="relative mx-3 mt-1 space-y-[3px]">
+                      {clipTracks.map((track, ti) => (
+                        <div key={track.label} className="relative flex items-center gap-1.5">
+                          {/* Track label */}
+                          <span
+                            className="text-[8px] font-mono font-bold shrink-0 w-5 text-right"
+                            style={{ color: ti === 0 ? "#10B981" : ti === 1 ? "#06B6D4" : "#8B5CF6" }}
                           >
-                            <div className="flex h-full items-end justify-center gap-[2px] p-1.5">
-                              {[0, 1, 2].map((b) => (
-                                <motion.span
-                                  key={b}
-                                  className="w-[2px] flex-1 rounded-full bg-[#10B981]"
-                                  style={{ transformOrigin: "bottom" }}
-                                  animate={{ scaleY: [0.3, 1, 0.4, 0.8, 0.3] }}
-                                  transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: (i + b) * 0.09 }}
+                            {track.label}
+                          </span>
+                          {/* Track lane */}
+                          <div className="relative flex-1 h-[22px] rounded-[3px] overflow-hidden" style={{ background: "#0B1315" }}>
+                            {track.clips.map((clip, ci) => (
+                              <motion.div
+                                key={ci}
+                                className="absolute top-[2px] bottom-[2px] rounded-[3px] overflow-hidden"
+                                style={{
+                                  left: `${clip.start}%`,
+                                  width: `${clip.w}%`,
+                                  background: `linear-gradient(90deg, ${clip.color}55 0%, ${clip.color}33 50%, ${clip.color}55 100%)`,
+                                  borderLeft: `2px solid ${clip.color}`,
+                                  borderRight: `1px solid ${clip.color}44`,
+                                }}
+                                initial={{ scaleX: 0, opacity: 0 }}
+                                animate={{ scaleX: 1, opacity: 1 }}
+                                transition={{
+                                  duration: 0.6,
+                                  delay: clip.delay + 0.3,
+                                  ease: [0.22, 1, 0.36, 1],
+                                }}
+                              >
+                                {/* Inner thumbnail-like shimmer */}
+                                <motion.div
+                                  className="absolute inset-0"
+                                  style={{
+                                    background: `repeating-linear-gradient(90deg, transparent 0px, ${clip.color}18 2px, transparent 4px)`,
+                                  }}
+                                  animate={{ x: ["-100%", "100%"] }}
+                                  transition={{ duration: 3, repeat: Infinity, ease: "linear", delay: ci * 0.4 }}
                                 />
-                              ))}
-                            </div>
+                                {/* Clip label */}
+                                {clip.w > 15 && (
+                                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[7px] font-mono text-white/50 tracking-wide">
+                                    clip_{ti + 1}.{ci + 1}
+                                  </span>
+                                )}
+                              </motion.div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* ── Audio waveform track ─────────────────── */}
+                      <div className="relative flex items-center gap-1.5">
+                        <span className="text-[8px] font-mono font-bold shrink-0 w-5 text-right text-[#F59E0B]">A1</span>
+                        <div className="relative flex-1 h-[18px] rounded-[3px] overflow-hidden flex items-end gap-[1px] px-[2px]" style={{ background: "#0B1315" }}>
+                          {waveBars.map((h, i) => (
+                            <motion.div
+                              key={i}
+                              className="flex-1 rounded-t-[1px]"
+                              style={{
+                                background: i / waveBars.length * 100 < pct ? "#F59E0B" : "#F59E0B33",
+                                transformOrigin: "bottom",
+                              }}
+                              animate={{
+                                scaleY: [h * 0.7, h, h * 0.5, h * 0.9, h * 0.7],
+                                opacity: i / waveBars.length * 100 < pct ? [0.7, 1, 0.6, 0.9, 0.7] : 0.25,
+                              }}
+                              transition={{ duration: 0.8 + i * 0.02, repeat: Infinity, ease: "easeInOut" }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* ── PLAYHEAD ─────────────────────────────── */}
+                      <div className="absolute top-0 bottom-0 z-20 pointer-events-none" style={{ left: "25px", right: 0 }}>
+                        <motion.div
+                          className="absolute top-0 bottom-0"
+                          style={{ left: `${pct}%` }}
+                          transition={{ duration: 0.5, ease: "easeOut" }}
+                        >
+                          {/* Playhead line */}
+                          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#EF4444]" style={{ boxShadow: "0 0 8px rgba(239,68,68,0.5)" }} />
+                          {/* Playhead head */}
+                          <div
+                            className="absolute left-[-4px] top-[-2px] w-[10px] h-[6px] rounded-b-sm"
+                            style={{ background: "#EF4444", boxShadow: "0 2px 6px rgba(239,68,68,0.4)" }}
+                          />
+                        </motion.div>
+                      </div>
+
+                      {/* ── CUT MARKERS (scissors) ───────────────── */}
+                      <div className="absolute top-0 bottom-0 z-10 pointer-events-none" style={{ left: "25px", right: 0 }}>
+                        {cutPositions.map((pos, i) => (
+                          <motion.div
+                            key={i}
+                            className="absolute top-0 bottom-0"
+                            style={{ left: `${pos}%` }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: [0, 0, 0.6, 0.6, 0] }}
+                            transition={{ duration: 4, times: [0, 0.15, 0.2, 0.8, 1], repeat: Infinity, delay: i * 0.8 + 1 }}
+                          >
+                            <div className="w-px h-full" style={{ background: "rgba(245,158,11,0.3)", borderLeft: "1px dashed rgba(245,158,11,0.4)" }} />
+                            <span className="absolute -top-0.5 -left-1 text-[7px]">✂️</span>
                           </motion.div>
                         ))}
                       </div>
+                    </div>
 
-                      {/* caption chips popping word-by-word */}
-                      <div className="absolute inset-x-3 bottom-7 flex flex-wrap justify-center gap-1">
-                        {["beat", "synced", "cut"].map((w, i) => (
-                          <motion.span
-                            key={w}
-                            className="rounded-[5px] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide"
-                            style={{ color: "#070B0D", background: "#10B981", boxShadow: "0 0 12px rgba(16,185,129,0.45)" }}
-                            animate={{ opacity: [0, 1, 1, 0], y: [6, 0, 0, 6], scale: [0.8, 1, 1, 0.8] }}
-                            transition={{ duration: 1.6, times: [0, 0.18, 0.8, 1], repeat: Infinity, ease: "easeOut", delay: 0.5 + i * 0.22 }}
-                          >
-                            {w}
-                          </motion.span>
-                        ))}
+                    {/* ── Bottom bar ────────────────────────────── */}
+                    <div className="flex items-center justify-between px-3 py-2 mt-2 border-t" style={{ borderColor: "#152226", background: "#0A1214" }}>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[8px] font-mono text-[#3A4A50]">30fps</span>
+                        <span className="text-[8px] font-mono text-[#3A4A50]">1080×1920</span>
+                        <span className="text-[8px] font-mono text-[#3A4A50]">9:16</span>
                       </div>
-
-                      {/* mint scan line sweeping the timeline */}
-                      <motion.div
-                        className="absolute inset-x-0 h-10"
-                        style={{ background: "linear-gradient(to bottom, transparent, rgba(16,185,129,0.22), transparent)" }}
-                        animate={{ y: ["-30%", "150%"] }}
-                        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                      />
-
-                      {/* in-phone timeline — playhead rides real progress */}
-                      <div className="absolute inset-x-2.5 bottom-2.5 h-1 overflow-hidden rounded-full bg-[#152226]">
-                        <motion.div
-                          className="h-full rounded-full bg-[#10B981]"
-                          style={{ boxShadow: "0 0 10px rgba(16,185,129,0.6)" }}
-                          animate={{ width: `${pct}%` }}
-                          transition={{ duration: 0.5, ease: "easeOut" }}
-                        />
+                      <div className="flex items-center gap-2">
+                        <span className="text-[8px] font-mono text-[#10B981]">{Math.round(pct)}%</span>
+                        <div className="w-16 h-1 rounded-full overflow-hidden" style={{ background: "#152226" }}>
+                          <motion.div
+                            className="h-full rounded-full bg-[#10B981]"
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
 
-                  {/* phase label with pulsing status dot */}
-                  <p className="mt-8 text-lg font-semibold text-[#EFEFEF]">Building your edit</p>
-                  <div className="mt-1 flex items-center gap-2">
+                  {/* ── Status text below timeline ─────────────── */}
+                  <p className="mt-6 text-lg font-semibold text-[#EFEFEF]">Building your edit</p>
+                  <div className="mt-1.5 flex items-center gap-2">
                     <motion.span
                       className="inline-block h-1.5 w-1.5 rounded-full bg-[#10B981]"
                       style={{ boxShadow: "0 0 8px rgba(16,185,129,0.7)" }}
@@ -340,8 +509,8 @@ export function RenderStep({
                     </motion.p>
                   </div>
 
-                  {/* progress timeline */}
-                  <div className="mt-5 h-1.5 w-full max-w-[300px] overflow-hidden rounded-full bg-[#152226]">
+                  {/* main progress bar */}
+                  <div className="mt-4 h-1.5 w-full max-w-[340px] overflow-hidden rounded-full bg-[#152226]">
                     <motion.div
                       className="h-full rounded-full bg-[#10B981]"
                       style={{ boxShadow: "0 0 14px rgba(16,185,129,0.5)" }}
@@ -349,7 +518,7 @@ export function RenderStep({
                       transition={{ duration: 0.5, ease: "easeOut" }}
                     />
                   </div>
-                  <div className="mt-2 flex w-full max-w-[300px] justify-between font-mono text-[9px] tabular-nums text-[#6B7C85]">
+                  <div className="mt-2 flex w-full max-w-[340px] justify-between font-mono text-[9px] tabular-nums text-[#6B7C85]">
                     {["0:00", "0:08", "0:15", "0:22", "0:30"].map((t) => (
                       <span key={t}>{t}</span>
                     ))}

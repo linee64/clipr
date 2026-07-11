@@ -12,6 +12,7 @@ interface PexelsSearchModalProps {
   onClose: () => void;
   /** Import the picked video server-side; resolves once it's a render-ready clip. */
   onImport: (video: PexelsVideo) => Promise<void>;
+  subtitle?: string;
 }
 
 function fmtSecs(s: number): string {
@@ -121,6 +122,7 @@ export function PexelsSearchModal({
   initialQuery,
   onClose,
   onImport,
+  subtitle,
 }: PexelsSearchModalProps) {
   const [query, setQuery] = useState(initialQuery);
   const [videos, setVideos] = useState<PexelsVideo[]>([]);
@@ -199,13 +201,18 @@ export function PexelsSearchModal({
         transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
       >
         <div className="flex shrink-0 items-start justify-between px-5 pb-3 pt-5">
-          <div>
+          <div className="min-w-0 flex-1">
             <h4 className="text-base font-semibold tracking-tight text-[#EFEFEF]">
               Video clips
             </h4>
             <p className="mt-0.5 text-[11px] text-[#6B7C85]">
               Free clips — pick one to fill this scene
             </p>
+            {subtitle && (
+              <p className="mt-1 text-xs text-[#10B981] font-semibold break-words">
+                Субтитры: "{subtitle}"
+              </p>
+            )}
           </div>
           <button
             type="button"

@@ -68,25 +68,52 @@ async def upload_byoc_clip(
 
 
 def parse_srt(srt_content: str) -> list[dict]:
-    # Parse SRT content into list of segments with start, end, text
-    pattern = re.compile(
-        r"(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n((?:[^\n]+\n*)+)"
-    )
-    matches = pattern.findall(srt_content.strip() + "\n")
+    import re
+    lines = [line.strip() for line in srt_content.splitlines()]
+    segments = []
+    i = 0
     
     def parse_time(t_str):
         h, m, s_ms = t_str.split(":")
         s, ms = s_ms.split(",")
         return int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000.0
 
-    segments = []
-    for match in matches:
-        num, start, end, text = match
-        segments.append({
-            "start": parse_time(start),
-            "end": parse_time(end),
-            "text": text.strip().replace("\n", " ")
-        })
+    while i < len(lines):
+        if not lines[i]:
+            i += 1
+            continue
+        
+        if not re.match(r'^\d+$', lines[i]):
+            i += 1
+            continue
+            
+        i += 1
+        if i >= len(lines): break
+        
+        times = lines[i].split("-->")
+        if len(times) != 2:
+            continue
+            
+        start = times[0].strip()
+        end = times[1].strip()
+        
+        i += 1
+        if i >= len(lines): break
+        
+        text_lines = []
+        while i < len(lines) and lines[i]:
+            text_lines.append(lines[i])
+            i += 1
+            
+        try:
+            segments.append({
+                "start": parse_time(start),
+                "end": parse_time(end),
+                "text": " ".join(text_lines)
+            })
+        except Exception:
+            pass
+
     return segments
 
 
@@ -165,6 +192,9 @@ async def create_byoc_render(request: BYOCCreateRequest, background_tasks: Backg
     n_clips = len(request.clip_ids)
 
     # 4. Parse script/subtitles for total_scenes lines
+    if request.script and "-->" in request.script and not request.subtitles_file:
+        request.subtitles_file = request.script
+
     if request.subtitles_file:
         try:
             srt_segments = parse_srt(request.subtitles_file)
@@ -228,6 +258,7 @@ async def create_byoc_render(request: BYOCCreateRequest, background_tasks: Backg
         add_voiceover=False,
         add_subtitles=request.burn_subtitles,
         source="byoc",
+        subtitles_srt=request.subtitles_file or "",
     )
 
     return {"job_id": request.job_id, "status": "pending"}
@@ -284,8 +315,8 @@ async def analyze_reference(
         exact_timings = [t for t in exact_timings if t >= 0.2]
         avg_cut_len = dur / (len(exact_timings) or 1)
 
-        # 4. Analyze subtitles
-        sub_info = await asyncio.to_thread(analyze_reference_subtitles, temp_video_path)
+        # 4. Analyze subtitles (pass cuts + duration so Gemini Vision can run per-scene)
+        sub_info = await asyncio.to_thread(analyze_reference_subtitles, temp_video_path, cuts, dur)
 
         # 5. Analyze colors
         colors = await asyncio.to_thread(analyze_reference_colors, temp_video_path)
@@ -311,6 +342,7 @@ async def analyze_reference(
         # (it's large and only needed for the immediate API response)
         pattern_for_template = dict(sub_info.get("subtitle_pattern") or {})
         pattern_for_template.pop("per_frame_texts", None)
+        scene_contexts = sub_info.get("scene_contexts", [])
 
         new_template = {
             "id": template_id,
@@ -326,7 +358,10 @@ async def analyze_reference(
             "caption_style": sub_info["caption_style"],
             "caption_font": sub_info["caption_font"],
             "caption_alignment": sub_info["caption_alignment"],
+            "caption_marginv": sub_info.get("caption_marginv", 150),
             "caption_uppercase": sub_info["caption_uppercase"],
+            "caption_bold": sub_info.get("caption_bold", False),
+            "caption_active_color": sub_info.get("caption_active_color", "&H9EE500&"),
             "color_grade": "custom",
             "grade_filter": grade_filter,
             "recommended_track": audio_id,
@@ -335,6 +370,7 @@ async def analyze_reference(
             "ref_subtitles": sub_info.get("detected_texts", []),
             "avg_words_per_line": sub_info.get("avg_words_per_line", 4),
             "subtitle_pattern": pattern_for_template,
+            "scene_contexts": scene_contexts,
         }
 
         templates.append(new_template)
@@ -352,9 +388,14 @@ async def analyze_reference(
                 "avg_words_per_line": sub_info.get("avg_words_per_line", 4),
                 "caption_style": sub_info["caption_style"],
                 "caption_alignment": sub_info["caption_alignment"],
+                "caption_marginv": sub_info.get("caption_marginv", 150),
                 "caption_font": sub_info["caption_font"],
                 "caption_uppercase": sub_info["caption_uppercase"],
+                "caption_bold": sub_info.get("caption_bold", False),
+                "caption_active_color": sub_info.get("caption_active_color", "&H9EE500&"),
                 "subtitle_pattern": pattern_for_template,
+                "scene_contexts": scene_contexts,
+                "exact_timings": exact_timings,
             }
         }
     except Exception as e:
@@ -362,3 +403,84 @@ async def analyze_reference(
     finally:
         if temp_video_path and os.path.exists(temp_video_path):
             os.remove(temp_video_path)
+
+
+@router.post("/transcribe-music")
+async def transcribe_music(
+    audio_url: str = Form(...),
+):
+    """
+    Transcribe the reference track using faster-whisper.
+    Returns a list of subtitle lines with optional timestamps.
+    Used in the BYOC Step 3 UI to auto-fill subtitles from song lyrics.
+    """
+    import httpx
+    import tempfile
+
+    tmp_path = None
+    try:
+        # Download audio file
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.get(audio_url)
+            resp.raise_for_status()
+
+        suffix = ".mp3"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir=TEMP_DIR) as tmp:
+            tmp.write(resp.content)
+            tmp_path = tmp.name
+
+        # Transcribe with faster-whisper
+        def _transcribe(path: str) -> list[str]:
+            try:
+                from faster_whisper import WhisperModel
+                import datetime
+                model = WhisperModel("base", device="cpu", compute_type="int8")
+                segments, _ = model.transcribe(path, beam_size=3, language=None, word_timestamps=True)
+                
+                def format_time(seconds):
+                    td = datetime.timedelta(seconds=seconds)
+                    tot_sec = int(td.total_seconds())
+                    hours = tot_sec // 3600
+                    minutes = (tot_sec % 3600) // 60
+                    secs = tot_sec % 60
+                    ms = int((seconds - tot_sec) * 1000)
+                    return f"{hours:02d}:{minutes:02d}:{secs:02d},{ms:03d}"
+
+                lines = []
+                srt_lines = []
+                srt_index = 1
+                for seg in segments:
+                    if not seg.words:
+                        continue
+                    
+                    # Chunk words into max 3 words
+                    words_list = seg.words
+                    n = 3
+                    for i in range(0, len(words_list), n):
+                        chunk = words_list[i:i + n]
+                        chunk_text = " ".join([w.word.strip() for w in chunk])
+                        if not chunk_text:
+                            continue
+                        
+                        start_time = chunk[0].start
+                        end_time = chunk[-1].end
+                        
+                        srt_lines.append(str(srt_index))
+                        srt_lines.append(f"{format_time(start_time)} --> {format_time(end_time)}")
+                        srt_lines.append(chunk_text)
+                        srt_lines.append("")
+                        srt_index += 1
+                        lines.append(chunk_text)
+
+                return lines, "\n".join(srt_lines)
+            except Exception as exc:
+                raise RuntimeError(f"Whisper transcription failed: {exc}")
+
+        lines, srt_script = await asyncio.to_thread(_transcribe, tmp_path)
+        return {"lines": lines, "script": srt_script}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)

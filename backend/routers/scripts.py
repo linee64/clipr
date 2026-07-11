@@ -17,6 +17,7 @@ class BYOCScriptRequest(BaseModel):
     ref_subtitles: list[str] | None = None
     avg_words_per_line: int = 4
     subtitle_pattern: dict | None = None
+    scene_contexts: list[str] | None = None
 
 
 @router.post("/byoc")
@@ -29,6 +30,7 @@ async def get_byoc_script(request: BYOCScriptRequest):
             ref_subtitles=request.ref_subtitles,
             avg_words_per_line=request.avg_words_per_line,
             subtitle_pattern=request.subtitle_pattern,
+            scene_contexts=request.scene_contexts,
         )
         return {"script": script}
     except Exception as e:

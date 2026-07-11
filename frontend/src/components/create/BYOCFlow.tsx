@@ -23,6 +23,7 @@ import {
   analyzeReferenceVideo,
   importPexelsClip,
   generateBYOCScript,
+  transcribeMusicFromRef,
 } from "@/lib/api";
 import type { RenderStatus, PexelsVideo } from "@/lib/types";
 import { RenderStep } from "./RenderStep";
@@ -213,6 +214,8 @@ export function BYOCFlow({
       static_position: "top" | "bottom" | null;
       dynamic_samples: string[];
     };
+    scene_contexts?: string[];
+    exact_timings?: number[];
   } | null>(null);
   const [refAnalysisError, setRefAnalysisError] = useState<string | null>(null);
   const refFileInputRef = useRef<HTMLInputElement>(null);
@@ -234,6 +237,7 @@ export function BYOCFlow({
   const srtInputRef = useRef<HTMLInputElement>(null);
   const [platform, setPlatform] = useState<"TikTok" | "LinkedIn" | "Reels">("TikTok");
   const [scriptGenError, setScriptGenError] = useState<string | null>(null);
+  const [isTranscribingMusic, setIsTranscribingMusic] = useState(false);
 
   /* -- Step 4: Render -- */
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
@@ -293,6 +297,19 @@ export function BYOCFlow({
       setRefAnalysisError(err instanceof Error ? err.message : "Не удалось проанализировать референс");
     } finally {
       setIsAnalyzingRef(false);
+    }
+  };
+
+  const handleTranscribeMusic = async () => {
+    if (!analyzedRefTemplate?.audio_url) return;
+    setIsTranscribingMusic(true);
+    try {
+      const result = await transcribeMusicFromRef(analyzedRefTemplate.audio_url);
+      if (result.script) setScript(result.script);
+    } catch (err) {
+      setScriptGenError(err instanceof Error ? err.message : "Ошибка транскрибации");
+    } finally {
+      setIsTranscribingMusic(false);
     }
   };
 
@@ -375,6 +392,7 @@ export function BYOCFlow({
           static_position: analyzedRefTemplate.subtitle_pattern.static_position,
           dynamic_samples: analyzedRefTemplate.subtitle_pattern.dynamic_samples,
         } : undefined,
+        scene_contexts: analyzedRefTemplate.scene_contexts,
       };
 
       // If user edited the static line, override it for the generator
@@ -479,7 +497,14 @@ export function BYOCFlow({
       {/* Pexels Modal */}
       {pexelsScene !== null && (
         <PexelsSearchModal
-          initialQuery={DEFAULT_SHOTS[(pexelsScene - 1) % DEFAULT_SHOTS.length]}
+          initialQuery={
+            (analyzedRefTemplate?.scene_contexts && analyzedRefTemplate.scene_contexts[pexelsScene - 1]) ||
+            DEFAULT_SHOTS[(pexelsScene - 1) % DEFAULT_SHOTS.length]
+          }
+          subtitle={
+            (analyzedRefTemplate?.ref_subtitles && analyzedRefTemplate.ref_subtitles[pexelsScene - 1]) ||
+            ""
+          }
           onImport={(video) => handlePexelsImport(pexelsScene, video)}
           onClose={() => setPexelsScene(null)}
         />
@@ -611,8 +636,38 @@ export function BYOCFlow({
                       </div>
                     </div>
                   )}
+
+                  {/* Scene Contexts from Gemini Vision */}
+                  {analyzedRefTemplate.scene_contexts && analyzedRefTemplate.scene_contexts.filter(Boolean).length > 0 && (
+                    <div className="ml-6 bg-[#070B0D]/50 border border-[#152226] p-3 rounded-lg mt-2">
+                      <div className="text-[10px] uppercase font-bold text-[#53656F] mb-2 flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-[#A78BFA]" />
+                        <span className="text-[#A78BFA]">AI анализ сцен</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {analyzedRefTemplate.scene_contexts.map((ctx, i) => (
+                          ctx ? (
+                            <div key={i} className="flex items-start gap-2 text-xs">
+                              <span className="shrink-0 w-5 h-5 rounded-full bg-[#152226] text-[#53656F] text-[9px] font-bold flex items-center justify-center mt-0.5">
+                                {i + 1}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-[#EFEFEF] leading-relaxed">{ctx}</span>
+                                {analyzedRefTemplate.exact_timings?.[i] && (
+                                  <span className="ml-2 text-[#53656F] font-mono text-[10px]">
+                                    {analyzedRefTemplate.exact_timings[i].toFixed(1)}с
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ) : null
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
+
             </div>
 
             {/* Continue */}
@@ -660,7 +715,8 @@ export function BYOCFlow({
                 const slotIdx = idx + 1;
                 const uploaded = uploadedClips[slotIdx];
                 const inputId = `slot-input-${slotIdx}`;
-                const suggestedQuery = DEFAULT_SHOTS[idx % DEFAULT_SHOTS.length];
+                const suggestedQuery = (analyzedRefTemplate?.scene_contexts && analyzedRefTemplate.scene_contexts[idx]) || DEFAULT_SHOTS[idx % DEFAULT_SHOTS.length];
+                const refSubtitle = (analyzedRefTemplate?.ref_subtitles && analyzedRefTemplate.ref_subtitles[idx]) || "";
 
                 return (
                   <div
@@ -672,7 +728,7 @@ export function BYOCFlow({
                     }`}
                   >
                     {/* Left side: number + suggestion */}
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <span
                         className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center shrink-0 ${
                           uploaded?.clipId
@@ -682,8 +738,13 @@ export function BYOCFlow({
                       >
                         {uploaded?.clipId ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : slotIdx}
                       </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">{suggestedQuery}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-white break-words">{suggestedQuery}</p>
+                        {refSubtitle && (
+                          <p className="text-xs text-[#10B981] font-semibold break-words mt-1">
+                            Субтитры: "{refSubtitle}"
+                          </p>
+                        )}
                         {uploaded?.clipId && (
                           <p className="text-[10px] text-[#6B7C85] truncate mt-0.5">{uploaded.name}</p>
                         )}
@@ -808,7 +869,30 @@ export function BYOCFlow({
                 <Sparkles className="w-3.5 h-3.5 text-[#10B981]" />
                 <span className="text-xs font-bold uppercase tracking-wider text-[#10B981]">Авто-генерация (ИИ)</span>
               </div>
-              
+
+              {/* Transcribe from music button */}
+              {analyzedRefTemplate?.audio_url && (
+                <div className="flex items-center justify-between bg-[#8B5CF6]/[0.06] border border-[#8B5CF6]/20 rounded-xl px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🎵</span>
+                    <div>
+                      <span className="text-xs font-semibold text-[#A78BFA] block">Субтитры из музыки</span>
+                      <span className="text-[10px] text-[#6B7C85]">Whisper распознает слова из трека референса</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isTranscribingMusic}
+                    onClick={handleTranscribeMusic}
+                    className="bg-[#8B5CF6]/20 hover:bg-[#8B5CF6]/30 text-[#A78BFA] font-bold text-[11px] px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shrink-0 border border-[#8B5CF6]/30"
+                  >
+                    {isTranscribingMusic ? <Loader2 className="w-3 h-3 animate-spin" /> : <span>▶</span>}
+                    {isTranscribingMusic ? "Распознаём..." : "Транскрибировать"}
+                  </button>
+                </div>
+              )}
+
+
               {analyzedRefTemplate?.subtitle_pattern?.type === "two_field" && (
                 <div className="space-y-2 pb-3 border-b border-[#10B981]/10">
                   <label className="text-[10px] uppercase font-mono tracking-wider text-[#53656F] font-bold block">

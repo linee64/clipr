@@ -18,6 +18,12 @@ import type {
 // NOTE: Forces https:// for any non-localhost URL to prevent mixed-content blocking.
 export function getApiBase(): string {
   if (typeof window !== "undefined") {
+    // Bypass Next.js rewrites in local dev to avoid multipart/form-data proxy bugs
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return "http://localhost:8000";
+    }
+    const pub = process.env.NEXT_PUBLIC_API_BASE;
+    if (pub) return pub.replace(/\/+$/, "");
     return "";
   }
   const raw = process.env.API_BASE_URL || "http://localhost:8000";
@@ -112,6 +118,10 @@ export async function analyzeReferenceVideo(
       static_position: "top" | "bottom" | null;
       dynamic_samples: string[];
     };
+    /** Gemini Vision: visual context tags per scene */
+    scene_contexts?: string[];
+    /** Duration of each scene in seconds */
+    exact_timings?: number[];
   };
 }> {
   const form = new FormData();
@@ -123,6 +133,18 @@ export async function analyzeReferenceVideo(
     form.append("url", url);
   }
   const res = await fetch(`${getApiBase()}/api/byoc/analyze-reference`, {
+    method: "POST",
+    body: form,
+  });
+  return parseJson(res);
+}
+
+export async function transcribeMusicFromRef(
+  audioUrl: string
+): Promise<{ lines: string[]; script: string }> {
+  const form = new FormData();
+  form.append("audio_url", audioUrl);
+  const res = await fetch(`${getApiBase()}/api/byoc/transcribe-music`, {
     method: "POST",
     body: form,
   });
@@ -268,6 +290,7 @@ export async function generateBYOCScript(payload: {
     static_position: string | null;
     dynamic_samples: string[];
   };
+  scene_contexts?: string[];
 }): Promise<{ script: string }> {
   const res = await fetch(`${getApiBase()}/api/scripts/byoc`, {
     method: "POST",

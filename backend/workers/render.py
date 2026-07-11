@@ -276,6 +276,7 @@ async def run_broll_render(
     add_subtitles: bool = True,
     source: str = "ai",
     subtitle_source: str = "script",
+    subtitles_srt: str = "",
 ):
     render_jobs[job_id] = {
         "status": "processing",
@@ -1100,7 +1101,23 @@ async def run_broll_render(
 
         # --- Lyrics mode: replace scene phrases with text extracted from the song ---
         lyrics_as_scenes = None
-        if subtitle_source == "lyrics" and add_subtitles:
+        
+        if subtitles_srt and add_subtitles:
+            try:
+                from routers.byoc import parse_srt
+                srt_segs = parse_srt(subtitles_srt)
+                if srt_segs:
+                    lyrics_as_scenes = []
+                    for seg in srt_segs:
+                        lyrics_as_scenes.append({
+                            "start_time": seg["start"],
+                            "duration_seconds": max(0.1, seg["end"] - seg["start"]),
+                            "phrase": seg["text"]
+                        })
+            except Exception as e:
+                print(f"[render {job_id}] failed to parse SRT: {e}", flush=True)
+                
+        if lyrics_as_scenes is None and subtitle_source == "lyrics" and add_subtitles:
             try:
                 lyrics_segments = await asyncio.to_thread(transcribe_audio, with_audio_path)
                 lyrics_as_scenes = []
