@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronLeft, X, Sparkles, Zap, Cpu, Terminal } from "lucide-react";
+import { Check, ChevronLeft, X, Sparkles, Zap, Cpu } from "lucide-react";
 import type { RenderStatus } from "@/lib/types";
 import type { FlowStep } from "./StepIndicator";
 import {

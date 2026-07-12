@@ -191,10 +191,6 @@ export function BYOCFlow({
   onBack,
   onSchedulePost,
   isPro,
-  onRequireUpgrade,
-  videosLeft,
-  videosLimit,
-  videosUnlimited,
   onUsageRefresh,
 }: BYOCFlowProps) {
   const [currentStep, setCurrentStep] = useState<BYOCStep>(1);
@@ -747,7 +743,7 @@ export function BYOCFlow({
                         <p className="text-sm font-semibold text-white break-words">{suggestedQuery}</p>
                         {refSubtitle && (
                           <p className="text-xs text-[#10B981] font-semibold break-words mt-1">
-                            Субтитры: "{refSubtitle}"
+                            Субтитры: &quot;{refSubtitle}&quot;
                           </p>
                         )}
                         {uploaded?.clipId && (

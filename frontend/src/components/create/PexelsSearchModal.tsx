@@ -210,7 +210,7 @@ export function PexelsSearchModal({
             </p>
             {subtitle && (
               <p className="mt-1 text-xs text-[#10B981] font-semibold break-words">
-                Субтитры: "{subtitle}"
+                Субтитры: &quot;{subtitle}&quot;
               </p>
             )}
           </div>

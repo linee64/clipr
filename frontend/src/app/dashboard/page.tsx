@@ -23,9 +23,7 @@ import {
   ChevronRight,
   Sparkles,
   Zap,
-  Send,
-  Cpu,
-  Terminal
+  Send
 } from "lucide-react";
 import { CreateFlow } from "@/components/create/CreateFlow";
 import { BYOCFlow } from "@/components/create/BYOCFlow";
