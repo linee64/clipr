@@ -23,7 +23,9 @@ import {
   ChevronRight,
   Sparkles,
   Zap,
-  Send
+  Send,
+  Cpu,
+  Terminal
 } from "lucide-react";
 import { CreateFlow } from "@/components/create/CreateFlow";
 import { BYOCFlow } from "@/components/create/BYOCFlow";
@@ -807,6 +809,39 @@ export default function Dashboard() {
   const [agentProgress, setAgentProgress] = useState<{ done: number; total: number; status: string } | null>(null);
   const [agentError, setAgentError] = useState<string | null>(null);
   const [agentConfigOpen, setAgentConfigOpen] = useState(false);
+
+  const [agentBoostMultiplier, setAgentBoostMultiplier] = useState(1.0);
+  const [agentInteractiveSparks, setAgentInteractiveSparks] = useState<{ id: number; x: number; y: number }[]>([]);
+
+  useEffect(() => {
+    if (agentBoostMultiplier <= 1.0) return;
+    const interval = setInterval(() => {
+      setAgentBoostMultiplier((prev) => {
+        const next = prev - 0.1;
+        return next <= 1.0 ? 1.0 : next;
+      });
+    }, 800);
+    return () => clearInterval(interval);
+  }, [agentBoostMultiplier]);
+
+  const handleAgentCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isAgentRunning) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Spawn floaty spark
+    const id = Date.now() + Math.random();
+    setAgentInteractiveSparks((prev) => [...prev, { id, x, y }]);
+    
+    // Increment boost multiplier
+    setAgentBoostMultiplier((prev) => Math.min(4.0, prev + 0.3));
+
+    // Clean up particles
+    setTimeout(() => {
+      setAgentInteractiveSparks((prev) => prev.filter((p) => p.id !== id));
+    }, 1500);
+  };
 
   const toggleAgentPlatform = (p: string) => {
     setAgentPlatforms((prev) =>
@@ -1879,7 +1914,44 @@ export default function Dashboard() {
                       className="mx-4 mt-2 mb-1 overflow-hidden"
                     >
                       <div className="max-h-[380px] overflow-y-auto pr-0.5">
-                        <div className="bg-[#0D1517] border border-[#152226] rounded-2xl p-5 space-y-4 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+                        <div 
+                          onClick={handleAgentCardClick}
+                          className={`relative overflow-hidden rounded-2xl p-5 space-y-4 shadow-[0_8px_32px_rgba(0,0,0,0.3)] border transition-all duration-500 cursor-pointer ${
+                            isAgentRunning 
+                              ? "bg-[#0A1012] border-[#51E0CF]/40 shadow-[0_0_50px_rgba(81,224,207,0.08)]" 
+                              : "bg-[#0D1517] border-[#152226]"
+                          }`}
+                        >
+                          {/* Interactive particles for Agent */}
+                          <AnimatePresence>
+                            {agentInteractiveSparks.map((boost) => (
+                              <motion.div
+                                key={boost.id}
+                                initial={{ opacity: 1, scale: 0.8, x: boost.x, y: boost.y }}
+                                animate={{ 
+                                  opacity: 0, 
+                                  scale: [1.2, 2.5], 
+                                  y: boost.y - 120,
+                                  x: boost.x + (Math.random() - 0.5) * 60
+                                }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 1.2, ease: "easeOut" }}
+                                className="absolute pointer-events-none text-cyan-400 text-lg z-50 select-none"
+                              >
+                                {["✨", "⚡", "⭐", "💫"][Math.floor(Math.random() * 4)]}
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+
+                          {/* Glowing atmosphere when running */}
+                          {isAgentRunning && (
+                            <div
+                              className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+                              style={{ 
+                                background: `radial-gradient(ellipse, rgba(81,224,207,${0.08 * agentBoostMultiplier}) 0%, rgba(139,92,246,0.03) 40%, transparent 70%)`
+                              }}
+                            />
+                          )}
                         {/* Header */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -1981,22 +2053,81 @@ export default function Dashboard() {
 
                         {/* Progress display when running */}
                         {agentProgress && (
-                          <div className="space-y-2 pt-2 border-t border-[#152226]">
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span className="text-[#6B7C85]">Прогресс</span>
-                              <span className="text-[#51E0CF] font-mono font-bold">
-                                {agentProgress.done}/{agentProgress.total}
-                              </span>
+                          <div className="space-y-4 pt-4 border-t border-[#152226] z-10 relative">
+                            {/* Spinning agent core animation */}
+                            <div className="flex items-center gap-4 py-2">
+                              <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 10 / agentBoostMultiplier, repeat: Infinity, ease: "linear" }}
+                                  className="absolute w-12 h-12 rounded-full border border-dashed border-[#51E0CF]/40"
+                                />
+                                <motion.div
+                                  animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.7, 0.3] }}
+                                  transition={{ duration: 2 / agentBoostMultiplier, repeat: Infinity, ease: "easeInOut" }}
+                                  className="absolute w-14 h-14 rounded-full border-2 border-[#51E0CF]/10"
+                                />
+                                <motion.div
+                                  animate={{ rotate: -360 }}
+                                  transition={{ duration: 5 / agentBoostMultiplier, repeat: Infinity, ease: "linear" }}
+                                  className="absolute w-10 h-10 rounded-full border-t border-r border-[#51E0CF]"
+                                />
+                                <div className="text-[10px] font-mono font-bold text-[#51E0CF]">
+                                  {Math.round((agentProgress.done / agentProgress.total) * 100)}%
+                                </div>
+                              </div>
+
+                              <div className="flex-1 text-left min-w-0">
+                                <div className="flex items-center justify-between text-[11px] mb-1">
+                                  <span className="text-[#6B7C85] font-semibold flex items-center gap-1.5">
+                                    <Sparkles className="w-3.5 h-3.5 text-[#51E0CF] animate-pulse" />
+                                    Агент работает ({agentProgress.done}/{agentProgress.total})
+                                  </span>
+                                  {agentBoostMultiplier > 1.01 && (
+                                    <span className="text-[9px] font-mono text-amber-400 font-bold bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded-full animate-bounce">
+                                      ⚡ {agentBoostMultiplier.toFixed(1)}x
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-[#EFEFEF] truncate italic">&quot;{agentProgress.status}&quot;</p>
+                              </div>
                             </div>
-                            <div className="h-1.5 bg-[#070B0D] rounded-full overflow-hidden">
-                              <motion.div
-                                className="h-full rounded-full bg-gradient-to-r from-[#51E0CF] to-[#a78bfa]"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${(agentProgress.done / agentProgress.total) * 100}%` }}
-                                transition={{ duration: 0.4 }}
-                              />
+
+                            {/* Mini beat equalizers */}
+                            <div className="h-4 flex items-end gap-[2px] px-1 bg-[#070B0D]/50 border border-[#152226]/50 rounded-lg justify-center overflow-hidden">
+                              {Array.from({ length: 24 }).map((_, i) => {
+                                const h = 0.2 + 0.8 * Math.abs(Math.sin(i * 0.5) * Math.cos(i * 0.3));
+                                return (
+                                  <motion.div
+                                    key={i}
+                                    className="flex-1 bg-[#51E0CF]"
+                                    style={{ height: "100%", transformOrigin: "bottom" }}
+                                    animate={{
+                                      scaleY: [h * 0.5, h, h * 0.3, h * 0.9, h * 0.5],
+                                      opacity: [0.6, 1, 0.5, 0.9, 0.6]
+                                    }}
+                                    transition={{ duration: (0.7 + i * 0.03) / agentBoostMultiplier, repeat: Infinity }}
+                                  />
+                                );
+                              })}
                             </div>
-                            <p className="text-[10px] text-[#6B7C85]">{agentProgress.status}</p>
+
+                            {/* Main progress bar */}
+                            <div className="space-y-1.5">
+                              <div className="h-1.5 bg-[#070B0D] rounded-full overflow-hidden border border-[#152226]/50">
+                                <motion.div
+                                  className="h-full rounded-full bg-gradient-to-r from-[#51E0CF] to-[#a78bfa] shadow-[0_0_10px_rgba(81,224,207,0.4)]"
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${(agentProgress.done / agentProgress.total) * 100}%` }}
+                                  transition={{ duration: 0.4 }}
+                                />
+                              </div>
+                              {isAgentRunning && (
+                                <p className="text-[9px] text-zinc-500 font-mono text-center">
+                                  Кликните на карточку, чтобы ускорить генерацию (активация буста)
+                                </p>
+                              )}
+                            </div>
                           </div>
                         )}
 
