@@ -741,6 +741,7 @@ export function CreateFlow({
 
       {(currentStep === 5 || currentStep === 6) && (
         <RenderStep
+          isPro={isPro}
           renderStatus={renderStatus}
           renderError={renderError}
           isRendering={isRendering}

@@ -190,6 +190,11 @@ function BYOCStepIndicator({ currentStep }: { currentStep: BYOCStep }) {
 export function BYOCFlow({
   onBack,
   onSchedulePost,
+  isPro,
+  onRequireUpgrade,
+  videosLeft,
+  videosLimit,
+  videosUnlimited,
   onUsageRefresh,
 }: BYOCFlowProps) {
   const [currentStep, setCurrentStep] = useState<BYOCStep>(1);
@@ -1071,6 +1076,7 @@ export function BYOCFlow({
       {/* ============================================================= */}
       {currentStep === 4 && (
         <RenderStep
+          isPro={isPro}
           renderStatus={renderStatus}
           renderError={renderError}
           isRendering={!!renderJobId && renderStatus?.status !== "done" && renderStatus?.status !== "error"}

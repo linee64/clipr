@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
-import { Check, ChevronLeft, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, ChevronLeft, X, Sparkles, Zap, Cpu, Terminal } from "lucide-react";
 import type { RenderStatus } from "@/lib/types";
 import type { FlowStep } from "./StepIndicator";
 import {
@@ -90,6 +90,7 @@ interface RenderStepProps {
   videoTitle?: string;
   platform?: string;
   caption?: string;
+  isPro?: boolean;
 }
 
 export function RenderStep({
@@ -100,7 +101,45 @@ export function RenderStep({
   videoTitle,
   platform,
   caption,
+  isPro = false,
 }: RenderStepProps) {
+  const [visualMode, setVisualMode] = React.useState<"timeline" | "hologram">("timeline");
+  const [interactiveBoosts, setInteractiveBoosts] = React.useState<{ id: number; x: number; y: number }[]>([]);
+  const [boostMultiplier, setBoostMultiplier] = React.useState(1.0);
+  const [boostActive, setBoostActive] = React.useState(false);
+
+  // Auto-decay boost multiplier over time
+  React.useEffect(() => {
+    if (boostMultiplier <= 1.0) return;
+    const interval = setInterval(() => {
+      setBoostMultiplier((prev) => {
+        const next = prev - 0.1;
+        return next <= 1.0 ? 1.0 : next;
+      });
+    }, 800);
+    return () => clearInterval(interval);
+  }, [boostMultiplier]);
+
+  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPro) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Spawn floaty spark
+    const id = Date.now() + Math.random();
+    setInteractiveBoosts((prev) => [...prev, { id, x, y }]);
+    
+    // Increment boost multiplier temporarily (capped at 4.0x)
+    setBoostMultiplier((prev) => Math.min(4.0, prev + 0.3));
+    setBoostActive(true);
+    setTimeout(() => setBoostActive(false), 200);
+
+    // Clean up particles
+    setTimeout(() => {
+      setInteractiveBoosts((prev) => prev.filter((p) => p.id !== id));
+    }, 1500);
+  };
   const status = renderStatus?.status;
   const isDone = status === "done";
   const isError = status === "error" || !!renderError;
@@ -240,261 +279,470 @@ export function RenderStep({
       )}
       <div className={`${isDone ? "max-w-4xl" : "max-w-2xl"} mx-auto`}>
         {!isDone && !isError && (
-          <div className="bg-[#0D1416] border border-[#152226] rounded-xl p-5 sm:p-8">
+          <div 
+            onClick={handleContainerClick}
+            className={`relative overflow-hidden rounded-xl border p-5 sm:p-8 transition-all duration-500 cursor-pointer ${
+              isPro 
+                ? "bg-[#0A1012] border-[#51E0CF]/40 shadow-[0_0_50px_rgba(81,224,207,0.1)]" 
+                : "bg-[#0D1416] border-[#152226]"
+            }`}
+          >
+            {/* Interactive particles for Pro users */}
+            <AnimatePresence>
+              {interactiveBoosts.map((boost) => (
+                <motion.div
+                  key={boost.id}
+                  initial={{ opacity: 1, scale: 0.8, x: boost.x, y: boost.y }}
+                  animate={{ 
+                    opacity: 0, 
+                    scale: [1.2, 2.5], 
+                    y: boost.y - 120,
+                    x: boost.x + (Math.random() - 0.5) * 60
+                  }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 1.2, ease: "easeOut" }}
+                  className="absolute pointer-events-none text-cyan-400 text-lg z-50 select-none"
+                >
+                  {["✨", "⚡", "⭐", "💫"][Math.floor(Math.random() * 4)]}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {/* Glowing atmosphere */}
+            <div
+              className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+              style={{ 
+                background: isPro 
+                  ? `radial-gradient(ellipse, rgba(81,224,207,${0.08 * boostMultiplier}) 0%, rgba(139,92,246,0.04) 40%, transparent 70%)`
+                  : "radial-gradient(ellipse, rgba(16,185,129,0.07) 0%, rgba(6,182,212,0.04) 40%, transparent 70%)" 
+              }}
+            />
+
             {(() => {
               const pct = Math.max(0, Math.min(100, progress));
 
               /* ── NLE clip track data ─────────────────────────── */
               const clipTracks = [
                 { label: "V1", clips: [
-                  { start: 0, w: 18, color: "#10B981", delay: 0 },
-                  { start: 20, w: 14, color: "#14B8A6", delay: 0.15 },
-                  { start: 36, w: 22, color: "#10B981", delay: 0.25 },
-                  { start: 60, w: 16, color: "#059669", delay: 0.4 },
-                  { start: 78, w: 22, color: "#10B981", delay: 0.5 },
+                  { start: 0, w: 18, color: isPro ? "#51E0CF" : "#10B981", delay: 0 },
+                  { start: 20, w: 14, color: isPro ? "#8B5CF6" : "#14B8A6", delay: 0.15 },
+                  { start: 36, w: 22, color: isPro ? "#51E0CF" : "#10B981", delay: 0.25 },
+                  { start: 60, w: 16, color: isPro ? "#059669" : "#059669", delay: 0.4 },
+                  { start: 78, w: 22, color: isPro ? "#51E0CF" : "#10B981", delay: 0.5 },
                 ]},
                 { label: "V2", clips: [
-                  { start: 4, w: 12, color: "#06B6D4", delay: 0.1 },
-                  { start: 26, w: 20, color: "#0891B2", delay: 0.3 },
-                  { start: 52, w: 18, color: "#06B6D4", delay: 0.45 },
-                  { start: 72, w: 28, color: "#0E7490", delay: 0.55 },
+                  { start: 4, w: 12, color: isPro ? "#8B5CF6" : "#06B6D4", delay: 0.1 },
+                  { start: 26, w: 20, color: isPro ? "#a78bfa" : "#0891B2", delay: 0.3 },
+                  { start: 52, w: 18, color: isPro ? "#8B5CF6" : "#06B6D4", delay: 0.45 },
+                  { start: 72, w: 28, color: isPro ? "#51E0CF" : "#0E7490", delay: 0.55 },
                 ]},
                 { label: "V3", clips: [
-                  { start: 0, w: 30, color: "#8B5CF6", delay: 0.2 },
-                  { start: 34, w: 24, color: "#7C3AED", delay: 0.35 },
-                  { start: 62, w: 38, color: "#8B5CF6", delay: 0.5 },
+                  { start: 0, w: 30, color: isPro ? "#a78bfa" : "#8B5CF6", delay: 0.2 },
+                  { start: 34, w: 24, color: isPro ? "#8B5CF6" : "#7C3AED", delay: 0.35 },
+                  { start: 62, w: 38, color: isPro ? "#51E0CF" : "#8B5CF6", delay: 0.5 },
                 ]},
               ];
 
-              /* ── Audio waveform (36 bars) ────────────────────── */
               const waveBars = Array.from({ length: 36 }, (_, i) => {
                 const x = (i / 35);
                 return 0.2 + 0.8 * Math.abs(Math.sin(x * Math.PI * 3.5 + 1.2) * Math.cos(x * Math.PI * 2.1));
               });
 
-              /* ── Cut markers ────────────────────────────────── */
               const cutPositions = [18, 36, 52, 60, 78];
-
-              /* ── Timeline ruler ticks ────────────────────────── */
               const rulerTicks = Array.from({ length: 11 }, (_, i) => i * 10);
-
-              /* ── Cycling operation labels ────────────────────── */
               const currentOpLabel = opLabels[opIdx];
 
               return (
                 <div className="relative flex flex-col items-center text-center px-1 sm:px-4 py-2">
-                  {/* atmospheric glow */}
-                  <div
-                    className="pointer-events-none absolute left-1/2 top-1/2 h-[400px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
-                    style={{ background: "radial-gradient(ellipse, rgba(16,185,129,0.07) 0%, rgba(6,182,212,0.04) 40%, transparent 70%)" }}
-                  />
-
-                  {/* ── NLE WINDOW CHROME ───────────────────────── */}
-                  <div
-                    className="relative w-full max-w-[520px] rounded-xl overflow-hidden border"
-                    style={{ borderColor: "#1E2D32", background: "#080E10", boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 30px rgba(16,185,129,0.06)" }}
-                  >
-                    {/* Title bar */}
-                    <div className="flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: "#152226", background: "#0A1214" }}>
-                      <div className="flex gap-1.5">
-                        <span className="w-[9px] h-[9px] rounded-full bg-[#EF4444]/80" />
-                        <span className="w-[9px] h-[9px] rounded-full bg-[#F59E0B]/80" />
-                        <span className="w-[9px] h-[9px] rounded-full bg-[#10B981]/80" />
-                      </div>
-                      <span className="text-[9px] font-mono text-[#3A4A50] ml-2">Clipr Timeline — {title}</span>
-                      <div className="ml-auto flex items-center gap-1.5">
-                        <motion.span
-                          className="w-1.5 h-1.5 rounded-full bg-[#10B981]"
-                          animate={{ opacity: [1, 0.3, 1] }}
-                          transition={{ duration: 1.2, repeat: Infinity }}
-                        />
-                        <span className="text-[8px] font-mono text-[#10B981]">RENDERING</span>
-                      </div>
-                    </div>
-
-                    {/* ── Preview strip (mini) ─────────────────── */}
-                    <div className="px-3 pt-3 pb-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[8px] font-mono text-[#3A4A50] uppercase tracking-wider">Preview</span>
-                        <motion.span
-                          key={opIdx}
-                          className="text-[8px] font-mono text-[#10B981]/70"
-                          animate={{ opacity: [0, 1, 1, 0] }}
-                          transition={{ duration: 2.5, repeat: 0, times: [0, 0.1, 0.85, 1] }}
-                        >
-                          {currentOpLabel}
-                        </motion.span>
-                      </div>
-                      {/* Mini preview frames */}
-                      <div className="flex gap-[2px] h-[32px] overflow-hidden rounded-md">
-                        {Array.from({ length: 16 }, (_, i) => (
-                          <motion.div
-                            key={i}
-                            className="flex-1 rounded-[2px]"
-                            style={{
-                              background: `linear-gradient(${135 + i * 15}deg, ${
-                                i % 3 === 0 ? "rgba(16,185,129,0.3)" : i % 3 === 1 ? "rgba(6,182,212,0.25)" : "rgba(139,92,246,0.25)"
-                              } 0%, rgba(8,14,16,0.9) 80%)`,
-                            }}
-                            animate={{
-                              opacity: i / 16 * 100 < pct ? [0.5, 1, 0.8] : [0.15, 0.25, 0.15],
-                            }}
-                            transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.06 }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* ── RULER ─────────────────────────────────── */}
-                    <div className="relative mx-3 mt-2 h-4 border-b" style={{ borderColor: "#152226" }}>
-                      {rulerTicks.map((t) => (
-                        <div key={t} className="absolute top-0 flex flex-col items-center" style={{ left: `${t}%` }}>
-                          <div className="w-px h-2" style={{ background: t % 20 === 0 ? "#3A4A50" : "#1E2D32" }} />
-                          {t % 20 === 0 && (
-                            <span className="text-[7px] font-mono text-[#3A4A50] mt-0.5 leading-none">
-                              {`${Math.floor(t * 0.3 / 60)}:${String(Math.floor((t * 0.3) % 60)).padStart(2, "0")}`}
-                            </span>
-                          )}
+                  
+                  {/* PRO CONTROL TABS / BADGE */}
+                  <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3 mb-6 z-10">
+                    <div className="flex items-center gap-2">
+                      {isPro ? (
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-[#51E0CF]/30 bg-[#51E0CF]/10 text-xs font-mono font-semibold tracking-wider text-[#51E0CF] shadow-[0_0_15px_rgba(81,224,207,0.15)] animate-pulse">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          SUPER CLIPR ENGINE
                         </div>
-                      ))}
+                      ) : (
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-[#10B981]/20 bg-[#10B981]/5 text-xs font-mono font-semibold text-[#10B981]">
+                          <Cpu className="w-3.5 h-3.5 animate-spin-slow" />
+                          CLASSIC CLIPR ENGINE
+                        </div>
+                      )}
+                      {isPro && boostMultiplier > 1.01 && (
+                        <motion.div 
+                          initial={{ scale: 0.8 }}
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ repeat: Infinity, duration: 0.5 }}
+                          className="px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-[10px] font-mono text-amber-400 font-bold"
+                        >
+                          ⚡ {boostMultiplier.toFixed(1)}x CHARGED
+                        </motion.div>
+                      )}
                     </div>
 
-                    {/* ── TRACKS ────────────────────────────────── */}
-                    <div className="relative mx-3 mt-1 space-y-[3px]">
-                      {clipTracks.map((track, ti) => (
-                        <div key={track.label} className="relative flex items-center gap-1.5">
-                          {/* Track label */}
-                          <span
-                            className="text-[8px] font-mono font-bold shrink-0 w-5 text-right"
-                            style={{ color: ti === 0 ? "#10B981" : ti === 1 ? "#06B6D4" : "#8B5CF6" }}
-                          >
-                            {track.label}
-                          </span>
-                          {/* Track lane */}
-                          <div className="relative flex-1 h-[22px] rounded-[3px] overflow-hidden" style={{ background: "#0B1315" }}>
-                            {track.clips.map((clip, ci) => (
-                              <motion.div
-                                key={ci}
-                                className="absolute top-[2px] bottom-[2px] rounded-[3px] overflow-hidden"
-                                style={{
-                                  left: `${clip.start}%`,
-                                  width: `${clip.w}%`,
-                                  background: `linear-gradient(90deg, ${clip.color}55 0%, ${clip.color}33 50%, ${clip.color}55 100%)`,
-                                  borderLeft: `2px solid ${clip.color}`,
-                                  borderRight: `1px solid ${clip.color}44`,
-                                }}
-                                initial={{ scaleX: 0, opacity: 0 }}
-                                animate={{ scaleX: 1, opacity: 1 }}
-                                transition={{
-                                  duration: 0.6,
-                                  delay: clip.delay + 0.3,
-                                  ease: [0.22, 1, 0.36, 1],
-                                }}
+                    {isPro && (
+                      <div className="flex items-center rounded-lg bg-[#080E10] border border-[#1E2D32] p-0.5">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setVisualMode("timeline"); }}
+                          className={`px-3 py-1 text-xs font-mono rounded-md transition-all ${
+                            visualMode === "timeline" 
+                              ? "bg-[#1E2D32] text-white" 
+                              : "text-[#6B7C85] hover:text-white"
+                          }`}
+                        >
+                          Timeline
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setVisualMode("hologram"); }}
+                          className={`px-3 py-1 text-xs font-mono rounded-md transition-all flex items-center gap-1.5 ${
+                            visualMode === "hologram" 
+                              ? "bg-[#51E0CF]/20 text-[#51E0CF] border border-[#51E0CF]/30" 
+                              : "text-[#6B7C85] hover:text-white"
+                          }`}
+                        >
+                          <Zap className="w-3 h-3" />
+                          Hologram
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* VISUALIZER BODY */}
+                  <AnimatePresence mode="wait">
+                    {visualMode === "timeline" ? (
+                      <motion.div
+                        key="timeline-view"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.25 }}
+                        className="relative w-full max-w-[520px] rounded-xl overflow-hidden border"
+                        style={{ 
+                          borderColor: isPro ? "rgba(81,224,207,0.3)" : "#1E2D32", 
+                          background: "#080E10", 
+                          boxShadow: isPro 
+                            ? `0 24px 80px rgba(0,0,0,0.7), 0 0 40px rgba(81,224,207,${0.03 * boostMultiplier})` 
+                            : "0 24px 80px rgba(0,0,0,0.6)"
+                        }}
+                      >
+                        {/* Title bar */}
+                        <div className="flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: "#152226", background: "#0A1214" }}>
+                          <div className="flex gap-1.5">
+                            <span className="w-[9px] h-[9px] rounded-full bg-[#EF4444]/80" />
+                            <span className="w-[9px] h-[9px] rounded-full bg-[#F59E0B]/80" />
+                            <span className="w-[9px] h-[9px] rounded-full bg-[#10B981]/80" />
+                          </div>
+                          <span className="text-[9px] font-mono text-[#3A4A50] ml-2">Clipr Timeline — {title}</span>
+                          <div className="ml-auto flex items-center gap-1.5">
+                            <motion.span
+                              className={`w-1.5 h-1.5 rounded-full ${isPro ? "bg-[#51E0CF]" : "bg-[#10B981]"}`}
+                              animate={{ opacity: [1, 0.3, 1] }}
+                              transition={{ duration: 1.2, repeat: Infinity }}
+                            />
+                            <span className={`text-[8px] font-mono ${isPro ? "text-[#51E0CF]" : "text-[#10B981]"}`}>
+                              {isPro ? "HYPER_RENDERING" : "RENDERING"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Preview strip */}
+                        <div className="px-3 pt-3 pb-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[8px] font-mono text-[#3A4A50] uppercase tracking-wider">Preview</span>
+                              <motion.span
+                                key={opIdx}
+                                className={`text-[8px] font-mono ${isPro ? "text-[#51E0CF]/70" : "text-[#10B981]/70"}`}
+                                animate={{ opacity: [0, 1, 1, 0] }}
+                                transition={{ duration: 2.5, repeat: 0, times: [0, 0.1, 0.85, 1] }}
                               >
-                                {/* Inner thumbnail-like shimmer */}
+                                {currentOpLabel}
+                              </motion.span>
+                            </div>
+                            {isPro && (
+                              <span className="text-[8px] font-mono text-amber-400">⚡ Boost Active ({boostMultiplier.toFixed(1)}x)</span>
+                            )}
+                          </div>
+                          <div className="flex gap-[2px] h-[32px] overflow-hidden rounded-md">
+                            {Array.from({ length: 16 }, (_, i) => (
+                              <motion.div
+                                key={i}
+                                className="flex-1 rounded-[2px]"
+                                style={{
+                                  background: `linear-gradient(${135 + i * 15}deg, ${
+                                    i % 3 === 0 ? (isPro ? "rgba(81,224,207,0.35)" : "rgba(16,185,129,0.3)") : i % 3 === 1 ? (isPro ? "rgba(139,92,246,0.3)" : "rgba(6,182,212,0.25)") : "rgba(139,92,246,0.25)"
+                                  } 0%, rgba(8,14,16,0.9) 80%)`,
+                                }}
+                                animate={{
+                                  opacity: i / 16 * 100 < pct ? [0.5, 1, 0.8] : [0.15, 0.25, 0.15],
+                                }}
+                                transition={{ duration: 1.5 / boostMultiplier, repeat: Infinity, delay: i * 0.06 }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Ruler */}
+                        <div className="relative mx-3 mt-2 h-4 border-b" style={{ borderColor: "#152226" }}>
+                          {rulerTicks.map((t) => (
+                            <div key={t} className="absolute top-0 flex flex-col items-center" style={{ left: `${t}%` }}>
+                              <div className="w-px h-2" style={{ background: t % 20 === 0 ? "#3A4A50" : "#1E2D32" }} />
+                              {t % 20 === 0 && (
+                                <span className="text-[7px] font-mono text-[#3A4A50] mt-0.5 leading-none">
+                                  {`${Math.floor(t * 0.3 / 60)}:${String(Math.floor((t * 0.3) % 60)).padStart(2, "0")}`}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Tracks */}
+                        <div className="relative mx-3 mt-1 space-y-[3px]">
+                          {clipTracks.map((track, ti) => (
+                            <div key={track.label} className="relative flex items-center gap-1.5">
+                              <span
+                                className="text-[8px] font-mono font-bold shrink-0 w-5 text-right"
+                                style={{ color: ti === 0 ? (isPro ? "#51E0CF" : "#10B981") : ti === 1 ? (isPro ? "#a78bfa" : "#06B6D4") : "#8B5CF6" }}
+                              >
+                                {track.label}
+                              </span>
+                              <div className="relative flex-1 h-[22px] rounded-[3px] overflow-hidden" style={{ background: "#0B1315" }}>
+                                {track.clips.map((clip, ci) => (
+                                  <motion.div
+                                    key={ci}
+                                    className="absolute top-[2px] bottom-[2px] rounded-[3px] overflow-hidden"
+                                    style={{
+                                      left: `${clip.start}%`,
+                                      width: `${clip.w}%`,
+                                      background: `linear-gradient(90deg, ${clip.color}55 0%, ${clip.color}33 50%, ${clip.color}55 100%)`,
+                                      borderLeft: `2px solid ${clip.color}`,
+                                      borderRight: `1px solid ${clip.color}44`,
+                                    }}
+                                    initial={{ scaleX: 0, opacity: 0 }}
+                                    animate={{ scaleX: 1, opacity: 1 }}
+                                    transition={{
+                                      duration: 0.6,
+                                      delay: clip.delay + 0.3,
+                                      ease: [0.22, 1, 0.36, 1],
+                                    }}
+                                  >
+                                    <motion.div
+                                      className="absolute inset-0"
+                                      style={{
+                                        background: `repeating-linear-gradient(90deg, transparent 0px, ${clip.color}18 2px, transparent 4px)`,
+                                      }}
+                                      animate={{ x: ["-100%", "100%"] }}
+                                      transition={{ duration: 3 / boostMultiplier, repeat: Infinity, ease: "linear", delay: ci * 0.4 }}
+                                    />
+                                    {clip.w > 15 && (
+                                      <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[7px] font-mono text-white/50 tracking-wide">
+                                        clip_{ti + 1}.{ci + 1}
+                                      </span>
+                                    )}
+                                  </motion.div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Audio waveform */}
+                          <div className="relative flex items-center gap-1.5">
+                            <span className="text-[8px] font-mono font-bold shrink-0 w-5 text-right text-[#F59E0B]">A1</span>
+                            <div className="relative flex-1 h-[18px] rounded-[3px] overflow-hidden flex items-end gap-[1px] px-[2px]" style={{ background: "#0B1315" }}>
+                              {waveBars.map((h, i) => (
                                 <motion.div
-                                  className="absolute inset-0"
+                                  key={i}
+                                  className="flex-1 rounded-t-[1px]"
                                   style={{
-                                    background: `repeating-linear-gradient(90deg, transparent 0px, ${clip.color}18 2px, transparent 4px)`,
+                                    background: i / waveBars.length * 100 < pct ? "#F59E0B" : "#F59E0B33",
+                                    transformOrigin: "bottom",
                                   }}
-                                  animate={{ x: ["-100%", "100%"] }}
-                                  transition={{ duration: 3, repeat: Infinity, ease: "linear", delay: ci * 0.4 }}
+                                  animate={{
+                                    scaleY: [h * 0.7, h, h * 0.5, h * 0.9, h * 0.7],
+                                    opacity: i / waveBars.length * 100 < pct ? [0.7, 1, 0.6, 0.9, 0.7] : 0.25,
+                                  }}
+                                  transition={{ duration: (0.8 + i * 0.02) / boostMultiplier, repeat: Infinity, ease: "easeInOut" }}
                                 />
-                                {/* Clip label */}
-                                {clip.w > 15 && (
-                                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[7px] font-mono text-white/50 tracking-wide">
-                                    clip_{ti + 1}.{ci + 1}
-                                  </span>
-                                )}
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Playhead */}
+                          <div className="absolute top-0 bottom-0 z-20 pointer-events-none" style={{ left: "25px", right: 0 }}>
+                            <motion.div
+                              className="absolute top-0 bottom-0"
+                              style={{ left: `${pct}%` }}
+                              transition={{ duration: 0.5, ease: "easeOut" }}
+                            >
+                              <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#EF4444]" style={{ boxShadow: "0 0 8px rgba(239,68,68,0.5)" }} />
+                              <div
+                                className="absolute left-[-4px] top-[-2px] w-[10px] h-[6px] rounded-b-sm"
+                                style={{ background: "#EF4444", boxShadow: "0 2px 6px rgba(239,68,68,0.4)" }}
+                              />
+                            </motion.div>
+                          </div>
+
+                          {/* Cut Markers */}
+                          <div className="absolute top-0 bottom-0 z-10 pointer-events-none" style={{ left: "25px", right: 0 }}>
+                            {cutPositions.map((pos, i) => (
+                              <motion.div
+                                key={i}
+                                className="absolute top-0 bottom-0"
+                                style={{ left: `${pos}%` }}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: [0, 0, 0.6, 0.6, 0] }}
+                                transition={{ duration: 4 / boostMultiplier, times: [0, 0.15, 0.2, 0.8, 1], repeat: Infinity, delay: i * 0.8 + 1 }}
+                              >
+                                <div className="w-px h-full" style={{ background: "rgba(245,158,11,0.3)", borderLeft: "1px dashed rgba(245,158,11,0.4)" }} />
+                                <span className="absolute -top-0.5 -left-1 text-[7px]">✂️</span>
                               </motion.div>
                             ))}
                           </div>
                         </div>
-                      ))}
 
-                      {/* ── Audio waveform track ─────────────────── */}
-                      <div className="relative flex items-center gap-1.5">
-                        <span className="text-[8px] font-mono font-bold shrink-0 w-5 text-right text-[#F59E0B]">A1</span>
-                        <div className="relative flex-1 h-[18px] rounded-[3px] overflow-hidden flex items-end gap-[1px] px-[2px]" style={{ background: "#0B1315" }}>
-                          {waveBars.map((h, i) => (
+                        {/* Bottom bar */}
+                        <div className="flex items-center justify-between px-3 py-2 mt-2 border-t" style={{ borderColor: "#152226", background: "#0A1214" }}>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[8px] font-mono text-[#3A4A50]">30fps</span>
+                            <span className="text-[8px] font-mono text-[#3A4A50]">1080×1920</span>
+                            <span className="text-[8px] font-mono text-[#3A4A50]">9:16</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[8px] font-mono ${isPro ? "text-[#51E0CF]" : "text-[#10B981]"}`}>{Math.round(pct)}%</span>
+                            <div className="w-16 h-1 rounded-full overflow-hidden" style={{ background: "#152226" }}>
+                              <motion.div
+                                className={`h-full rounded-full ${isPro ? "bg-[#51E0CF]" : "bg-[#10B981]"}`}
+                                animate={{ width: `${pct}%` }}
+                                transition={{ duration: 0.5, ease: "easeOut" }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      /* ── HOLOGRAM SYSTEM GRAPHICS ──────────────── */
+                      <motion.div
+                        key="hologram-view"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.25 }}
+                        className="relative w-full max-w-[520px] aspect-[16/10] rounded-xl overflow-hidden border border-[#51E0CF]/20 bg-[#060B0C] p-4 flex flex-col justify-between"
+                        style={{
+                          boxShadow: `inset 0 0 30px rgba(81,224,207,0.05), 0 10px 40px rgba(0,0,0,0.5)`,
+                        }}
+                      >
+                        {/* Scanlines layer */}
+                        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,3px_100%] pointer-events-none opacity-40 z-10" />
+
+                        {/* Top metrics */}
+                        <div className="flex justify-between items-start font-mono text-[9px] text-[#51E0CF]/60 z-10">
+                          <div>
+                            <div>CORE_TEMP: 42°C</div>
+                            <div>THREADS: 32/32 ACTIVE</div>
+                          </div>
+                          <div className="text-right">
+                            <div>MEMORY_USE: 4.8GB / 16.0GB</div>
+                            <div>ENGINE: NEURAL_GEN_V2</div>
+                          </div>
+                        </div>
+
+                        {/* Middle rendering core */}
+                        <div className="flex-1 flex items-center justify-center gap-6 my-2 z-10">
+                          <div className="relative w-32 h-32 flex items-center justify-center">
+                            {/* Inner core circle */}
                             <motion.div
-                              key={i}
-                              className="flex-1 rounded-t-[1px]"
-                              style={{
-                                background: i / waveBars.length * 100 < pct ? "#F59E0B" : "#F59E0B33",
-                                transformOrigin: "bottom",
-                              }}
-                              animate={{
-                                scaleY: [h * 0.7, h, h * 0.5, h * 0.9, h * 0.7],
-                                opacity: i / waveBars.length * 100 < pct ? [0.7, 1, 0.6, 0.9, 0.7] : 0.25,
-                              }}
-                              transition={{ duration: 0.8 + i * 0.02, repeat: Infinity, ease: "easeInOut" }}
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 10 / boostMultiplier, repeat: Infinity, ease: "linear" }}
+                              className="absolute w-24 h-24 rounded-full border border-dashed border-[#51E0CF]/40 flex items-center justify-center"
                             />
-                          ))}
+                            {/* Outer pulsing ring */}
+                            <motion.div
+                              animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.7, 0.3] }}
+                              transition={{ duration: 2 / boostMultiplier, repeat: Infinity, ease: "easeInOut" }}
+                              className="absolute w-28 h-28 rounded-full border-2 border-[#51E0CF]/20"
+                            />
+                            {/* Spinning radar sweep */}
+                            <motion.div
+                              animate={{ rotate: -360 }}
+                              transition={{ duration: 5 / boostMultiplier, repeat: Infinity, ease: "linear" }}
+                              className="absolute w-20 h-20 rounded-full border-t border-r border-[#51E0CF] shadow-[0_0_15px_rgba(81,224,207,0.4)]"
+                            />
+                            {/* Floating central percent */}
+                            <div className="text-[#51E0CF] font-mono text-center select-none">
+                              <span className="text-2xl font-bold tracking-tighter tabular-nums">{Math.round(pct)}</span>
+                              <span className="text-[10px] block opacity-60">%</span>
+                            </div>
+                          </div>
+
+                          {/* Matrix Logs */}
+                          <div className="flex-1 max-w-[200px] h-32 overflow-hidden text-left font-mono text-[8px] text-[#51E0CF]/80 flex flex-col gap-1.5 justify-center border-l border-[#51E0CF]/15 pl-4">
+                            <div className="text-[#6B7C85] border-b border-[#51E0CF]/10 pb-1 uppercase tracking-wider font-bold">Process Stream</div>
+                            <div className="truncate animate-pulse">
+                              <span className="text-amber-400">&gt;</span> [BPM] Analysing beats... OK
+                            </div>
+                            <div className={`truncate transition-all ${pct >= 20 ? "text-[#51E0CF]" : "text-[#51E0CF]/30"}`}>
+                              <span className="text-[#51E0CF]">&gt;</span> [CUT] Splice montage: {pct >= 20 ? "DONE" : "PENDING"}
+                            </div>
+                            <div className={`truncate transition-all ${pct >= 50 ? "text-[#51E0CF]" : "text-[#51E0CF]/30"}`}>
+                              <span className="text-[#51E0CF]">&gt;</span> [AUDIO] Balance peaks: {pct >= 50 ? "DONE" : "PENDING"}
+                            </div>
+                            <div className={`truncate transition-all ${pct >= 75 ? "text-[#51E0CF]" : "text-[#51E0CF]/30"}`}>
+                              <span className="text-[#51E0CF]">&gt;</span> [CAPTIONS] Burn subtitles: {pct >= 75 ? "ACTIVE" : "PENDING"}
+                            </div>
+                            <div className={`truncate transition-all ${pct >= 95 ? "text-[#51E0CF]" : "text-[#51E0CF]/30"}`}>
+                              <span className="text-[#51E0CF]">&gt;</span> [EXPORT] H264 encode: {pct >= 95 ? "ACTIVE" : "PENDING"}
+                            </div>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* ── PLAYHEAD ─────────────────────────────── */}
-                      <div className="absolute top-0 bottom-0 z-20 pointer-events-none" style={{ left: "25px", right: 0 }}>
-                        <motion.div
-                          className="absolute top-0 bottom-0"
-                          style={{ left: `${pct}%` }}
-                          transition={{ duration: 0.5, ease: "easeOut" }}
-                        >
-                          {/* Playhead line */}
-                          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#EF4444]" style={{ boxShadow: "0 0 8px rgba(239,68,68,0.5)" }} />
-                          {/* Playhead head */}
-                          <div
-                            className="absolute left-[-4px] top-[-2px] w-[10px] h-[6px] rounded-b-sm"
-                            style={{ background: "#EF4444", boxShadow: "0 2px 6px rgba(239,68,68,0.4)" }}
-                          />
-                        </motion.div>
-                      </div>
-
-                      {/* ── CUT MARKERS (scissors) ───────────────── */}
-                      <div className="absolute top-0 bottom-0 z-10 pointer-events-none" style={{ left: "25px", right: 0 }}>
-                        {cutPositions.map((pos, i) => (
-                          <motion.div
-                            key={i}
-                            className="absolute top-0 bottom-0"
-                            style={{ left: `${pos}%` }}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: [0, 0, 0.6, 0.6, 0] }}
-                            transition={{ duration: 4, times: [0, 0.15, 0.2, 0.8, 1], repeat: Infinity, delay: i * 0.8 + 1 }}
-                          >
-                            <div className="w-px h-full" style={{ background: "rgba(245,158,11,0.3)", borderLeft: "1px dashed rgba(245,158,11,0.4)" }} />
-                            <span className="absolute -top-0.5 -left-1 text-[7px]">✂️</span>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* ── Bottom bar ────────────────────────────── */}
-                    <div className="flex items-center justify-between px-3 py-2 mt-2 border-t" style={{ borderColor: "#152226", background: "#0A1214" }}>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[8px] font-mono text-[#3A4A50]">30fps</span>
-                        <span className="text-[8px] font-mono text-[#3A4A50]">1080×1920</span>
-                        <span className="text-[8px] font-mono text-[#3A4A50]">9:16</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[8px] font-mono text-[#10B981]">{Math.round(pct)}%</span>
-                        <div className="w-16 h-1 rounded-full overflow-hidden" style={{ background: "#152226" }}>
-                          <motion.div
-                            className="h-full rounded-full bg-[#10B981]"
-                            animate={{ width: `${pct}%` }}
-                            transition={{ duration: 0.5, ease: "easeOut" }}
-                          />
+                        {/* Bottom visualizer bar */}
+                        <div className="flex justify-between items-end font-mono text-[9px] text-[#51E0CF]/60 border-t border-[#51E0CF]/10 pt-2 z-10">
+                          <div>STATUS: COMPILING</div>
+                          <div className="w-32 flex items-center gap-2">
+                            <span className="text-[#51E0CF] font-bold">{Math.round(pct)}%</span>
+                            <div className="flex-1 h-1 bg-[#152226] rounded-full overflow-hidden">
+                              <div className="h-full bg-[#51E0CF]" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                  {/* ── Status text below timeline ─────────────── */}
-                  <p className="mt-6 text-lg font-semibold text-[#EFEFEF]">Building your edit</p>
-                  <div className="mt-1.5 flex items-center gap-2">
+                  {/* BOOST INSTRUCTION / BUTTON */}
+                  {isPro ? (
+                    <motion.div 
+                      className="mt-6 flex flex-col items-center gap-2 z-10"
+                      animate={{ scale: boostActive ? 0.97 : 1 }}
+                    >
+                      <button
+                        type="button"
+                        className="relative overflow-hidden group bg-gradient-to-r from-amber-500 to-[#51E0CF] text-zinc-950 px-6 py-2.5 rounded-full font-bold text-xs uppercase tracking-wider font-mono shadow-[0_0_20px_rgba(81,224,207,0.25)] hover:shadow-[0_0_30px_rgba(81,224,207,0.5)] transition-all duration-300"
+                      >
+                        <span className="relative z-10 flex items-center gap-1.5 select-none">
+                          <Zap className="w-3.5 h-3.5 fill-current animate-bounce" />
+                          Click Screen to Boost Render
+                        </span>
+                        <motion.div 
+                          className="absolute inset-0 bg-white"
+                          initial={{ opacity: 0 }}
+                          whileHover={{ opacity: 0.15 }}
+                        />
+                      </button>
+                      <span className="text-[10px] font-mono text-zinc-500">Clicking triggers faster particles & boosts engine multiplier</span>
+                    </motion.div>
+                  ) : (
+                    <p className="mt-6 text-lg font-semibold text-[#EFEFEF]">Building your edit</p>
+                  )}
+
+                  <div className="mt-2.5 flex items-center gap-2 z-10">
                     <motion.span
-                      className="inline-block h-1.5 w-1.5 rounded-full bg-[#10B981]"
-                      style={{ boxShadow: "0 0 8px rgba(16,185,129,0.7)" }}
+                      className={`inline-block h-1.5 w-1.5 rounded-full ${isPro ? "bg-[#51E0CF]" : "bg-[#10B981]"}`}
+                      style={{ boxShadow: isPro ? "0 0 8px rgba(81,224,207,0.7)" : "0 0 8px rgba(16,185,129,0.7)" }}
                       animate={{ opacity: [1, 0.3, 1] }}
                       transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
                     />
@@ -510,20 +758,20 @@ export function RenderStep({
                   </div>
 
                   {/* main progress bar */}
-                  <div className="mt-4 h-1.5 w-full max-w-[340px] overflow-hidden rounded-full bg-[#152226]">
+                  <div className="mt-4 h-1.5 w-full max-w-[340px] overflow-hidden rounded-full bg-[#152226] z-10">
                     <motion.div
-                      className="h-full rounded-full bg-[#10B981]"
-                      style={{ boxShadow: "0 0 14px rgba(16,185,129,0.5)" }}
+                      className={`h-full rounded-full ${isPro ? "bg-[#51E0CF]" : "bg-[#10B981]"}`}
+                      style={{ boxShadow: isPro ? "0 0 14px rgba(81,224,207,0.5)" : "0 0 14px rgba(16,185,129,0.5)" }}
                       animate={{ width: `${pct}%` }}
                       transition={{ duration: 0.5, ease: "easeOut" }}
                     />
                   </div>
-                  <div className="mt-2 flex w-full max-w-[340px] justify-between font-mono text-[9px] tabular-nums text-[#6B7C85]">
+                  <div className="mt-2 flex w-full max-w-[340px] justify-between font-mono text-[9px] tabular-nums text-[#6B7C85] z-10">
                     {["0:00", "0:08", "0:15", "0:22", "0:30"].map((t) => (
                       <span key={t}>{t}</span>
                     ))}
                   </div>
-                  <p className="mt-1 font-mono text-xs tabular-nums text-[#6B7C85]">{Math.round(pct)}%</p>
+                  <p className="mt-1 font-mono text-xs tabular-nums text-[#6B7C85] z-10">{Math.round(pct)}%</p>
                 </div>
               );
             })()}
