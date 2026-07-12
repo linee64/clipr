@@ -199,7 +199,22 @@ def _write_record_sync(email: str, record: dict) -> None:
     # Postgres timestamptz rejects an empty string — store NULL when unknown.
     if not row.get("current_period_end"):
         row["current_period_end"] = None
-    _get_supabase().table(SUBS_TABLE).upsert(row, on_conflict="email").execute()
+    try:
+        _get_supabase().table(SUBS_TABLE).upsert(row, on_conflict="email").execute()
+    except Exception as e:
+        err_str = str(e)
+        if "product_id" in err_str and ("column" in err_str or "PGRST204" in err_str):
+            logger.warning(
+                "Supabase table '%s' is missing 'product_id' column. Retrying without it. "
+                "Please run migration 007_subscription_product.sql in the Supabase SQL Editor.",
+                SUBS_TABLE
+            )
+            row_fallback = row.copy()
+            if "product_id" in row_fallback:
+                del row_fallback["product_id"]
+            _get_supabase().table(SUBS_TABLE).upsert(row_fallback, on_conflict="email").execute()
+        else:
+            raise
 
 
 async def _read_record(email: str) -> dict | None:
