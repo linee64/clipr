@@ -76,6 +76,19 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   position: relative;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (max-width: 767px) {
+  .glowing-textarea-card {
+    border-radius: 16px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.38);
+  }
+
+  .glow-bg-radial {
+    background: radial-gradient(circle 100px at 50% 55%, rgba(16, 185, 129, 0.14) 0%, rgba(16, 185, 129, 0) 100%);
+  }
 }
 
 /* Noise overlay utility */

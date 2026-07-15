@@ -64,7 +64,8 @@ import {
   importPexelsClip,
   type BillingStatus,
 } from "@/lib/api";
-import type { TemplateOption, ScheduledPost } from "@/lib/types";
+import type { TemplateOption, ScheduledPost, ContentVariation } from "@/lib/types";
+import { CONTENT_VARIATIONS } from "@/lib/contentVariations";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { readPlan, setPlan, TRIAL_DAYS, PRO_PRICE, FREE_VIDEO_LIMIT, PRO_VIDEO_LIMIT, type PlanState } from "@/lib/plan";
 import { VideoQuotaBadge } from "@/components/VideoQuotaBadge";
@@ -746,6 +747,7 @@ export default function Dashboard() {
   // Create Tab States
   const [inputVal, setInputVal] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState<"TikTok" | "LinkedIn" | "Reels">("TikTok");
+  const [selectedVariation, setSelectedVariation] = useState<ContentVariation>("organic");
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Modal and details
@@ -928,12 +930,17 @@ export default function Dashboard() {
           format: (["Story", "Hot Take", "Tutorial", "List"] as const)[i % 4],
           niche: dna.audience || "",
           tone: dna.tone || "casual",
+          variation: selectedVariation,
         });
 
         if (!Array.isArray(rawIdeas) || rawIdeas.length === 0) {
           throw new Error(`No idea generated for video ${i + 1}`);
         }
-        const idea = rawIdeas[0];
+        const idea = rawIdeas[0] as {
+          title?: string;
+          hook_phrase?: string;
+          hook?: string;
+        };
 
         setAgentProgress({ done: i, total: agentVideoCount, status: `Generating storyboard ${i + 1}/${agentVideoCount}…` });
 
@@ -944,11 +951,12 @@ export default function Dashboard() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             idea_title: idea.title || "Untitled",
-            hook_phrase: idea.hook_phrase || "",
+            hook_phrase: idea.hook_phrase || idea.hook || "",
             platform: selectedPlatform,
             tone: dna.tone || "casual",
             niche: dna.audience || "",
             product: topic,
+            variation: selectedVariation,
             email,
           }),
         });
@@ -1246,20 +1254,32 @@ export default function Dashboard() {
         format: pickedFormat,
         niche: dna.audience || "",
         tone: dna.tone || "casual",
+        variation: selectedVariation,
       });
 
       if (!Array.isArray(rawIdeas) || rawIdeas.length === 0) {
         throw new Error("AI returned no ideas");
       }
 
-      const aiIdeas: IdeaCard[] = rawIdeas.map((it, i) => ({
-        id: `ai-idea-${i + 1}`,
-        title: it.title || "Untitled idea",
-        hook: it.hook_phrase || "",
-        vibe: it.vibe || "",
-        tags: [it.vibe, it.platform].filter((t): t is string => Boolean(t)),
-        estimate: it.potential || "High potential",
-      }));
+      const aiIdeas: IdeaCard[] = rawIdeas.map((it, i) => {
+        const row = it as {
+          title?: string;
+          hook?: string;
+          hook_phrase?: string;
+          vibe?: string;
+          platform?: string;
+          potential?: string;
+          estimate?: string;
+        };
+        return {
+          id: `ai-idea-${i + 1}`,
+          title: row.title || "Untitled idea",
+          hook: row.hook_phrase || row.hook || "",
+          vibe: row.vibe || "",
+          tags: [row.vibe, row.platform || selectedPlatform].filter((t): t is string => Boolean(t)),
+          estimate: row.potential || row.estimate || "High potential",
+        };
+      });
       setIdeas(aiIdeas);
       setIsGenerating(false);
     } catch (err) {
@@ -1494,9 +1514,9 @@ export default function Dashboard() {
       <main className="flex-1 flex flex-col h-full relative z-10 bg-[#070B0D] overflow-y-auto">
 
         {/* TOP NAVBAR */}
-        <header className="h-16 md:h-12 border-b border-[#152226] bg-[#070B0D]/80 backdrop-blur-md px-4 md:px-6 flex items-center justify-between sticky top-0 z-20">
+        <header className="h-[72px] md:h-12 border-b border-[#152226] bg-[#070B0D]/80 backdrop-blur-md px-4 md:px-6 flex items-center justify-between sticky top-0 z-20">
           {/* ----- MOBILE: logo mark + current section title (the sidebar is hidden) ----- */}
-          <div className="md:hidden flex items-center gap-2.5 min-w-0">
+          <div className="md:hidden flex items-center gap-3 min-w-0">
             <button
               onClick={() => handleNav("Home")}
               aria-label="Home"
@@ -1505,12 +1525,12 @@ export default function Dashboard() {
               <Image
                 src="/Clipr-logo.png"
                 alt="Clipr"
-                width={28}
-                height={28}
-                className="w-[28px] h-[28px] rounded-[7px] shadow-[0_0_12px_rgba(81,224,207,0.3)]"
+                width={36}
+                height={36}
+                className="w-9 h-9 rounded-[9px] shadow-[0_0_12px_rgba(81,224,207,0.3)]"
               />
             </button>
-            <span className="text-base font-semibold tracking-tight text-[#EFEFEF] truncate">
+            <span className="text-lg font-semibold tracking-tight text-[#EFEFEF] truncate">
               {sidebarActive === "Home" ? (
                 <>Clipr<span className="text-[#51E0CF] font-mono">.</span></>
               ) : (
@@ -1717,7 +1737,7 @@ export default function Dashboard() {
             <button
               onClick={() => handleNav("Settings")}
               aria-label="Settings"
-              className="md:hidden flex h-9 w-9 items-center justify-center rounded-full bg-[#152226] text-[13px] font-semibold text-[#EFEFEF] border border-[#1E2A2E] active:scale-95 transition-transform"
+              className="md:hidden flex h-11 w-11 items-center justify-center rounded-full bg-[#152226] text-sm font-semibold text-[#EFEFEF] border border-[#1E2A2E] active:scale-95 transition-transform"
             >
               {profile.initial}
             </button>
@@ -1763,7 +1783,7 @@ export default function Dashboard() {
 
         {/* WORKSPACE CONTENT */}
         <div className={`flex-1 w-full "overflow-y-auto"`}>
-          <div className={`w-full mx-auto ${activeTab === "Create" ? "h-full max-w-5xl px-4 sm:px-6 py-4 pb-20 md:pb-4 flex flex-col justify-between" : "p-4 sm:p-6 md:p-8 pb-24 md:pb-8 max-w-4xl space-y-6"}`}>
+          <div className={`w-full mx-auto ${activeTab === "Create" ? "h-full max-w-5xl px-3 sm:px-6 py-3 sm:py-4 pb-28 md:pb-4 flex flex-col justify-between" : "p-3 sm:p-6 md:p-8 pb-28 md:pb-8 max-w-4xl space-y-5 sm:space-y-6"}`}>
 
             <AnimatePresence mode="wait">
 
@@ -1788,19 +1808,19 @@ export default function Dashboard() {
                           : 'opacity-100 scale-100'
                       }`}
                     >
-                      <div className="flex flex-col items-center text-center space-y-1.5 pb-2 pt-2 sm:pt-10 md:pt-24 select-none">
-                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[#EFEFEF]">
+                      <div className="flex flex-col items-center text-center space-y-2 pb-1 pt-4 sm:pt-10 md:pt-24 select-none px-1">
+                        <h1 className="text-[1.65rem] leading-[1.15] sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[#EFEFEF]">
                           What&apos;s your next viral hook, {profile.name}<span className="text-[#51E0CF]">?</span>
                         </h1>
-                        <p className="text-[10px] text-[#6B7C85] tracking-[0.5em] uppercase font-mono font-bold">
+                        <p className="text-[10px] sm:text-[10px] text-[#6B7C85] tracking-[0.28em] sm:tracking-[0.5em] uppercase font-mono font-bold">
                           Clipr AI Content Engine
                         </p>
                       </div>
 
-                      <div className="glowing-textarea-card rounded-[14px] p-4 relative max-w-3xl w-full mx-auto shrink-0 mt-8">
-                        <div className="absolute inset-0 glow-bg-radial pointer-events-none z-0 rounded-[14px]" />
-                        <div className="relative z-10 space-y-3">
-                          <div className="space-y-1.5">
+                      <div className="glowing-textarea-card rounded-2xl p-3.5 sm:p-4 relative max-w-3xl w-full mx-auto shrink-0 mt-5 sm:mt-8">
+                        <div className="absolute inset-0 glow-bg-radial pointer-events-none z-0 rounded-2xl" />
+                        <div className="relative z-10 space-y-3.5">
+                          <div className="space-y-2">
                             <label className="text-[10px] uppercase font-mono tracking-wider text-[#6B7C85] font-bold block">
                               WHAT&apos;S YOUR NEXT VIDEO ABOUT?
                             </label>
@@ -1808,94 +1828,124 @@ export default function Dashboard() {
                               ref={textareaRef}
                               value={inputVal}
                               onChange={handleTextareaChange}
-                              className="w-full bg-transparent text-[#EFEFEF] border-0 outline-none p-0 text-sm font-normal resize-none placeholder:text-[#6B7C85] focus:ring-0 scrollbar-thin"
-                              placeholder="Explain why something matters in your industry..."
+                              className="w-full bg-transparent text-[#EFEFEF] border-0 outline-none p-0 text-[15px] sm:text-sm font-normal resize-none placeholder:text-[#6B7C85] focus:ring-0 scrollbar-thin min-h-[72px] sm:min-h-0 leading-relaxed"
+                              placeholder={
+                                selectedVariation === "ads"
+                                  ? "Product, offer, key proof points (numbers, outcomes)…"
+                                  : selectedVariation === "digital"
+                                    ? "What you're making — tool, craft, aesthetic, process…"
+                                    : "Explain why something matters in your industry..."
+                              }
                               style={{ overflowY: 'hidden' }}
                             />
                           </div>
 
-                          <div className="flex flex-wrap justify-between items-center gap-y-2.5 pt-2 border-t border-[#152226]">
-                            <div className="flex items-center gap-2.5 sm:gap-4">
-                              {/* Platform Dropdown */}
-                              <div className="relative">
+                          {/* Mobile: stacked controls · Desktop: row */}
+                          <div className="flex flex-col gap-3 pt-3 border-t border-[#152226]">
+                            {/* Variation segment — full width on phone */}
+                            <div className="flex w-full items-stretch rounded-full border border-[#152226] bg-[#070B0D] p-1">
+                              {CONTENT_VARIATIONS.map((v) => (
                                 <button
-                                  onClick={() => {
-                                    setIsPlatformOpen(!isPlatformOpen);
-                                  }}
-                                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full text-[11px] font-semibold border bg-[#070B0D] border-[#152226] hover:border-[#51E0CF]/30 text-[#EFEFEF] transition-all"
+                                  key={v.id}
+                                  type="button"
+                                  title={v.hint}
+                                  onClick={() => setSelectedVariation(v.id)}
+                                  className={`flex-1 px-2 py-2 rounded-full text-[11px] sm:text-[10px] font-semibold transition-all text-center ${
+                                    selectedVariation === v.id
+                                      ? "bg-[#51E0CF]/15 text-[#51E0CF] border border-[#51E0CF]/35 shadow-[0_0_12px_rgba(81,224,207,0.12)]"
+                                      : "text-[#6B7C85] border border-transparent hover:text-[#EFEFEF]"
+                                  }`}
                                 >
-                                  {getPlatformIcon(selectedPlatform, 10, true)}
-                                  <span>Platform: {selectedPlatform}</span>
-                                  <svg className={`w-3 h-3 text-[#6B7C85] transition-transform ${isPlatformOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                                  </svg>
+                                  <span className="sm:hidden">{v.shortLabel}</span>
+                                  <span className="hidden sm:inline">{v.label}</span>
                                 </button>
-                                {isPlatformOpen && (
-                                  <div className="absolute left-0 top-full mt-2 w-44 rounded-xl bg-[#0D1416] border border-[#152226] shadow-2xl z-30 p-1 divide-y divide-[#152226]/30">
-                                    {(["TikTok", "LinkedIn", "Reels"] as const).map((plat) => (
-                                      <button
-                                        key={plat}
-                                        onClick={() => {
-                                          setSelectedPlatform(plat);
-                                          setIsPlatformOpen(false);
-                                        }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-[#11191B] hover:text-[#51E0CF] transition-all flex items-center space-x-2 ${selectedPlatform === plat ? "text-[#51E0CF] bg-[#11191B]/50 font-bold" : "text-[#6B7C85]"
-                                          }`}
-                                      >
-                                        <span style={{ opacity: 0.65 }}>{getPlatformIcon(plat, 12, true)}</span>
-                                        <span>{plat}</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Super Clipr Toggle — Pro-only autonomous agent */}
-                              <button
-                                onClick={handleSuperCliprToggle}
-                                disabled={isAgentRunning}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all border ${
-                                  isSuperCliprMode
-                                    ? "bg-gradient-to-r from-[#51E0CF]/20 to-[#a78bfa]/20 border-[#51E0CF]/50 text-[#51E0CF] shadow-[0_0_12px_rgba(81,224,207,0.2)]"
-                                    : isProPlan
-                                      ? "bg-[#070B0D] border-[#a78bfa]/20 hover:border-[#a78bfa]/50 text-[#a78bfa] hover:shadow-[0_0_10px_rgba(167,139,250,0.15)]"
-                                      : "bg-[#070B0D] border-[#152226] text-[#6B7C85] hover:border-[#a78bfa]/30"
-                                } disabled:opacity-50`}
-                              >
-                                <Sparkles className={`w-3.5 h-3.5 ${isSuperCliprMode ? "text-[#51E0CF]" : isProPlan ? "text-[#a78bfa]" : "text-[#6B7C85]"}`} />
-                                <span>Super Clipr</span>
-                                {!isProPlan && <span className="text-[9px] bg-[#51E0CF]/15 text-[#51E0CF] px-1.5 py-0.5 rounded-full font-mono">PRO</span>}
-                                {isSuperCliprMode && <Zap className="w-3 h-3 text-[#51E0CF] animate-pulse" />}
-                              </button>
-
+                              ))}
                             </div>
 
-                            {/* Generate / Start Agent button */}
-                            {isSuperCliprMode ? (
-                              <button
-                                className="bg-gradient-to-r from-[#51E0CF] to-[#a78bfa] hover:from-[#43cdbd] hover:to-[#8b6fe8] text-[#070B0D] hover:scale-[1.02] active:scale-[0.98] transition-all text-xs font-bold rounded-full px-4 py-1.5 flex items-center justify-center space-x-1.5 shadow-[0_0_18px_rgba(81,224,207,0.25)] disabled:opacity-60 disabled:hover:scale-100"
-                                onClick={handleStartAgent}
-                                disabled={isAgentRunning || !inputVal.trim()}
-                              >
-                                {isAgentRunning ? (
-                                  <span>Running…</span>
-                                ) : (
-                                  <>
-                                    <Send className="w-3 h-3" />
-                                    <span>Start Agent</span>
-                                  </>
-                                )}
-                              </button>
-                            ) : (
-                              <button
-                                className="bg-[#51E0CF] hover:bg-[#43cdbd] text-[#070B0D] hover:scale-[1.02] active:scale-[0.98] transition-all text-xs font-bold rounded-full px-4 py-1.5 flex items-center justify-center space-x-1.5 shadow-md"
-                                onClick={triggerGenerateIdeas}
-                                disabled={isGenerating}
-                              >
-                                <span>{isGenerating ? "Creating..." : "Create"}</span>
-                                {!isGenerating && <span className="text-xs font-bold">→</span>}
-                              </button>
-                            )}
+                            <div className="flex flex-wrap items-center gap-2 sm:justify-between">
+                              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                {/* Platform Dropdown */}
+                                <div className="relative">
+                                  <button
+                                    onClick={() => {
+                                      setIsPlatformOpen(!isPlatformOpen);
+                                    }}
+                                    className="flex items-center space-x-2 px-3.5 py-2 rounded-full text-[12px] sm:text-[11px] font-semibold border bg-[#070B0D] border-[#152226] hover:border-[#51E0CF]/30 text-[#EFEFEF] transition-all"
+                                  >
+                                    {getPlatformIcon(selectedPlatform, 12, true)}
+                                    <span className="sm:hidden">{selectedPlatform}</span>
+                                    <span className="hidden sm:inline">Platform: {selectedPlatform}</span>
+                                    <svg className={`w-3 h-3 text-[#6B7C85] transition-transform ${isPlatformOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  </button>
+                                  {isPlatformOpen && (
+                                    <div className="absolute left-0 top-full mt-2 w-44 rounded-xl bg-[#0D1416] border border-[#152226] shadow-2xl z-30 p-1 divide-y divide-[#152226]/30">
+                                      {(["TikTok", "LinkedIn", "Reels"] as const).map((plat) => (
+                                        <button
+                                          key={plat}
+                                          onClick={() => {
+                                            setSelectedPlatform(plat);
+                                            setIsPlatformOpen(false);
+                                          }}
+                                          className={`w-full text-left px-3 py-2.5 rounded-lg text-xs hover:bg-[#11191B] hover:text-[#51E0CF] transition-all flex items-center space-x-2 ${selectedPlatform === plat ? "text-[#51E0CF] bg-[#11191B]/50 font-bold" : "text-[#6B7C85]"
+                                            }`}
+                                        >
+                                          <span style={{ opacity: 0.65 }}>{getPlatformIcon(plat, 12, true)}</span>
+                                          <span>{plat}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Super Clipr Toggle — Pro-only autonomous agent */}
+                                <button
+                                  onClick={handleSuperCliprToggle}
+                                  disabled={isAgentRunning}
+                                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[12px] sm:text-[11px] font-bold transition-all border ${
+                                    isSuperCliprMode
+                                      ? "bg-gradient-to-r from-[#51E0CF]/20 to-[#a78bfa]/20 border-[#51E0CF]/50 text-[#51E0CF] shadow-[0_0_12px_rgba(81,224,207,0.2)]"
+                                      : isProPlan
+                                        ? "bg-[#070B0D] border-[#a78bfa]/20 hover:border-[#a78bfa]/50 text-[#a78bfa] hover:shadow-[0_0_10px_rgba(167,139,250,0.15)]"
+                                        : "bg-[#070B0D] border-[#152226] text-[#6B7C85] hover:border-[#a78bfa]/30"
+                                  } disabled:opacity-50`}
+                                >
+                                  <Sparkles className={`w-3.5 h-3.5 ${isSuperCliprMode ? "text-[#51E0CF]" : isProPlan ? "text-[#a78bfa]" : "text-[#6B7C85]"}`} />
+                                  <span>Super</span>
+                                  <span className="hidden sm:inline"> Clipr</span>
+                                  {!isProPlan && <span className="text-[9px] bg-[#51E0CF]/15 text-[#51E0CF] px-1.5 py-0.5 rounded-full font-mono">PRO</span>}
+                                  {isSuperCliprMode && <Zap className="w-3 h-3 text-[#51E0CF] animate-pulse" />}
+                                </button>
+                              </div>
+
+                              {/* Generate / Start Agent button */}
+                              {isSuperCliprMode ? (
+                                <button
+                                  className="ml-auto sm:ml-0 w-full sm:w-auto bg-gradient-to-r from-[#51E0CF] to-[#a78bfa] hover:from-[#43cdbd] hover:to-[#8b6fe8] text-[#070B0D] active:scale-[0.98] transition-all text-sm sm:text-xs font-bold rounded-full px-5 py-2.5 sm:py-1.5 flex items-center justify-center space-x-1.5 shadow-[0_0_18px_rgba(81,224,207,0.25)] disabled:opacity-60"
+                                  onClick={handleStartAgent}
+                                  disabled={isAgentRunning || !inputVal.trim()}
+                                >
+                                  {isAgentRunning ? (
+                                    <span>Running…</span>
+                                  ) : (
+                                    <>
+                                      <Send className="w-3.5 h-3.5" />
+                                      <span>Start Agent</span>
+                                    </>
+                                  )}
+                                </button>
+                              ) : (
+                                <button
+                                  className="ml-auto sm:ml-0 w-full sm:w-auto bg-[#51E0CF] hover:bg-[#43cdbd] text-[#070B0D] active:scale-[0.98] transition-all text-sm sm:text-xs font-bold rounded-full px-5 py-2.5 sm:py-1.5 flex items-center justify-center space-x-1.5 shadow-md disabled:opacity-60"
+                                  onClick={triggerGenerateIdeas}
+                                  disabled={isGenerating}
+                                >
+                                  <span>{isGenerating ? "Creating..." : "Create"}</span>
+                                  {!isGenerating && <span className="text-sm sm:text-xs font-bold">→</span>}
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2153,19 +2203,19 @@ export default function Dashboard() {
                     // a centered (justify-center) overflowing flex column clips its top
                     // behind the header with no way to scroll up. Center only on md+ where
                     // the 3-col grid fits without scrolling.
-                    <div className="w-full flex-1 flex flex-col items-center justify-start md:justify-center min-h-0 overflow-y-auto px-4 py-6">
+                    <div className="w-full flex-1 flex flex-col items-center justify-start md:justify-center min-h-0 overflow-y-auto px-1 sm:px-4 py-4 sm:py-6 pb-6">
                       {ideasError && (
-                        <div className="text-[11px] mb-4 text-amber-400 bg-amber-950/20 border border-amber-500/20 px-3 py-1.5 rounded-lg max-w-[1080px] w-full text-center">
+                        <div className="text-[11px] mb-4 text-amber-400 bg-amber-950/20 border border-amber-500/20 px-3 py-2 rounded-xl max-w-[1080px] w-full text-center">
                           {ideasError}
                         </div>
                       )}
-                      <div className="w-full max-w-[1080px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="w-full max-w-[1080px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                         {isGenerating ? (
                           // Render 6 skeleton cards
                           [1, 2, 3, 4, 5, 6].map((n) => (
                             <div
                               key={n}
-                              className="flex h-full min-h-[160px] flex-col rounded-2xl p-5 border border-[#152226] bg-[#0D1416] animate-pulse"
+                              className="flex h-full min-h-[148px] sm:min-h-[160px] flex-col rounded-2xl p-4 sm:p-5 border border-[#152226] bg-[#0D1416] animate-pulse"
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <div className="h-5 w-20 bg-white/5 rounded-full" />
@@ -2182,7 +2232,7 @@ export default function Dashboard() {
                             <div
                               key={idea.id}
                               onClick={() => setModalIdea(idea)}
-                              className="group flex h-full flex-col rounded-2xl p-5 bg-[#0D1416] border border-[#152226] cursor-pointer hover:border-[#51E0CF]/50 hover:bg-[#0F181A] transition-all duration-300 opacity-0 translate-y-[24px] animate-card-slide-up shadow-[0_0_24px_rgba(81,224,207,0.06)]"
+                              className="group flex h-full flex-col rounded-2xl p-4 sm:p-5 bg-[#0D1416] border border-[#152226] cursor-pointer active:scale-[0.99] hover:border-[#51E0CF]/50 hover:bg-[#0F181A] transition-all duration-300 opacity-0 translate-y-[24px] animate-card-slide-up shadow-[0_0_24px_rgba(81,224,207,0.06)]"
                               style={{ animationDelay: `${idx * 80}ms` }}
                             >
                               {/* Card Header Row */}
@@ -2196,7 +2246,7 @@ export default function Dashboard() {
                               </div>
 
                               {/* Card Title */}
-                              <h3 className="text-[17px] font-bold text-white mt-3 leading-snug line-clamp-2">
+                              <h3 className="text-base sm:text-[17px] font-bold text-white mt-3 leading-snug line-clamp-2">
                                 {idea.title}
                               </h3>
 
@@ -2218,7 +2268,7 @@ export default function Dashboard() {
                   )}
 
                       {selectedIdeaId && selectedIdea && (
-                        <div className="flex-1 min-h-0 overflow-hidden -mx-4 sm:-mx-6 -mb-4 flex flex-col">
+                        <div className="flex-1 min-h-0 overflow-hidden -mx-1 sm:-mx-6 -mb-4 flex flex-col rounded-t-2xl sm:rounded-none border-t border-[#152226]/60 sm:border-0">
                           <CreateFlow
                             idea={{
                               id: selectedIdea.id,
@@ -2228,6 +2278,7 @@ export default function Dashboard() {
                               platform: selectedIdea.tags?.[1] || selectedPlatform,
                               estimate: selectedIdea.estimate,
                               product: inputVal.trim() || dnaInfo.product || "Clipr platform",
+                              variation: selectedVariation,
                             }}
                             defaultPlatform={selectedPlatform}
                             onBack={handleExitCreateFlow}
@@ -3145,14 +3196,14 @@ export default function Dashboard() {
       {/* ----------------------------------------------------
           MOBILE BOTTOM NAV (md:hidden) — replaces the hidden sidebar on phones
          ---------------------------------------------------- */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t border-[#152226] bg-[#0B1012]/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch min-h-[68px] border-t border-[#152226] bg-[#0B1012]/95 backdrop-blur-md pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(0,0,0,0.35)]">
         {[
-          { name: "Home", label: "Home", icon: <Home className="w-5 h-5" /> },
-          { name: "My Clips", label: "Clips", icon: <Film className="w-5 h-5" /> },
-          { name: "My Content", label: "Content", icon: <Film className="w-5 h-5" /> },
-          { name: "Calendar", label: "Calendar", icon: <CalendarIcon className="w-5 h-5" /> },
-          { name: "References", label: "Refs", icon: <Bookmark className="w-5 h-5" /> },
-          { name: "Settings", label: "Settings", icon: <Settings className="w-5 h-5" /> },
+          { name: "Home", label: "Home", icon: <Home className="w-[22px] h-[22px]" strokeWidth={2.25} /> },
+          { name: "My Clips", label: "Clips", icon: <Film className="w-[22px] h-[22px]" strokeWidth={2.25} /> },
+          { name: "My Content", label: "Content", icon: <Film className="w-[22px] h-[22px]" strokeWidth={2.25} /> },
+          { name: "Calendar", label: "Calendar", icon: <CalendarIcon className="w-[22px] h-[22px]" strokeWidth={2.25} /> },
+          { name: "References", label: "Refs", icon: <Bookmark className="w-[22px] h-[22px]" strokeWidth={2.25} /> },
+          { name: "Settings", label: "Settings", icon: <Settings className="w-[22px] h-[22px]" strokeWidth={2.25} /> },
         ]
           .filter((link) => link.name !== "My Clips" || profile.email === "aidaraltynbek02@gmail.com")
           .map((link) => {
@@ -3163,15 +3214,15 @@ export default function Dashboard() {
               onClick={() =>
                 handleNav(link.name as "Home" | "My Clips" | "My Content" | "Calendar" | "References" | "Settings")
               }
-              className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
-                isActive ? "text-[#51E0CF]" : "text-[#6B7C85] hover:text-[#EFEFEF]"
+              className={`relative flex-1 flex flex-col items-center justify-center gap-1 py-3 text-[10px] font-semibold tracking-wide transition-colors active:opacity-80 ${
+                isActive ? "text-[#51E0CF]" : "text-[#6B7C85]"
               }`}
             >
               {isActive && (
                 <span className="absolute top-0 h-0.5 w-8 rounded-full bg-[#51E0CF] shadow-[0_0_8px_rgba(81,224,207,0.8)]" />
               )}
               {link.icon}
-              <span>{link.label}</span>
+              <span className="leading-none">{link.label}</span>
             </button>
           );
         })}
@@ -3180,7 +3231,7 @@ export default function Dashboard() {
       {/* Modal Expansion */}
       <AnimatePresence>
         {modalIdea && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -3193,11 +3244,11 @@ export default function Dashboard() {
 
             {/* Modal Body */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92 }}
+              initial={{ opacity: 0, scale: 0.92, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 16 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
-              className="relative w-full max-w-[560px] rounded-[20px] p-6 sm:p-[32px] border shadow-2xl z-10 overflow-hidden"
+              className="relative w-full max-w-[560px] rounded-t-[22px] sm:rounded-[20px] p-5 sm:p-8 border shadow-2xl z-10 overflow-hidden pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-8"
               style={{
                 background: 'rgba(13, 20, 22, 0.96)',
                 backdropFilter: 'blur(16px)',
@@ -3208,14 +3259,15 @@ export default function Dashboard() {
               {/* Close Button */}
               <button
                 onClick={() => setModalIdea(null)}
-                className="absolute top-6 right-6 text-white hover:opacity-80 transition-opacity"
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 h-10 w-10 sm:h-auto sm:w-auto flex items-center justify-center text-white/80 hover:text-white transition-opacity"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' }}
+                aria-label="Close"
               >
                 ✕
               </button>
 
               {/* Title */}
-              <h2 className="text-[22px] font-bold text-white pr-8 leading-snug">
+              <h2 className="text-[20px] sm:text-[22px] font-bold text-white pr-10 leading-snug">
                 {modalIdea.title}
               </h2>
 
@@ -3226,13 +3278,13 @@ export default function Dashboard() {
 
               {/* Divider */}
               <div 
-                className="my-6" 
+                className="my-5 sm:my-6" 
                 style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}
               />
 
               {/* Bottom Row */}
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] font-mono tracking-widest text-[var(--text-muted)] font-semibold">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-between sm:items-center">
+                <span className="text-[11px] font-mono tracking-widest text-[var(--text-muted)] font-semibold text-center sm:text-left">
                   POTENTIAL ANALYSIS
                 </span>
                 <button
@@ -3240,8 +3292,7 @@ export default function Dashboard() {
                     handleSelectIdea(modalIdea);
                     setModalIdea(null);
                   }}
-                  className="text-[#51E0CF] font-semibold text-[15px] flex items-center gap-1 hover:opacity-85 transition-opacity"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                  className="w-full sm:w-auto justify-center font-semibold text-[15px] flex items-center gap-1 transition-all rounded-full px-5 py-3 bg-[#51E0CF] text-[#070B0D] hover:bg-[#43cdbd] sm:bg-transparent sm:text-[#51E0CF] sm:hover:bg-transparent sm:hover:opacity-85 sm:px-0 sm:py-0 sm:rounded-none border-0 cursor-pointer"
                 >
                   Create storyboard <span className="ml-1">→</span>
                 </button>
@@ -3432,7 +3483,7 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.96 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-[60] max-w-[calc(100vw-2rem)] sm:max-w-sm"
+            className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 z-[60] max-w-[calc(100vw-2rem)] sm:max-w-sm"
           >
             <div
               className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-2xl backdrop-blur-md ${

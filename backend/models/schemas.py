@@ -9,6 +9,8 @@ class IdeaRequest(BaseModel):
     format: str    # "Tutorial" | "Story" | "Hot Take" | "List"
     niche: str
     tone: str      # "Casual founder" etc
+    # organic | digital | ads — content strategy mode
+    variation: str = "organic"
 
 
 class Idea(BaseModel):
@@ -48,6 +50,8 @@ class VisualScriptRequest(BaseModel):
     tone: str
     niche: str
     product: str = ""
+    # organic | digital | ads — shapes storyboard phrase + shot strategy
+    variation: str = "organic"
     # Billing identity (clipr_email) for server-side free-tier metering. Optional so
     # anonymous/local use still works; when present and the user is on free, a
     # `regenerate` call is counted against the regen allowance.

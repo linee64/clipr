@@ -19,6 +19,7 @@ async def get_ideas(request: IdeaRequest):
             format=request.format,
             niche=request.niche,
             tone=request.tone,
+            variation=getattr(request, "variation", None) or "organic",
         )
         return IdeasResponse(ideas=ideas)
     except Exception as e:

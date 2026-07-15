@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import type {
   AudioSelection,
+  ContentVariation,
   PexelsVideo,
   RenderStatus,
   Scene,
@@ -39,6 +40,7 @@ export interface CreateFlowIdea {
   platform: string;
   estimate?: string;
   product?: string;
+  variation?: ContentVariation;
 }
 
 interface CreateFlowProps {
@@ -269,11 +271,13 @@ export function CreateFlow({
     };
   }, []);
 
+  const storyboardCacheKey = `clipr_storyboard_v2_${idea.variation ?? "organic"}_${idea.title}`;
+
   const fetchStoryboard = useCallback(async (regenerate = false) => {
     setIsLoadingScript(true);
     setScriptError(null);
 
-    const saved = localStorage.getItem(`clipr_storyboard_v2_${idea.title}`);
+    const saved = !regenerate ? localStorage.getItem(storyboardCacheKey) : null;
     if (saved) {
       try {
         const cached = JSON.parse(saved) as VisualScriptResponse;
@@ -309,10 +313,11 @@ export function CreateFlow({
         tone,
         niche,
         product: idea.product || product,
+        variation: idea.variation ?? "organic",
         regenerate,
       });
       setVisualScript(data);
-      localStorage.setItem(`clipr_storyboard_v2_${idea.title}`, JSON.stringify(data));
+      localStorage.setItem(storyboardCacheKey, JSON.stringify(data));
       setSelectedMusicVibe(data.music_vibe.split("|")[0]?.trim() || "dark ambient");
       if (regenerate) onUsageRefresh(); // server counted this regen — refresh "left"
     } catch (err) {
@@ -331,7 +336,7 @@ export function CreateFlow({
     } finally {
       setIsLoadingScript(false);
     }
-  }, [idea, outputPlatform, onUsageRefresh, onRequireUpgrade]);
+  }, [idea, outputPlatform, onUsageRefresh, onRequireUpgrade, storyboardCacheKey]);
 
   useEffect(() => {
     fetchStoryboard();
@@ -428,7 +433,7 @@ export function CreateFlow({
         ...prev,
         scenes: prev.scenes.map((s) => (s.order === order ? { ...s, phrase } : s)),
       };
-      localStorage.setItem(`clipr_storyboard_v2_${idea.title}`, JSON.stringify(updated));
+      localStorage.setItem(storyboardCacheKey, JSON.stringify(updated));
       return updated;
     });
   };
@@ -610,14 +615,14 @@ export function CreateFlow({
     !renderError;
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto scrollbar-thin bg-[#070B0D]">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-3 border-b border-[#152226] shrink-0 min-w-0">
+    <div className="flex flex-col h-full overflow-y-auto scrollbar-thin bg-[#070B0D] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-3.5 sm:py-3 border-b border-[#152226] shrink-0 min-w-0">
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1 text-xs text-[#6B7C85] hover:text-[#EFEFEF] transition-colors shrink-0"
+          className="flex items-center gap-1.5 text-sm text-[#6B7C85] hover:text-[#EFEFEF] transition-colors shrink-0 py-1 -ml-1 active:opacity-80"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-5 h-5" />
           Back to ideas
         </button>
         <VideoQuotaBadge left={videosLeft} limit={videosLimit} unlimited={videosUnlimited} compact className="self-start sm:self-auto" />
@@ -638,7 +643,7 @@ export function CreateFlow({
               onRequireUpgrade();
               return;
             }
-            localStorage.removeItem(`clipr_storyboard_v2_${idea.title}`);
+            localStorage.removeItem(storyboardCacheKey);
             fetchStoryboard(true);
           }}
           regenLeft={regenLeft}

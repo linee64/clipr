@@ -67,6 +67,7 @@ async def get_visual_script(request: VisualScriptRequest):
             niche=request.niche,
             product=request.product,
             template=template,
+            variation=request.variation or "organic",
         )
         script["template_id"] = template.get("id", "")
         response = VisualScriptResponse(**script)

@@ -138,22 +138,15 @@ Creator profile: {niche}
 Tone: {tone}
 Platform: {platform}
 Topic they want content about: {topic}
+Content variation: {variation_label}
 
 Generate 8 video ideas about THIS TOPIC. Each idea must be directly about the topic — not about the creator, not about "making content," not about founder life. If the topic is cooking → food ideas. If it's fitness → workout/fitness ideas. If it's a SaaS product → ideas about the problem it solves, not about "building" it.
 
-DIVERSITY: Use ALL of these angles across the 8 ideas (each angle at most once):
-- Hot take / controversial opinion that sparks debate
-- Quick transformation or before-after moment
-- Behind the scenes or process reveal
-- Relatable everyday moment people tag friends in
-- Common mistake and the fix
-- Micro-story with a satisfying payoff
-- One specific how-to or tip, taught fast
-- Aesthetic / visually satisfying mood piece
+{variation_block}
 
 Rules:
 - Title max 6 words, lowercase preferred
-- Feel real and personal — like a human creator made it, not a brand
+- Feel real and personal — like a human creator made it, not a brand (except in product-ads mode, where brand voice is sharp and bold)
 - No buzzwords, no generic motivational quotes
 - NEVER default to "founder life", "2am coding", "building solo", or "startup struggle" unless the topic explicitly IS about those things. If the topic is cooking, travel, design, fashion, fitness, or any non-startup subject, stay in that lane!
 - Each idea must feel different from the others — 8 genuinely distinct directions
@@ -172,7 +165,57 @@ Return ONLY valid JSON:
 """
 
 
-def generate_ideas(topic, platform, format, niche, tone) -> list[dict]:
+VARIATION_BLOCKS = {
+    "organic": """DIVERSITY: Use ALL of these angles across the 8 ideas (each angle at most once):
+- Hot take / controversial opinion that sparks debate
+- Quick transformation or before-after moment
+- Behind the scenes or process reveal
+- Relatable everyday moment people tag friends in
+- Common mistake and the fix
+- Micro-story with a satisfying payoff
+- One specific how-to or tip, taught fast
+- Aesthetic / visually satisfying mood piece""",
+    "digital": """CONTENT MODE: Digital creating
+Focus on the craft of making digital work — design, editing, code, branding, tooling, aesthetics, process.
+Use these angles across the 8 ideas (each at most once):
+- Tool / workflow reveal — a specific step that changes the output
+- Before → after craft transformation (raw → polished)
+- Aesthetic / mood piece about digital craft
+- Common creative mistake + the sharp fix
+- Speed vs quality tension
+- Behind-the-scenes of a digital piece being born
+- Mini tutorial: one technique, taught fast
+- Inspiration → execution gap that creators feel
+Every idea is about MAKING something digital.""",
+    "ads": """CONTENT MODE: Product advertising / image spots
+Write short-form ad & image video concepts for Reels/TikTok/Shorts.
+
+Arc to spread across ideas:
+1. Hook (0–3s) — blunt scroll-stop claim
+2. Proof — numbers, facts, years, tech, social proof
+3. Amplify — competitor contrast, emotion, recognition, wins
+4. Punch — short conclusion + slogan + CTA when it fits
+
+Isolate ONE fact/benefit per idea. Copy: short chopped lines, no ad clichés, confident and bold, contrast welcome ("not just X — it's Y").
+Angles: scroll-stop claim, proof drop, competitor contrast, emotional recognition, product before-after, soft image prestige spot.
+Every idea MUST center the product/offer.""",
+}
+
+
+def _normalize_variation(variation: str | None) -> str:
+    v = (variation or "organic").strip().lower()
+    return v if v in VARIATION_BLOCKS else "organic"
+
+
+def _variation_label(variation: str) -> str:
+    return {
+        "organic": "Organic creator",
+        "digital": "Digital creating",
+        "ads": "Product ads",
+    }.get(variation, "Organic creator")
+
+
+def generate_ideas(topic, platform, format, niche, tone, variation="organic") -> list[dict]:
     _require_deepseek()
     import re
     has_cyrillic = bool(re.search(r"[Ѐ-ӿ]", f"{topic} {niche} {tone}"))
@@ -183,12 +226,15 @@ def generate_ideas(topic, platform, format, niche, tone) -> list[dict]:
     else:
         lang_inst = "Write EVERYTHING in English."
 
+    mode = _normalize_variation(variation)
     prompt = IDEA_PROMPT.format(
         niche=niche,
         tone=tone,
         platform=platform,
         topic=topic,
         language_instruction=lang_inst,
+        variation_label=_variation_label(mode),
+        variation_block=VARIATION_BLOCKS[mode],
     )
     response = client.chat.completions.create(
         model="deepseek-chat",
@@ -201,7 +247,43 @@ def generate_ideas(topic, platform, format, niche, tone) -> list[dict]:
     return _parse_json_response(response.choices[0].message.content)
 
 
-def generate_visual_script(idea_title, hook_phrase, platform, tone, niche, product="", template=None) -> dict:
+def _visual_variation_block(variation: str) -> str:
+    if variation == "digital":
+        return """
+CONTENT VARIATION — Digital creating:
+- Phrases should feel like craft commentary: process, taste, tools, intentional choices
+- Prefer shots of screens, hands creating, detailed UI/cursor, materials, tools, before/after frames
+- Structure energy: curiosity → process reveal → aesthetic payoff
+- Avoid hard-sell CTA language unless the idea itself is selling a tool
+"""
+    if variation == "ads":
+        return """
+CONTENT VARIATION — Product advertising (Clipr ad-script system):
+You are writing a short vertical ad / image spot storyboard (Reels / TikTok / YouTube Shorts).
+
+Narrative logic across scenes (adapt to the scene count):
+1. Hook (first scene, ~2–3s energy) — one scroll-stopping claim
+2. Proof body — concrete: numbers, facts, years, tech, social proof (one fact per body beat when possible)
+3. Amplify body — competitor contrast, emotion, recognition, achievements
+4. Punch — short conclusion + slogan punch + CTA if the idea needs it
+
+Phrase style:
+- Short chopped lines, roughly 3–7 words of energy
+- No fluff, no ad clichés ("game-changer", "revolutionary", "unlock your potential")
+- Punchline at the end of each beat; tone: confident, bold, on-point
+- Contrast welcome ("not just X — it's Y")
+
+For each scene's film_suggestion: say what is on screen visually (product in hand, UI demo, proof graphic moment, reaction, logo sting) — not abstract vibes.
+Center the product/offer from Product/Topic in every beat.
+"""
+    return """
+CONTENT VARIATION — Organic creator:
+- Phrase as a creator talking to one person. Story / take / tip energy.
+- Natural B-roll of people, places, process — not hard-sell product staging.
+"""
+
+
+def generate_visual_script(idea_title, hook_phrase, platform, tone, niche, product="", template=None, variation="organic") -> dict:
     _require_deepseek()
     import re
 
@@ -228,6 +310,7 @@ def generate_visual_script(idea_title, hook_phrase, platform, tone, niche, produ
     structure_str = " -> ".join(str(s) for s in structure)
     shots_str = ", ".join(str(s) for s in shots)
     lang = "Russian" if re.search(r"[Ѐ-ӿ]", f"{idea_title} {hook_phrase} {niche} {product} {tone}") else "English"
+    mode = _normalize_variation(variation)
     
     if lang == "Russian":
         phrase_placeholder_1 = f"строка на экране на русском языке (от {min_w} до {max_w} слов)"
@@ -242,6 +325,8 @@ def generate_visual_script(idea_title, hook_phrase, platform, tone, niche, produ
         film_placeholder = "detailed shot written in English: framing + subject + action + setting/light"
         caption_placeholder = "two short sentences that sell the video in English, then 4-6 hashtags on a new line"
 
+    variation_block = _visual_variation_block(mode)
+
     prompt = f"""
 You are creating a visual b-roll script for a short-form video.
 Style: aesthetic, cinematic, dark, intentional — like @heyeaslo on Instagram.
@@ -251,6 +336,8 @@ Opening hook: {hook_phrase}
 Creator niche: {niche}
 Product/Topic: {product}
 Platform: {platform}
+Content variation: {_variation_label(mode)}
+{variation_block}
 
 LANGUAGE: Write EVERYTHING in {lang}. Every "phrase", every "film_suggestion", and the "caption"
 MUST be in {lang} — this explicitly includes the filming suggestions ("film_suggestion"), which is

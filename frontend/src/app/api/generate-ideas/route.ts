@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { clientIp, rateLimit } from "@/lib/apiRateLimit";
+import {
+  ideasVariationBlock,
+  isContentVariation,
+  type ContentVariation,
+} from "@/lib/contentVariations";
 
 export async function POST(req: Request) {
   try {
@@ -22,6 +27,9 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const { product, audience, tone, platform, prompt } = body;
+    const variation: ContentVariation = isContentVariation(body.variation)
+      ? body.variation
+      : "organic";
 
     // Validate before spending an API call, and bound the prompt size so a huge body
     // can't be used to amplify cost.
@@ -42,6 +50,13 @@ export async function POST(req: Request) {
     const hasCyrillic = /[а-яА-ЯёЁ]/.test(`${prompt} ${product || ""} ${audience || ""} ${tone || ""}`);
     const language = hasCyrillic ? "Russian" : "English";
 
+    const metaRule =
+      variation === "digital"
+        ? `- Meta about "being a content creator" is ONLY allowed when it serves digital craft (tools, process, aesthetics). Still no "founder grind" or "2am hustle" filler.`
+        : variation === "ads"
+          ? `- Every idea must sell or image the product/offer. Soft image spots are fine; vague lifestyle content with no product link is not.`
+          : `- NEVER generate ideas about "being a content creator", "the creator struggle", or "making videos" unless the user literally asked about content creation itself.`;
+
     const systemInstruction = `You are Clipr's short-form video idea strategist for TikTok, Reels, and YouTube Shorts.
 Your audience: digital creators — people who make content, build audiences, sell products, teach skills, or share their craft online. They want videos that entertain, educate, and hook viewers in the first 3 seconds.
 
@@ -49,21 +64,11 @@ Your job: generate exactly 6 scroll-stopping video ideas based ENTIRELY on what 
 
 CRITICAL: Read the user's input carefully. If they ask about cooking → ideas about cooking, food hacks, kitchen tips. If about travel → travel stories, hidden spots, travel hacks. If about fitness → workouts, mindset, progress. If about their SaaS → product demos, user stories, industry takes. If about fashion → styling tips, outfit transformations, trend commentary. MATCH THE DOMAIN THEY GAVE YOU.
 
-Content angles — pick 6 DIFFERENT ones from this list (never repeat):
-- "Hot take / controversial opinion" — a bold claim that sparks comments
-- "Quick transformation / before-after" — visible change in 15-30 seconds
-- "Behind the scenes / process" — show how something is made or done
-- "Relatable moment" — "it's not just me, right?" content people tag friends in
-- "Myth busting / common mistake" — "stop doing X, do Y instead"
-- "Story / personal experience" — a micro-story with a payoff at the end
-- "Educational / how-to" — teach one specific thing, fast
-- "Trend commentary / reaction" — piggyback on a current conversation
-- "Aesthetic / vibe" — visually satisfying, mood-driven, minimal text
-- "Challenge / dare" — "can you do X in 10 seconds?"
+${ideasVariationBlock(variation)}
 
 Hard rules:
 - NEVER default to "founder life", "building solo", "2am grind", "hustle culture", or "startup struggle" unless the user EXPLICITLY asked about those topics.
-- NEVER generate ideas about "being a content creator", "the creator struggle", or "making videos" unless the user literally asked about content creation itself.
+${metaRule}
 - Stay in the user's domain. If they say "cooking" — every idea is about food. If "AI tool for designers" — every idea is about design workflow, not about being a founder.
 - Each idea MUST be a clearly different angle from the rest. No two ideas should feel like variations of the same concept.
 - Every title and hook must be specific and concrete — no vague statements.
@@ -79,9 +84,18 @@ For each idea provide:
 
 Return ONLY a JSON array of exactly 6 objects. No markdown, no commentary.`;
 
+    const modeLabel =
+      variation === "digital"
+        ? "Digital creating"
+        : variation === "ads"
+          ? "Product ads"
+          : "Organic";
+
     const userPrompt = `TOPIC: "${prompt}"
 
 This is what the user wants content about. Every idea must be directly about this topic — don't drift into unrelated niches.
+
+CONTENT VARIATION: ${modeLabel}
 
 CONTEXT (use as flavor, not to override the topic):
 - What they do: ${product || "digital creator"}

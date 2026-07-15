@@ -258,6 +258,7 @@ export async function generateIdeas(
       audience: payload.niche ?? "",
       tone: payload.tone ?? "",
       platform: payload.platform ?? "",
+      variation: payload.variation ?? "organic",
     }),
   });
   const data = await parseJson<Idea[] | IdeasResponse>(res);

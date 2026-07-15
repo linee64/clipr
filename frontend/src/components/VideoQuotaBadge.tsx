@@ -35,10 +35,10 @@ export function VideoQuotaBadge({
   if (unlimited) {
     const chip = (
       <span
-        className={`inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[#51E0CF]/25 bg-[#51E0CF]/10 px-2 py-0.5 text-[10px] font-semibold text-[#51E0CF] ${className}`}
+        className={`inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[#51E0CF]/25 bg-[#51E0CF]/10 px-2.5 py-1 text-[11px] font-semibold text-[#51E0CF] ${className}`}
         title="Unlimited video renders"
       >
-        <Film className="h-3 w-3 shrink-0" aria-hidden />
+        <Film className="h-3.5 w-3.5 shrink-0" aria-hidden />
         <span className="truncate">Unlimited videos</span>
       </span>
     );

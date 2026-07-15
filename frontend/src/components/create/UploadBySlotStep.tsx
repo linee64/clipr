@@ -281,7 +281,7 @@ export function UploadBySlotStep({
   };
 
   return (
-    <div className="w-full p-4 sm:p-6">
+    <div className="w-full p-4 sm:p-6 pb-28 md:pb-6">
       <audio
         ref={previewRef}
         onEnded={() => setPlayingId(null)}

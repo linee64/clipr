@@ -1,9 +1,15 @@
+import type { ContentVariation } from "./contentVariations";
+
+export type { ContentVariation };
+
 export interface IdeaRequest {
   topic: string;
   platform: string;
   format: string;
   niche: string;
   tone: string;
+  /** organic | digital | ads — shapes idea angles + ad copy strategy */
+  variation?: ContentVariation;
 }
 
 export interface Idea {
@@ -33,6 +39,8 @@ export interface VisualScriptRequest {
   tone: string;
   niche: string;
   product?: string;
+  /** organic | digital | ads — shapes storyboard phrase + shot strategy */
+  variation?: ContentVariation;
   /** billing email (auto-attached by the API client) for free-tier metering */
   email?: string;
   /** true for a user-triggered regeneration (metered on free), not the first gen */

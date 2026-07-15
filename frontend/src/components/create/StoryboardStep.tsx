@@ -88,9 +88,9 @@ export function StoryboardStep({
   ];
 
   return (
-    <div className="w-full p-4 sm:p-6">
+    <div className="w-full p-4 sm:p-6 pb-28 md:pb-6">
       <div className="max-w-3xl mx-auto">
-        <h2 className="text-xl font-semibold text-[#EFEFEF]">Your storyboard</h2>
+        <h2 className="text-xl font-semibold text-[#EFEFEF] tracking-tight">Your storyboard</h2>
         <p className="text-sm text-[#6B7C85] mt-1">Film these scenes in order</p>
 
         {/* ── Subtitle source toggle ── */}
